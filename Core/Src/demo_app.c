@@ -2384,8 +2384,13 @@ static void group_audio_update(void)
   uint32_t depth = g_demo_diag.bt_capture_depth;
   if (g_demo_diag.tc_capture_depth > depth)
     depth=g_demo_diag.tc_capture_depth;
+  uint8_t was_bypassed=g_group_guard_bypass;
   g_group_guard_bypass=(uint8_t)(GroupGuardian_Update(&g_group_guardian,
       HAL_GetTick(),faults,depth)!=GROUP_GUARD_NORMAL);
+  /* Restart optional gain at unity after overload, then ramp to its target
+   * instead of abruptly reapplying yesterday's attenuation. */
+  if (was_bypassed && !g_group_guard_bypass && g_group_features.enabled)
+    GroupFeatures_Enable(&g_group_features,1U);
   GroupEvent ev;
   uint32_t count=0U;
   while (g_group_events && count<8U && xQueueReceive(g_group_events,&ev,0U)==pdPASS) {
