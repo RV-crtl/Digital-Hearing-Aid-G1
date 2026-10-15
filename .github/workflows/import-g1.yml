@@ -1,0 +1,62 @@
+name: Expand verified G1 project archive
+
+on:
+  push:
+    paths:
+      - 'bootstrap/g1-part-*.bin'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  import-g1:
+    if: github.repository == 'RV-crtl/Digital-Hearing-Aid-G1'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out G1 repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - name: Verify and expand original G1 archive
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          from zipfile import ZipFile
+          import hashlib
+          root = Path.cwd().resolve()
+          parts = sorted(Path('bootstrap').glob('g1-part-*.bin'))
+          if len(parts) != 17:
+              raise SystemExit(f'Expected 17 G1 parts; found {len(parts)}')
+          output = Path('bootstrap/source.zip')
+          with output.open('wb') as out:
+              for part in parts:
+                  out.write(part.read_bytes())
+          digest = hashlib.sha256(output.read_bytes()).hexdigest()
+          expected = 'd913ac56e38af06be16e17612b8e5e99f1301295a1ab5513090e32b7981f14de'
+          if digest != expected:
+              raise SystemExit(f'Archive SHA256 mismatch: {digest}')
+          with ZipFile(output) as source:
+              names = [x.filename for x in source.infolist() if not x.is_dir()]
+              if len(names) != 292:
+                  raise SystemExit(f'Expected 292 files; found {len(names)}')
+              for info in source.infolist():
+                  if info.is_dir():
+                      continue
+                  dest = (root / info.filename).resolve()
+                  if not dest.is_relative_to(root):
+                      raise SystemExit(f'Unsafe path in archive: {info.filename}')
+                  dest.parent.mkdir(parents=True, exist_ok=True)
+                  dest.write_bytes(source.read(info))
+              print(f'Extracted {len(names)} verified G1 files')
+          PY
+      - name: Commit the extracted STM32CubeIDE project
+        run: |
+          rm -rf bootstrap
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          if ! git diff --cached --quiet; then
+            git commit -m 'Import G1 integrated STM32CubeIDE firmware, tests and PCB'
+            git push origin HEAD:main
+          fi
