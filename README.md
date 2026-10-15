@@ -30,3 +30,12 @@ See `Hardware/CUSTOM_PCB_PORTING_CHECKLIST.md` and
 - `Documentation/`: features, hardware gates, and exact import/flash steps
 
 Build and flash only after PREPARE finishes with PASS; see above docs.
+
+## G2 engineering reliability upgrade (development branch)
+
+- Non-allocating **AudioTask-owned guardian** suspends optional group DSP during genuine audio-DMA overrun/underrun or near-full capture queues, recovering after 3 seconds of clean telemetry. R34 audio transport is not disabled.
+- DSP bypass works with both in-place and separate output buffers.
+- Host regressions and GitHub Actions CI cover DSP/encoder/guardian and source/recovery integrity.
+- See [`Documentation/G2_RELEASE_NOTES.md`](Documentation/G2_RELEASE_NOTES.md) for scope, conditions and limitations.
+
+**Integration status:** Not an ARM-build-verified custom-PCB release, trained TinyML model, battery charger, or safety-certified medical device.

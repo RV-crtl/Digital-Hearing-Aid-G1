@@ -1,6 +1,7 @@
 #include "group_features.h"
 #include <stdint.h>
 #include <limits.h>
+#include <string.h>
 
 static int16_t sat16(int32_t x) {
     if (x > INT16_MAX) return INT16_MAX;
@@ -50,7 +51,8 @@ const char *GroupFeatures_SceneName(unsigned p) {
 void GroupFeatures_Process(GroupFeatures *f, const int16_t *in, int16_t *out, size_t n) {
     if (!f || !in || !out || n == 0U) return;
     if (!f->enabled) {
-        /* Caller keeps original unmodified buffer.  No extra copy needed. */
+        /* Bypass is a true identity transform even for distinct buffers. */
+        if (in != out) memmove(out, in, n * sizeof(*out));
         return;
     }
     /* Estimate input loudness, with bounded processing and no FFT/heap. */

@@ -42,8 +42,28 @@ static void test_select_manual(void) {
  assert(!f.automatic && f.profile==GROUP_PROFILE_MUSIC);
  assert(strcmp(GroupFeatures_ProfileName(2),"MUSIC")==0);
 }
+static void test_bypass_distinct_output(void) {
+ GroupFeatures f; GroupFeatures_Init(&f);
+ int16_t in[]={-32768,-1,0,1,32767}, out[]={8,8,8,8,8};
+ GroupFeatures_Process(&f,in,out,5);
+ assert(memcmp(in,out,sizeof(in))==0);
+ assert(f.processed_blocks==0);
+}
+static void test_repeated_enable_and_invalid_controls(void) {
+ GroupFeatures f; GroupFeatures_Init(&f);
+ GroupFeatures_Select(&f,(GroupProfile)250);
+ assert(f.profile==GROUP_PROFILE_NEUTRAL);
+ GroupFeatures_Enable(&f,1); GroupFeatures_Select(&f,GROUP_PROFILE_WIND);
+ int16_t b[4]={32767,-32768,1234,-1234};
+ GroupFeatures_Process(&f,b,b,4);
+ GroupFeatures_Enable(&f,0);
+ int16_t original[4];memcpy(original,b,sizeof(b));
+ GroupFeatures_Process(&f,b,b,4); assert(!memcmp(original,b,sizeof(b)));
+ GroupFeatures_Enable(&f,1);assert(f.gain_q15==32768U);
+}
 int main(void) {
  test_off_preserves_pcm();test_profile_and_ramp();test_max_signed_and_no_clipping();
  test_auto_is_not_ml();test_select_manual();
- puts("GROUP AUDIO PROFILES: 5/5 host tests passed");return 0;
+ test_bypass_distinct_output();test_repeated_enable_and_invalid_controls();
+ puts("GROUP AUDIO PROFILES: 7/7 host tests passed");return 0;
 }

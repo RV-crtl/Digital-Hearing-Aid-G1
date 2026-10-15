@@ -14,6 +14,7 @@
 #include "rtos_tick_proof.h"
 #include "rtos_stats_timer.h"
 #include "group_features.h"
+#include "group_guardian.h"
 #include "queue.h"
 #include "FreeRTOS.h"
 #include "task.h"
@@ -36,6 +37,8 @@ int16_t g_speaker_tx_dma[DEMO_OUTPUT_DMA_SAMPLES];
 static ConnectivityService_t g_service;
 static AudioDynamics_t g_dynamics;
 static GroupFeatures g_group_features;
+static GroupGuardian g_group_guardian;
+static uint8_t g_group_guard_bypass;
 /* Event queue: sole author of DSP state is AudioTask; ControlTask/button only enqueue. */
 static QueueHandle_t g_group_events;
 typedef enum { GROUP_EVENT_ENABLE=1, GROUP_EVENT_PROFILE=2,
@@ -46,6 +49,7 @@ typedef struct {
     volatile uint32_t enabled, automatic, profile, scene, scene_updates;
     volatile uint32_t gain_q15, input_mean_abs, processed_blocks, clipped;
     volatile uint32_t event_count, event_drops, button_presses;
+    volatile uint32_t guardian_level, guardian_events, guardian_recoveries;
 } GroupTelemetry;
 __attribute__((used)) volatile GroupTelemetry g_group_telemetry;
 static uint32_t g_group_events_seen;
@@ -1146,8 +1150,9 @@ static void direct_process_block(uint32_t source, const int16_t *left, const int
   g_demo_diag.muted = 0U;
   g_demo_diag.dsp_input_rms = in_rms;
   uint32_t actual_out_rms=0U, actual_out_peak=0U;
-  GroupFeatures_Process(&g_group_features, g_demo_processed_mono,
-                        g_demo_processed_mono, DEMO_FRAMES_PER_HALF);
+  if (!g_group_guard_bypass)
+    GroupFeatures_Process(&g_group_features, g_demo_processed_mono,
+                          g_demo_processed_mono, DEMO_FRAMES_PER_HALF);
   g_group_features.processed_blocks++;
   metrics_s16(g_demo_processed_mono,DEMO_FRAMES_PER_HALF,&actual_out_rms,NULL,&actual_out_peak);
   g_demo_diag.dsp_output_rms = actual_out_rms;
@@ -1184,8 +1189,9 @@ static void process_selected_audio(const int16_t *pre, uint32_t source)
   } else {
     memcpy(g_demo_processed_mono, pre, sizeof(g_demo_processed_mono));
   }
-  GroupFeatures_Process(&g_group_features, g_demo_processed_mono,
-                        g_demo_processed_mono, DEMO_FRAMES_PER_HALF);
+  if (!g_group_guard_bypass)
+    GroupFeatures_Process(&g_group_features, g_demo_processed_mono,
+                          g_demo_processed_mono, DEMO_FRAMES_PER_HALF);
   g_group_features.processed_blocks++;
   elapsed_us = cycles_to_us(dwt_cycles() - start_cycles);
   metrics_s16(g_demo_processed_mono, DEMO_FRAMES_PER_HALF, &out_rms, NULL, &out_peak);
@@ -2295,7 +2301,7 @@ static void group_event_send(uint8_t type, uint8_t value)
 static void group_print_status(void)
 {
   (void)snprintf(g_r21_line, sizeof(g_r21_line),
-    "GROUP|STATUS|enabled=%lu|auto=%lu|profile=%lu|scene=%lu|gain=%lu|mean=%lu|blocks=%lu|events=%lu|drop=%lu|button=%lu\r\n",
+    "GROUP|STATUS|enabled=%lu|auto=%lu|profile=%lu|scene=%lu|gain=%lu|mean=%lu|blocks=%lu|events=%lu|drop=%lu|button=%lu|guard=%lu|guard_events=%lu|recoveries=%lu\r\n",
     (unsigned long)g_group_telemetry.enabled,
     (unsigned long)g_group_telemetry.automatic,
     (unsigned long)g_group_telemetry.profile,
@@ -2305,7 +2311,10 @@ static void group_print_status(void)
     (unsigned long)g_group_telemetry.processed_blocks,
     (unsigned long)g_group_telemetry.event_count,
     (unsigned long)g_group_telemetry.event_drops,
-    (unsigned long)g_group_telemetry.button_presses);
+    (unsigned long)g_group_telemetry.button_presses,
+    (unsigned long)g_group_telemetry.guardian_level,
+    (unsigned long)g_group_telemetry.guardian_events,
+    (unsigned long)g_group_telemetry.guardian_recoveries);
   console_write(g_r21_line);
 }
 /* Nucleo-L476RG B1 is PC13, active-low.  NOT valid for arbitrary custom PCB.
@@ -2366,6 +2375,17 @@ static void group_button_poll(uint32_t now)
 }
 static void group_audio_update(void)
 {
+  /* Sample existing actual DMA/audio fault counters at a bounded rate.
+   * This guardian bypasses only optional G1 DSP, never R34 audio transport. */
+  uint32_t faults = g_demo_diag.speaker_underruns +
+                    g_demo_diag.bt_dma_overruns +
+                    g_demo_diag.tc_dma_overruns +
+                    g_demo_diag.service_deadline_misses;
+  uint32_t depth = g_demo_diag.bt_capture_depth;
+  if (g_demo_diag.tc_capture_depth > depth)
+    depth=g_demo_diag.tc_capture_depth;
+  g_group_guard_bypass=(uint8_t)(GroupGuardian_Update(&g_group_guardian,
+      HAL_GetTick(),faults,depth)!=GROUP_GUARD_NORMAL);
   GroupEvent ev;
   uint32_t count=0U;
   while (g_group_events && count<8U && xQueueReceive(g_group_events,&ev,0U)==pdPASS) {
@@ -2379,14 +2399,14 @@ static void group_audio_update(void)
    * routed mode, reuse the existing well-tested compressor/resonance EQ.
    * Music preserves dynamics; voice/wind favour speech processing. Direct
    * reference playback remains DSP-bypassed (only optional group gain/HPF). */
-  if (g_group_features.enabled && !g_group_dsp_saved) {
+  if (g_group_features.enabled && !g_group_guard_bypass && !g_group_dsp_saved) {
     g_group_old_dsp_on=(uint8_t)g_demo_control.dsp_enabled;
     g_group_old_comp=(uint8_t)g_dynamics.compressor_enabled;
     g_group_old_eq=(uint8_t)g_dynamics.resonance_eq_enabled;
     g_group_dsp_saved=1U;
     g_group_last_applied_profile=0xFFU;
   }
-  if (g_group_features.enabled &&
+  if (g_group_features.enabled && !g_group_guard_bypass &&
       g_group_features.profile!=g_group_last_applied_profile) {
     if (g_group_features.profile==GROUP_PROFILE_MUSIC) {
       AudioDynamics_SetCompression(&g_dynamics,false);
@@ -2401,7 +2421,7 @@ static void group_audio_update(void)
     }
     g_group_last_applied_profile=g_group_features.profile;
   }
-  if (!g_group_features.enabled && g_group_dsp_saved) {
+  if ((!g_group_features.enabled || g_group_guard_bypass) && g_group_dsp_saved) {
     AudioDynamics_SetCompression(&g_dynamics,g_group_old_comp!=0U);
     AudioDynamics_SetResonanceEq(&g_dynamics,g_group_old_eq!=0U);
     g_demo_control.dsp_enabled=g_group_old_dsp_on;
@@ -2418,6 +2438,9 @@ static void group_audio_update(void)
   g_group_telemetry.scene_updates=g_group_features.scene_updates;
   g_group_telemetry.clipped=g_group_features.saturated_samples;
   g_group_telemetry.event_count=g_group_events_seen;
+  g_group_telemetry.guardian_level=g_group_guardian.level;
+  g_group_telemetry.guardian_events=g_group_guardian.events;
+  g_group_telemetry.guardian_recoveries=g_group_guardian.recoveries;
 }
 
 static bool r25_process_short_command(const char *line)
@@ -3191,6 +3214,7 @@ void Demo_AppInit(void)
 {
   AudioDynamicsConfig_t cfg = AudioDynamics_DefaultConfig();
   GroupFeatures_Init(&g_group_features);
+  GroupGuardian_Init(&g_group_guardian);
   g_group_events = xQueueCreate(8U, sizeof(GroupEvent));
   if (g_group_events == NULL) Demo_SetError(0xF231U);
   dwt_enable();
