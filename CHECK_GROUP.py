@@ -1,0 +1,22 @@
+from pathlib import Path
+import hashlib, subprocess, shutil, sys
+R=Path(__file__).parent
+checks=[]
+def check(x, name):
+ checks.append((bool(x),name));print(('PASS ' if x else 'FAIL ')+name)
+def same(src):
+ return (R/src).read_bytes()==(R/'Recovery'/src).read_bytes()
+src=(R/'Core/Src/demo_app.c').read_text()
+check('xQueueCreate(8U, sizeof(GroupEvent))' in src, 'real FreeRTOS queue created')
+check('xQueueSend(g_group_events' in src and 'xQueueReceive(g_group_events' in src,'cross-task queued commands consumed by AudioTask')
+check('group_button_poll(now);' in src,'Nucleo button polled in ControlTask')
+check('GroupFeatures_Process(' in src and src.count('GroupFeatures_Process(')==2,'DSP inserted into direct and routed audio')
+check('R34_PRIORITY7_CONTINUOUS_SPIN' in src,'known-good R34 marker preserved')
+check('GROUP|STATUS|' in src and 'g_group_telemetry' in src,'real profile telemetry present')
+for path in ['Core/Src/demo_app.c','Core/Src/group_features.c','Core/Src/group_encoder.c','Core/Inc/group_features.h','Core/Inc/group_encoder.h']:
+ check(same(path), f'recovery mirror: {path}')
+check((R/'Hardware/STM32_U13_PINMAP.csv').exists(),'PCB physical pad map included')
+check((R/'Documentation/GROUP_G1_IMPORT_AND_BUILD.md').exists(),'import instructions included')
+check((R/'.project').exists() and (R/'.cproject').exists(),'CubeIDE managed project metadata present')
+if not all(x for x,_ in checks):sys.exit(1)
+print('GROUP G1 VALIDATION PASS: {} checks'.format(len(checks)))

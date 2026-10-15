@@ -1,0 +1,13 @@
+R30 VALIDATION — 2026-10-13
+
+Source-level / desktop checks performed:
+- CHECK_PROJECT.py: 37/37 and all extension assertions PASS.
+- Dashboard: Python compilation PASS; Xvfb graphical smoke test PASS (5 tests; signal lab; FSM and RTOS monitors).
+- Production connectivity_controller.c: 52/52 original PD5 Unity controller tests PASS (compiled current firmware file).
+- Current telecoil detector hysteresis 24 present / 75 absent blocks, service TC selection and BT priority: compiled integration regression PASS.
+- Original PD5 connectivity service suite on current code: 35/38, three failures because old tests expect original 2/3-block hysteresis. Not counted as a PASS. Adapted behavior checked separately in current integration regression.
+- ZIP CRC/full-file extraction: PASS (post-package).
+
+NOT verified in this environment: entire ARM GNU make/link, actual STM32 debugging/FreeRTOS CPU view, physical UART, Bluetooth and telecoil audio, real FSM transitions, uninterrupted audio under CPU saturation, battery rails. Verify on the student's hardware before any assessed demo.
+
+NO synthetic FSM or unit-test harness is compiled into production firmware. Offline unit tests use artificial inputs to verify the portable logic; live FSM monitor only reads actual MCU !FV telemetry.

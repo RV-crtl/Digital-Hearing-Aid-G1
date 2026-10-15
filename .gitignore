@@ -1,0 +1,17 @@
+Debug/
+Release/
+.settings/
+*.launch
+*.o
+*.d
+*.su
+*.elf
+*.bin
+*.hex
+*.map
+*.list
+__pycache__/
+RESULTS_R26/
+*.zip
+*.log
+Middlewares/
