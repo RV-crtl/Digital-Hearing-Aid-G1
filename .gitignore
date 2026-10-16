@@ -15,3 +15,9 @@ RESULTS_R26/
 *.zip
 *.log
 Middlewares/
+# Generated local validation evidence (never treat as measured board data)
+Validation/results/
+*.gcda
+*.gcno
+*.gcov
+.DS_Store

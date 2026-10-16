@@ -1,0 +1,20 @@
+requirement_id,requirement_summary,source,implementation,evidence,software_status,hardware_status,blocking_action
+FUN-01,Amplify hearing-range audio,Prototype Design 2,Core/Src/audio_dynamics.c,Validation/matlab/verify_audio_filters.m,partially-verified,pending-hardware,Measure actual acoustic frequency response
+FUN-02,Automatic gain adjustment,Prototype Design 2,Core/Src/audio_dynamics.c,Validation/README.md,host-verified,pending-hardware,Test calibrated varying input level and output
+FUN-03,Noise reduction,Prototype Design 2,Core/Src/tc_cleanup.c,Documentation/RELEASE_CHECKLIST.md,pending-evidence,pending-hardware,Measure true before-after SNR with microphone
+FUN-04,Feedback suppression,Prototype Design 2,unimplemented,Documentation/RELEASE_CHECKLIST.md,not-implemented,pending-hardware,Design and measure stable feedback cancellation
+FUN-05,Bluetooth audio,Prototype Design 2,Core/Src/demo_app.c,Documentation/STANDALONE_SHOWCASE.md,implemented,pending-retest,Check actual module transport and recovered PCM
+FUN-06,Telecoil audio,Prototype Design 2,Core/Src/demo_app.c,Documentation/STANDALONE_SHOWCASE.md,implemented,pending-retest,Physical inductive reception validation
+FUN-07,Microphone capture,Prototype Design 2,References/GroupMemberPrototypes,Hardware/CUSTOM_PCB_PORTING_CHECKLIST.md,not-integrated,pending-hardware,Port DFSDM and sample synchronisation
+FUN-08,Bone conduction audio output,Prototype Design 2,Core/Src/speaker_output.c,Documentation/STANDALONE_SHOWCASE.md,implemented,pending-retest,Transducer output and calibrated level measurements
+PER-01,Audio latency below 50 ms,Prototype Design 2,Core/Src/demo_app.c,Documentation/RELEASE_CHECKLIST.md,pending-evidence,pending-hardware,Oscilloscope input-output latency across all sources
+PER-02,THD below 3 percent,Prototype Design 2,Core/Src/audio_dynamics.c,Validation/matlab/verify_audio_filters.m,pending-evidence,pending-hardware,Measure output THD with calibrated sine
+PER-03,Dual microphone capture,Prototype Design 2,Hardware/Original_KiCad,Hardware/CUSTOM_PCB_PORTING_CHECKLIST.md,not-integrated,pending-hardware,Verify two independent aligned channels
+INT-01,User volume and mode controls,Prototype Design 2,Core/Src/group_encoder.c,Tests/test_encoder.c,host-verified,pending-hardware,Verify physical encoder + MPR121
+INT-02,Wear detection,Prototype Design 2,Hardware/Original_KiCad,Hardware/README.md,not-integrated,pending-hardware,Prove sensor wiring and debounce behavior
+INT-03,Source selection and precedence,Prototype Design 2,Core/Src/connectivity_controller.c,Tests/test_connectivity_scenarios.c,host-verified,pending-retest,Reproduce changes with live BT and telecoil sources
+POW-01,24-hour battery life,Prototype Design 2,Hardware/Original_KiCad,Documentation/RELEASE_CHECKLIST.md,not-verified,pending-hardware,Discharge test actual power source and current
+POW-02,Low-power operation when not worn,Prototype Design 2,Core/Src/connectivity_controller.c,Hardware/CUSTOM_PCB_PORTING_CHECKLIST.md,not-integrated,pending-hardware,Measure supply current in actual MCU low-power mode
+SAF-02,Safe acoustic output,Prototype Design 2,Core/Src/audio_dynamics.c,Documentation/RELEASE_CHECKLIST.md,not-verified,pending-hardware,Calibrated output measurement; output PCM cap is insufficient
+G2-GUARD,Recover optional audio DSP under overload,Group G2,Core/Src/group_guardian.c,Tests/test_group_guardian.c,host-verified,pending-hardware,Inject real DMA pressure and check recovery
+G1-PROFILES,Selectable listening profiles,Group G1,Core/Src/group_features.c,Tests/test_group_features.c,host-verified,pending-hardware,Check audible profile switching and persisted state

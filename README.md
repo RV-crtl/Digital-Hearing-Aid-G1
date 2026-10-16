@@ -1,41 +1,63 @@
-# Group G1 — Digital Hearing Aid (Nucleo integration baseline)
+# Digital Hearing Aid — STM32L476RG / FreeRTOS
 
-This is a **real STM32CubeIDE importable project** based on the last demonstrated
-R34 connectivity firmware. See `Documentation/GROUP_G1_IMPORT_AND_BUILD.md`.
+**Group integration engineering repository · G3 candidate, hardware validation pending**
 
-**Working R34 baseline preserved:** Bluetooth/telecoil audio transport,
-portable source-selection state machine, speaker DMA, DSP, FreeRTOS tasks,
-CPU profiling and the optional 20-second contention experiment.
+> A multi-input bone-conduction hearing-aid prototype with Bluetooth/telecoil audio, SAI/DMA playback, portable source-selection state machine, fixed-memory DSP profiles, overload guardian, event-queue user controls, and RTOS CPU profiling. The checked-in CubeIDE target is **NUCLEO-L476RG**, **not** custom-PCB-ready or a certified medical/hearing protection device.
 
-**New code integrated:** Queued live profile controls, sample-by-sample smooth
-gain transitions, WIND low-frequency filtering, bounded automatic loudness
-attenuation, Nucleo USER button+LD2, portable quadrature decoder module,
-real telemetry `g_group_telemetry`, and independent host C regression tests.
+## Start in 60 seconds
 
-**Not complete:** group custom PCB bring-up, PDM microphone integration,
-trained TinyML, phone BLE profile writes, USB audio/charging, beamforming,
-physical battery sensing. Those require separate hardware or measured data.
-See `Hardware/CUSTOM_PCB_PORTING_CHECKLIST.md` and
-`Documentation/GROUP_FEATURE_MANUAL.md`. No medical safety certification.
+| I want to… | Open |
+| --- | --- |
+| See the actual hardware/software architecture | [Architecture guide](Documentation/ARCHITECTURE.md) |
+| Import, build and flash the current Nucleo target | [Exact STM32CubeIDE steps](Documentation/GROUP_G1_IMPORT_AND_BUILD.md) |
+| Know which functions are finished / hardware-dependent | [Requirements–evidence matrix](Documentation/REQUIREMENTS_EVIDENCE.csv) |
+| Run verification without the STM32 board | [Host tests + MATLAB figures](Validation/README.md) |
+| Operate the hearing aid without a laptop | [Standalone demonstration](Documentation/STANDALONE_SHOWCASE.md) |
+| Inspect the full supplied KiCad schematic/PCB | [Hardware navigation and dependency audit](Hardware/README.md) |
+| Understand the hardware porting blockers | [Custom PCB gate](Hardware/CUSTOM_PCB_PORTING_CHECKLIST.md) |
+| Safely collaborate / submit changes | [Contributing](CONTRIBUTING.md) |
+| Decide whether a version is release-ready | [Release checklist](Documentation/RELEASE_CHECKLIST.md) |
 
-## Repo layout
+## Available NOW vs proposed
 
-- `Core/`, `Drivers/`, `.project`, `.cproject`, `.ioc`: real STM32CubeIDE project
-- `PREPARE_PROJECT.bat`/`.ps1`, `Recovery/`: deterministic Windows preparation
-- `Dashboard/`: legacy USB debug dashboard (not required on showcase day)
-- `References/GroupMemberPrototypes/`: group members' original code snapshots, not compiled
-- `Tests/`: portable C audio-profile and rotary-decoder tests
-- `Hardware/Original_KiCad/`: supplied PCB schematic/layout reference
-- `Hardware/STM32_U13_PINMAP.csv`: real U13 physical pin audit
-- `Documentation/`: features, hardware gates, and exact import/flash steps
+| Capability | Present software | Evidence level |
+| --- | --- | --- |
+| Bluetooth and telecoil capture/routing + bone-conduction output | Existing R34/G1 code | Host/source + previous Nucleo tests; retest per assembled unit |
+| FreeRTOS task architecture, control queue and CPU runtime instrumentation | Implemented | Source checks; real timing/CPU need board evidence |
+| Source-selection M1–M4 policy with fault and recovery | Implemented | Portable production-C scenario tests |
+| 150 Hz HPF, 1.6 kHz compensation EQ, gradual dynamics | Implemented | Production-C golden samples, independent Python + MATLAB comparisons |
+| Four optional listening profiles, WIND attenuation | Implemented | Portable C regressions |
+| DSP overload guardian | Implemented | Host tests; real DMA overload acceptance outstanding |
+| Nucleo USER button profile control | Implemented | Physical validation outstanding |
+| KiCad project and routed PCB | Source assets included | **50 unresolved external library URIs**; ERC/DRC and assembly not verified |
+| PDM microphone, TinyML, Bluetooth phone configuration, USB audio/charging, custom PCB firmware | **Not integrated/verified** | Separate hardware/firmware work required |
 
-Build and flash only after PREPARE finishes with PASS; see above docs.
+## Run the portable tests
 
-## G2 engineering reliability upgrade (development branch)
+```bash
+bash Validation/run_host_validation.sh
+```
 
-- Non-allocating **AudioTask-owned guardian** suspends optional group DSP during genuine audio-DMA overrun/underrun or near-full capture queues, recovering after 3 seconds of clean telemetry. R34 audio transport is not disabled.
-- DSP bypass works with both in-place and separate output buffers.
-- Host regressions and GitHub Actions CI cover DSP/encoder/guardian and source/recovery integrity.
-- See [`Documentation/G2_RELEASE_NOTES.md`](Documentation/G2_RELEASE_NOTES.md) for scope, conditions and limitations.
+Requires Python 3, GCC and Bash (Linux/macOS or Windows Git Bash/WSL). The script builds real application C source modules, runs controller/DSP/encoder/guardian regression scenarios, produces a filter impulse CSV, checks mathematical responses and audits KiCad project dependencies. GitHub Actions runs the same suite automatically; green host CI is **not** a green hardware-validation badge.
 
-**Integration status:** Not an ARM-build-verified custom-PCB release, trained TinyML model, battery charger, or safety-certified medical device.
+In MATLAB, add `Validation/matlab` to path, generate `Validation/results/audio_vectors.csv` using the command above, then call:
+
+```matlab
+verify_audio_filters('Validation/results/audio_vectors.csv','Validation/results');
+```
+
+## Repository design
+
+- **Root**: CubeIDE `.project`, `.cproject`, `.ioc`, preparation scripts; do not relocate these.
+- **Core / Drivers / Recovery**: Embedded app and deterministic recovery mirrors. Regenerating CubeMX can replace non-USER sections: see import guide.
+- **Tests / Validation**: Portable C tests, C reference vectors, independent analysis and generated evidence (ignored).
+- **Hardware / Original_KiCad**: Group-provided electrical design and MCU pad audit; third-party library dependencies must be restored for editing.
+- **Documentation**: product architecture, hardware gates, requirement evidence and on-device demo.
+- **References**: Group-member prototype snapshots; not compiled into the integrated firmware.
+- **Dashboard**: Development aid only; not required for standalone showcase.
+
+## Version discipline
+
+`main` remains the group's recoverable baseline. Development occurs in pull requests and requires host regressions plus ARM build and physical evidence before declaring any integrated release complete. The original individual PD5 repository is **not** a dependency and must not be modified by this project.
+
+**No calibrated SPL limit, medical device certification, production battery charger or complete PCB hardware-in-the-loop verification is claimed.**
