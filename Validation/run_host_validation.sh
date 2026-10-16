@@ -13,6 +13,7 @@ CC=${CC:-gcc}
 Validation/results/test_features
 Validation/results/test_encoder
 Validation/results/test_guardian
+Validation/results/test_group_ui
 Validation/results/audio_vectors Validation/results/audio_vectors.csv
 Validation/results/benchmark_profiles > Validation/results/profile_host_benchmark.csv
 python3 Validation/python/check_vectors.py Validation/results/audio_vectors.csv
