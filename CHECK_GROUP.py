@@ -23,7 +23,7 @@ check(same('Core/Inc/group_guardian.h'), 'guardian header mirrored for CubeMX re
 check(same('Core/Src/group_features.c'), 'G2 optional DSP source mirror')
 check('GroupGuardian_Update(&g_group_guardian' in src and 'g_group_guard_bypass' in src,
       'runtime guardian connected to actual AudioTask pipeline')
-check((R/'.github/workflows/verify-g2.yml').exists(), 'CI regression workflow present')
+check((R/'.github/workflows/verify-g3.yml').exists(), 'CI regression workflow present')
 check((R/'Tests/test_group_guardian.c').exists(), 'guardian host regression present')
 if not all(x for x,_ in checks):sys.exit(1)
 print('GROUP G1 VALIDATION PASS: {} checks'.format(len(checks)))
