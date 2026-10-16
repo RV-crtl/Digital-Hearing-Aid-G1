@@ -1,0 +1,59 @@
+name: Import audited G3 repository upgrade
+on:
+  push:
+    branches: ['improve/**']
+    paths: ['bootstrap/g3-upgrade.tar.xz']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  import-g3:
+    if: github.repository == 'RV-crtl/Digital-Hearing-Aid-G1'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out improvement branch
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - name: Verify sha256 and safely expand G3 source changes
+        run: |
+          if [ ! -f bootstrap/g3-upgrade.tar.xz ]; then
+            echo "Patch already integrated; no work remaining"
+            exit 0
+          fi
+          python3 - <<'PY'
+          from pathlib import Path
+          import hashlib,tarfile
+          root=Path.cwd().resolve()
+          data=Path('bootstrap/g3-upgrade.tar.xz')
+          actual=hashlib.sha256(data.read_bytes()).hexdigest()
+          expected='001fcc79a3dce4c7cb1acf4da5c0c34965f33ae8a432642a0025c456b9fb4beb'
+          if actual!=expected: raise SystemExit(f'G3 archive checksum failed: {actual}')
+          with tarfile.open(data,'r:xz') as tf:
+            members=tf.getmembers()
+            if len(members)!=24: raise SystemExit(f'Expected 24 source files, got {len(members)}')
+            for member in members:
+              if not member.isfile(): raise SystemExit(f'Non-file archive entry: {member.name}')
+              dest=(root/member.name).resolve()
+              if not dest.is_relative_to(root): raise SystemExit(f'Unsafe archive path: {member.name}')
+              if member.name.startswith('bootstrap/'): raise SystemExit('Bootstrap overwrite forbidden')
+              contents=tf.extractfile(member)
+              if contents is None: raise SystemExit('Missing source stream')
+              dest.parent.mkdir(parents=True,exist_ok=True)
+              dest.write_bytes(contents.read())
+          print('Expanded 24 verified G3 repository upgrades')
+          PY
+      - name: Run production-C host regression and KiCad dependency audit
+        run: bash Validation/run_host_validation.sh
+      - name: Commit only the verified source upgrade
+        run: |
+          if [ ! -f bootstrap/g3-upgrade.tar.xz ]; then exit 0; fi
+          rm -f bootstrap/g3-upgrade.tar.xz
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          if ! git diff --cached --quiet; then
+            git commit -m 'G3: usability, MATLAB/C verification, PCB and RTOS evidence, CI'
+            git push origin "HEAD:${GITHUB_REF_NAME}"
+          fi
