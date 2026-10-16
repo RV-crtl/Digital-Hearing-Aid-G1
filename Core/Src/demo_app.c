@@ -2290,8 +2290,15 @@ static void r24_tc_clock_probe(void)
   console_write(g_r21_line);
 }
 
-/* Group build: physical UI and optional portable DSP controls.
- * The queue is deliberately nonblocking, including from USER button polling. */
+/* ============================================================================
+ * GROUP USER-CONTROL BOUNDARY (ControlTask -> AudioTask)
+ * ============================================================================
+ * The queued GroupEvent is copied, not a pointer to stack memory. xQueueSend
+ * uses zero waiting ticks so a stuck control queue cannot block audio. Queue
+ * overflow is observable in group telemetry and is not reported as success.
+ *
+ * The Nucleo B1 physical button path is not a custom-PCB user-button driver.
+ */
 static void group_event_send(uint8_t type, uint8_t value)
 {
   GroupEvent e = {type, value};
@@ -2373,6 +2380,13 @@ static void group_button_poll(uint32_t now)
   (void)now;
 #endif
 }
+/* AUDIO TASK ONLY — group control-plane handoff and optional DSP governor.
+ * This function applies queued requests at the audio task boundary. Do not
+ * call it from a UART callback or another RTOS task: GroupFeatures and
+ * GroupGuardian have deliberately single-writer state, no mutex/heap.
+ * The overload fallback bypasses ONLY optional G1 filters; it does not stop
+ * the original Bluetooth/telecoil DMA transport or mute physical output.
+ */
 static void group_audio_update(void)
 {
   /* Sample existing actual DMA/audio fault counters at a bounded rate.
@@ -3235,6 +3249,18 @@ void Demo_AppInit(void)
   Demo_SetStage(0x30U);
 }
 
+/* ============================================================================
+ * FREERTOS TASK REGISTRY — priority and ownership
+ * ============================================================================
+ * AudioTask(7): audio deadlines + DSP. ControlTask(6): control/UART. BtTask(5):
+ * receiver supervision. Background/CPULoadB(2): diagnostic stress workers.
+ * HighLoad7(7) is a deliberately disruptive DEVELOPMENT-ONLY workload;
+ * keep it inactive during a standalone hearing-aid demonstration.
+ *
+ * Do not add a second RTOS scheduler here. Task stacks are FreeRTOS stack
+ * depth units; measure uxTaskGetStackHighWaterMark() on the real target before
+ * assuming stack/RAM safety.
+ */
 static void create_child_tasks(void)
 {
   BaseType_t a, b, c, d, e;
@@ -3308,6 +3334,17 @@ void Demo_ControlTask(void *argument)
   }
 }
 
+/* REAL-TIME AUDIO PROCESSING
+ * AudioTask owns the capture queues, routing service state and optional
+ * DSP/guardian state. DMA interrupt callbacks only hand off completed PCM
+ * blocks; avoid serial printing, filesystem writes and heap allocation here.
+ * See Documentation/CODE_MAP.md for the related processing functions.
+ *
+ * In the current baseline this task has not yet been refactored into a fully
+ * DMA-notification-blocked worker: profiler and worst-case latency remain
+ * explicit hardware validation tasks. Do NOT claim CPU use is optimised here
+ * merely because a host DSP microbenchmark improved.
+ */
 static void StartAudioTask(void *argument)
 {
   (void)argument;
@@ -3521,6 +3558,11 @@ static void StartCpuLoadB(void *argument)
  * UART commands, as a recovery mechanism that does NOT sleep during load.
  * Never use this in the actual hearing-aid operational mode. The speaker
  * may glitch and UART/status commands can queue up until completion.
+ */
+/* SCHEDULER CONTENTION EXPERIMENT — NOT PRODUCT OPERATION.
+ * Activation intentionally busy-spins at AudioTask priority 7 for ~20 s.
+ * ControlTask, Bluetooth supervision and the UART dashboard may starve.
+ * Do not enable this in a wearable product or the standalone group showcase.
  */
 static void StartHighPriorityLoad(void *argument)
 {
