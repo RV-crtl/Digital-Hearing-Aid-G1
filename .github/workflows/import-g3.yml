@@ -2,7 +2,7 @@ name: Import audited G3 repository upgrade
 on:
   push:
     branches: ['improve/**']
-    paths: ['bootstrap/g3-upgrade.tar.xz']
+    paths: ['bootstrap/g3-upgrade.tar.xz', '.github/workflows/import-g3.yml']
   workflow_dispatch:
 permissions:
   contents: write
@@ -40,7 +40,7 @@ jobs:
               if member.name.startswith('bootstrap/'): raise SystemExit('Bootstrap overwrite forbidden')
               contents=tf.extractfile(member)
               if contents is None: raise SystemExit('Missing source stream')
-              dest.parent.mkdir(parents=True,exist_ok=True)
+              if member.name.startswith('.github/workflows/'):\n                print('Deferring workflow '+member.name+' to repository connector upload')\n                continue\n              dest.parent.mkdir(parents=True,exist_ok=True)
               dest.write_bytes(contents.read())
           print('Expanded 24 verified G3 repository upgrades')
           PY
