@@ -14,6 +14,8 @@
 | RTOS/CPU metrics | [`Core/Src/rtos_stats_timer.c`](../Core/Src/rtos_stats_timer.c) and [`Core/Src/demo_app.c`](../Core/Src/demo_app.c) | `r29_refresh_debug_snapshot()` | TIM2/TIM6 protected |
 | Optional audio profiles, level observer | [`Core/Src/group_features.c`](../Core/Src/group_features.c) | `GroupFeatures_Process()` | AudioTask owns state; portable C |
 | Overload fallback | [`Core/Src/group_guardian.c`](../Core/Src/group_guardian.c) | `GroupGuardian_Update()` | Only disables optional G1 DSP |
+| **Nucleo B1 user interface** | [`Core/Src/group_ui.c`](../Core/Src/group_ui.c) | `GroupUi_Poll()` | ControlTask owns debounced UI; compileable host test |
+| **DMA event handoff to AudioTask** | [`Core/Src/demo_app.c`](../Core/Src/demo_app.c) | `capture_push_bt_from_isr()`, `capture_push_tc_from_isr()`, `StartAudioTask()` | IRQ 5; direct-to-task notify; worst-case timing unverified |
 | Rotary quadrature decoder | [`Core/Src/group_encoder.c`](../Core/Src/group_encoder.c) | `GroupEncoder_Update()` | Driver standalone; PCB port pending |
 | Bluetooth vs telecoil source logic | [`Core/Src/connectivity_controller.c`](../Core/Src/connectivity_controller.c) | `Connectivity_Update()` | Pure C FSM; separate from power FSM |
 | Source service integration | [`Core/Src/connectivity_service.c`](../Core/Src/connectivity_service.c) | `ConnectivityService_*` | Software adapter |

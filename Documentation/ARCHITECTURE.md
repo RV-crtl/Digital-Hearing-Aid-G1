@@ -48,3 +48,9 @@ At `48,000 samples/s`, 128 frames correspond to **2.667 ms** of input time. This
 - **Unavailable:** Schematic/PCB lacks the necessary hardware or circuit has unresolved electrical constraints.
 
 Do not call the automatic three-level loudness heuristic 'trained TinyML.' Do not equate software PCM limiting with a safe acoustic SPL. See `Documentation/REQUIREMENTS_EVIDENCE.csv`.
+
+## G5: event-driven PCM capture and physical UI
+
+DMA ISR producers copy full PCM blocks, execute the publication memory barrier, advance their capture head, and only then call `vTaskNotifyGiveFromISR()`. The higher-priority AudioTask drains bounded queues and blocks with `ulTaskNotifyTake(pdTRUE,5ms)` when both are empty. This allows non-audio FSM servicing even in the absence of PCM; the actual IRQ-to-audio scheduling latency requires an STM32 test.
+
+The Nucleo PC13 button is debounced by `group_ui.c` in ControlTask. A FreeRTOS `GroupEvent` queue moves profile and routing requests to AudioTask, which exclusively owns optional DSP and FSM controls. See [the scheduling guide](G5_RTOS_AND_PERFORMANCE.md) and [one-button user guide](G5_STANDALONE_USER_GUIDE.md).
