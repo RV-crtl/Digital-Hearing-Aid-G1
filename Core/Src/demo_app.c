@@ -2374,7 +2374,9 @@ static void group_button_poll(uint32_t now)
     led=((now%400U)<100U)?GPIO_PIN_SET:GPIO_PIN_RESET;
   else if (g_group_telemetry.enabled)
     led=(!g_group_telemetry.automatic || (now%1000U)<100U)?GPIO_PIN_SET:GPIO_PIN_RESET;
-  HAL_GPIO_WritePin(GPIOA,GPIO_PIN_5,led);
+  /* Avoid redundant HAL writes on each 5-ms control-task poll. */
+  static GPIO_PinState last_led=GPIO_PIN_RESET;
+  if (led!=last_led) {HAL_GPIO_WritePin(GPIOA,GPIO_PIN_5,led);last_led=led;}
   uint8_t pressed=(HAL_GPIO_ReadPin(GPIOC,GPIO_PIN_13)==GPIO_PIN_RESET)?1U:0U;
   GroupUiGesture gesture=GroupUi_Poll(&g_group_ui,now,pressed);
   if (gesture==GROUP_UI_NONE) return;
