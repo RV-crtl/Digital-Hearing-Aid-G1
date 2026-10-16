@@ -22,4 +22,4 @@ Validation/results/test_connectivity
 python3 Validation/python/audit_kicad.py
 python3 Validation/python/check_evidence.py
 python3 Validation/python/check_repository.py
-printf '\nPASS: G3 host DSP vectors, FSM, encoder, guardian, evidence trace and KiCad source audit.\n'
+printf '\nPASS: G4 host DSP vectors, FSM, encoder, guardian, evidence trace and KiCad source audit.\n'

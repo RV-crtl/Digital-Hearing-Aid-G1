@@ -20,7 +20,7 @@
 
 ## GitHub conventions
 
-- `main`: historical recoverable G1; **G4 changes are reviewed via a separate branch / PR**.
+- `main`: host-tested G4 engineering candidate after review; **hardware/ARM validation still pending**. Original G1 is archived under `archive/g1-baseline-before-g4-20261017` for rollback.
 - `Core/`: the application that the IDE compiles; `Recovery/`: copies restored after CubeMX; `References/`: original contributors' work, not linked into the current application.
 - `Validation/results/`: generated and ignored, not immutable proof. CI artifacts are attached to the specific commit.
 - Firmware changes must include portable regressions; board-affecting changes must identify pin/peripheral impact and bring-up checks.

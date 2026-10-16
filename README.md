@@ -2,7 +2,7 @@
 
 ### STM32L476RG · FreeRTOS · multi-input audio · measured engineering
 
-[![G4 verification](https://github.com/RV-crtl/Digital-Hearing-Aid-G1/actions/workflows/verify-g3.yml/badge.svg?branch=improve%2Fg4-repository-performance-20261017)](https://github.com/RV-crtl/Digital-Hearing-Aid-G1/actions/workflows/verify-g3.yml)
+[![G4 verification](https://github.com/RV-crtl/Digital-Hearing-Aid-G1/actions/workflows/verify-g3.yml/badge.svg?branch=main)](https://github.com/RV-crtl/Digital-Hearing-Aid-G1/actions/workflows/verify-g3.yml)
 ![MCU](https://img.shields.io/badge/MCU-STM32L476RG-226699)
 ![Platform](https://img.shields.io/badge/platform-NUCLEO--L476RG-0f766e)
 ![Hardware](https://img.shields.io/badge/custom_PCB-not_validated-8b5e3c)
