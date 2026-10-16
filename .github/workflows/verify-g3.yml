@@ -1,31 +1,53 @@
-name: G3 production-C verification and analysis
+name: G4 engineering CI — source, math and quality
 on:
   push:
-    branches: [main, 'improve/**', 'feature/**', 'validation/**']
+    branches: [main, 'improve/**', 'feature/**', 'validation/**', 'fix/**']
   pull_request:
   workflow_dispatch:
 permissions:
   contents: read
 jobs:
-  c-and-analysis:
-    name: Production C host tests and verification vectors
+  c-verification:
+    name: Portable C + independent analysis (${{ matrix.compiler }})
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler: [gcc, clang]
+    env:
+      CC: ${{ matrix.compiler }}
     steps:
       - uses: actions/checkout@v4
-      - name: Record environment
+      - name: Record compiler and Python environment
         run: |
-          gcc --version | head -1
+          "$CC" --version | head -1
           python3 --version
-      - name: Run actual production-C filter / FSM / RTOS-source / KiCad dependency audits
+      - name: Verify actual production source and numerical evidence
         run: bash Validation/run_host_validation.sh
-      - name: Export numerical evidence (NOT an on-board validation)
+      - name: Upload host-only vectors, analysis and benchmark
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: g3-host-evidence-${{ github.sha }}
+          name: host-evidence-${{ matrix.compiler }}-${{ github.sha }}
           path: |
             Validation/results/audio_vectors.csv
+            Validation/results/profile_host_benchmark.csv
             Validation/results/kicad_audit.json
           if-no-files-found: warn
-          retention-days: 14
+          retention-days: 30
+  sanitizer:
+    name: DSP and Guardian AddressSanitizer + UBSan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile & run portable modules with sanitizers
+        run: |
+          set -eu
+          mkdir -p /tmp/dha-sanitize
+          CFLAGS='-std=c11 -O1 -g -Wall -Wextra -Werror -fno-omit-frame-pointer -fsanitize=address,undefined -I Core/Inc'
+          gcc $CFLAGS Tests/test_group_features.c Core/Src/group_features.c -o /tmp/dha-sanitize/profiles
+          gcc $CFLAGS Tests/test_group_guardian.c Core/Src/group_guardian.c -o /tmp/dha-sanitize/guardian
+          /tmp/dha-sanitize/profiles
+          /tmp/dha-sanitize/guardian

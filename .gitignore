@@ -21,3 +21,11 @@ Validation/results/
 *.gcno
 *.gcov
 .DS_Store
+# Editor/tool caches
+.vscode/
+.idea/
+*.swp
+*.swo
+# Host sanitizers and benchmark scratch
+*.profraw
+*.profdata
