@@ -1,4 +1,4 @@
-name: G4 engineering CI — source, math and quality
+name: Engineering CI — DSP, RTOS and standalone UI
 on:
   push:
     branches: [main, 'improve/**', 'feature/**', 'validation/**', 'fix/**']
@@ -49,5 +49,7 @@ jobs:
           CFLAGS='-std=c11 -O1 -g -Wall -Wextra -Werror -fno-omit-frame-pointer -fsanitize=address,undefined -I Core/Inc'
           gcc $CFLAGS Tests/test_group_features.c Core/Src/group_features.c -o /tmp/dha-sanitize/profiles
           gcc $CFLAGS Tests/test_group_guardian.c Core/Src/group_guardian.c -o /tmp/dha-sanitize/guardian
+          gcc $CFLAGS Tests/test_group_ui.c Core/Src/group_ui.c -o /tmp/dha-sanitize/ui
           /tmp/dha-sanitize/profiles
           /tmp/dha-sanitize/guardian
+          /tmp/dha-sanitize/ui

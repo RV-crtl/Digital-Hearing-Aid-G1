@@ -17,12 +17,14 @@ REQUIRED = (
     ".project", ".cproject", "261013-Individual_Demonstration_Connectivity.ioc",
     "PREPARE_PROJECT.bat", "Core/Inc/FreeRTOSConfig.h",
     "Core/Src/group_features.c", "Core/Src/group_guardian.c",
+    "Core/Src/group_ui.c", "Core/Inc/group_ui.h",
     "Core/Src/rtos_stats_timer.c", "Recovery/Core/Src/group_features.c",
     "Hardware/Original_KiCad/260510-Digital_hearing_aid.kicad_pro",
     "Hardware/Original_KiCad/260510-Digital_hearing_aid.kicad_pcb",
     "Validation/matlab/verify_audio_filters.m",
     "Validation/c/benchmark_profiles.c", "Documentation/CODE_MAP.md",
     "Documentation/VALIDATION_LADDER.md", "Documentation/REPOSITORY_GUIDE.md",
+    "Documentation/G5_STANDALONE_USER_GUIDE.md",
 )
 for file in REQUIRED:
     require(file)
@@ -48,7 +50,7 @@ if main.is_file():
         if not re.search(rf"\b{re.escape(symbol)}\s*\(", content):
             ERRORS.append(f"missing actual firmware entry point: {symbol}")
 
-for path in ("group_features.c", "group_guardian.c"):
+for path in ("group_features.c", "group_guardian.c", "group_ui.c", "demo_app.c"):
     a = ROOT / "Core/Src" / path
     b = ROOT / "Recovery/Core/Src" / path
     if a.is_file() and b.is_file() and a.read_bytes() != b.read_bytes():
