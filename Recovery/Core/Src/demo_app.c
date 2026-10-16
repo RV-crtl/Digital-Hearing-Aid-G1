@@ -15,6 +15,7 @@
 #include "rtos_stats_timer.h"
 #include "group_features.h"
 #include "group_guardian.h"
+#include "group_ui.h"
 #include "queue.h"
 #include "FreeRTOS.h"
 #include "task.h"
@@ -42,7 +43,7 @@ static uint8_t g_group_guard_bypass;
 /* Event queue: sole author of DSP state is AudioTask; ControlTask/button only enqueue. */
 static QueueHandle_t g_group_events;
 typedef enum { GROUP_EVENT_ENABLE=1, GROUP_EVENT_PROFILE=2,
-               GROUP_EVENT_AUTO=3 } GroupEventType;
+               GROUP_EVENT_AUTO=3, GROUP_EVENT_SOURCE=4 } GroupEventType;
 typedef struct { uint8_t type, value; } GroupEvent;
 /* External debugger-visible telemetry, AudioTask writer. */
 typedef struct {
@@ -50,10 +51,13 @@ typedef struct {
     volatile uint32_t gain_q15, input_mean_abs, processed_blocks, clipped;
     volatile uint32_t event_count, event_drops, button_presses;
     volatile uint32_t guardian_level, guardian_events, guardian_recoveries;
+    volatile uint32_t physical_gestures, ui_source_changes;
 } GroupTelemetry;
 __attribute__((used)) volatile GroupTelemetry g_group_telemetry;
 static uint32_t g_group_events_seen;
 static uint32_t g_group_button_seen;
+static GroupUiButton g_group_ui;
+static uint32_t g_group_ui_source_events;
 static uint8_t g_group_dsp_saved;
 static uint8_t g_group_old_dsp_on, g_group_old_comp, g_group_old_eq;
 static uint8_t g_group_last_applied_profile=0xFFU;
@@ -541,6 +545,13 @@ static void capture_push_bt_from_isr(const uint32_t *words)
   memcpy(g_bt_capture[head].words, words, sizeof(g_bt_capture[head].words));
   __DMB();
   g_bt_cap_head = next;
+  /* DMA IRQ priority 5 is within configured FreeRTOS syscall ceiling.
+   * Notify AFTER publishing completed PCM snapshot. */
+  if (g_audio_task != NULL) {
+    BaseType_t higher=pdFALSE;
+    vTaskNotifyGiveFromISR(g_audio_task,&higher);
+    portYIELD_FROM_ISR(higher);
+  }
   {
     uint8_t d = capture_depth(next, g_bt_cap_tail);
     g_demo_diag.bt_capture_depth = d;
@@ -559,6 +570,13 @@ static void capture_push_tc_from_isr(const uint32_t *words)
   memcpy(g_tc_capture[head].words, words, sizeof(g_tc_capture[head].words));
   __DMB();
   g_tc_cap_head = next;
+  /* DMA IRQ priority 5 is within configured FreeRTOS syscall ceiling.
+   * Notify AFTER publishing completed PCM snapshot. */
+  if (g_audio_task != NULL) {
+    BaseType_t higher=pdFALSE;
+    vTaskNotifyGiveFromISR(g_audio_task,&higher);
+    portYIELD_FROM_ISR(higher);
+  }
   {
     uint8_t d = capture_depth(next, g_tc_cap_tail);
     g_demo_diag.tc_capture_depth = d;
@@ -2308,7 +2326,7 @@ static void group_event_send(uint8_t type, uint8_t value)
 static void group_print_status(void)
 {
   (void)snprintf(g_r21_line, sizeof(g_r21_line),
-    "GROUP|STATUS|enabled=%lu|auto=%lu|profile=%lu|scene=%lu|gain=%lu|mean=%lu|blocks=%lu|events=%lu|drop=%lu|button=%lu|guard=%lu|guard_events=%lu|recoveries=%lu\r\n",
+    "GROUP|STATUS|enabled=%lu|auto=%lu|profile=%lu|scene=%lu|gain=%lu|mean=%lu|blocks=%lu|events=%lu|drop=%lu|button=%lu|guard=%lu|guard_events=%lu|recoveries=%lu|ui=%lu|source_changes=%lu|source_mode=%lu\r\n",
     (unsigned long)g_group_telemetry.enabled,
     (unsigned long)g_group_telemetry.automatic,
     (unsigned long)g_group_telemetry.profile,
@@ -2321,7 +2339,10 @@ static void group_print_status(void)
     (unsigned long)g_group_telemetry.button_presses,
     (unsigned long)g_group_telemetry.guardian_level,
     (unsigned long)g_group_telemetry.guardian_events,
-    (unsigned long)g_group_telemetry.guardian_recoveries);
+    (unsigned long)g_group_telemetry.guardian_recoveries,
+    (unsigned long)g_group_telemetry.physical_gestures,
+    (unsigned long)g_group_telemetry.ui_source_changes,
+    (unsigned long)g_demo_control.requested_source_mode);
   console_write(g_r21_line);
 }
 /* Nucleo-L476RG B1 is PC13, active-low.  NOT valid for arbitrary custom PCB.
@@ -2346,35 +2367,39 @@ static void group_button_init(void)
 static void group_button_poll(uint32_t now)
 {
 #if GROUP_NUCLEO_B1_ENABLED
-  static uint32_t changed_ms, down_ms;
-  static uint8_t previous_raw=0U, stable=0U;
-  /* Solid when a manual profile is active; 100-ms heartbeat in AUTO. */
+  /* LED: off=group DSP off, solid=manual, 100-ms pulse/s=automatic,
+   * quick flash=overload. PA5/PC13 are Nucleo pins, NOT custom PCB. */
   GPIO_PinState led=GPIO_PIN_RESET;
-  if (g_group_telemetry.enabled) {
-    if (!g_group_telemetry.automatic || (now%1000U)<100U) led=GPIO_PIN_SET;
-  }
+  if (g_group_telemetry.guardian_level != 0U)
+    led=((now%400U)<100U)?GPIO_PIN_SET:GPIO_PIN_RESET;
+  else if (g_group_telemetry.enabled)
+    led=(!g_group_telemetry.automatic || (now%1000U)<100U)?GPIO_PIN_SET:GPIO_PIN_RESET;
   HAL_GPIO_WritePin(GPIOA,GPIO_PIN_5,led);
-  uint8_t raw=(HAL_GPIO_ReadPin(GPIOC,GPIO_PIN_13)==GPIO_PIN_RESET)?1U:0U;
-  if (raw!=previous_raw) {previous_raw=raw; changed_ms=now;}
-  if (raw!=stable && (uint32_t)(now-changed_ms)>=45U) {
-    stable=raw;
-    if (stable) down_ms=now;
-    else {
-      uint32_t pressed=now-down_ms;
-      if (pressed>=1200U) {
-        /* Long press toggles deterministic automatic loudness limiting. */
-        group_event_send(GROUP_EVENT_ENABLE,1U);
-        group_event_send(GROUP_EVENT_AUTO,
-                         (uint8_t)!g_group_telemetry.automatic);
-      } else if (pressed>=45U) {
-        /* Short press cycles four real audio profiles. */
-        group_event_send(GROUP_EVENT_ENABLE,1U);
-        group_event_send(GROUP_EVENT_PROFILE,
-                (uint8_t)((g_group_telemetry.profile+1U)&3U));
-      }
-      g_group_button_seen++;
-      g_group_telemetry.button_presses=g_group_button_seen;
-    }
+  uint8_t pressed=(HAL_GPIO_ReadPin(GPIOC,GPIO_PIN_13)==GPIO_PIN_RESET)?1U:0U;
+  GroupUiGesture gesture=GroupUi_Poll(&g_group_ui,now,pressed);
+  if (gesture==GROUP_UI_NONE) return;
+  ++g_group_button_seen;
+  g_group_telemetry.button_presses=g_group_button_seen;
+  if (gesture==GROUP_UI_SINGLE) {
+    group_event_send(GROUP_EVENT_ENABLE,1U);
+    group_event_send(GROUP_EVENT_PROFILE,(uint8_t)((g_group_telemetry.profile+1U)&3U));
+  } else if (gesture==GROUP_UI_DOUBLE) {
+    group_event_send(GROUP_EVENT_ENABLE,1U);
+    group_event_send(GROUP_EVENT_AUTO,(uint8_t)!g_group_telemetry.automatic);
+  } else if (gesture==GROUP_UI_TRIPLE) {
+    /* Real routing request, not a synthetic link-state bit.
+     * Direct !BS/!TS modes override source FSM until !FA. */
+    uint32_t mode=g_demo_control.requested_source_mode;
+    uint8_t next=(mode==DEMO_MODE_AUTO)?DEMO_MODE_BT_ONLY:
+                 (mode==DEMO_MODE_BT_ONLY)?DEMO_MODE_TC_ONLY:DEMO_MODE_AUTO;
+    group_event_send(GROUP_EVENT_SOURCE,next);
+  } else if (gesture==GROUP_UI_LONG) {
+    group_event_send(GROUP_EVENT_ENABLE,(uint8_t)!g_group_telemetry.enabled);
+  } else if (gesture==GROUP_UI_RESET) {
+    group_event_send(GROUP_EVENT_SOURCE,DEMO_MODE_AUTO);
+    group_event_send(GROUP_EVENT_AUTO,0U);
+    group_event_send(GROUP_EVENT_PROFILE,GROUP_PROFILE_NEUTRAL);
+    group_event_send(GROUP_EVENT_ENABLE,0U);
   }
 #else
   (void)now;
@@ -2411,6 +2436,10 @@ static void group_audio_update(void)
     if (ev.type==GROUP_EVENT_ENABLE) GroupFeatures_Enable(&g_group_features,ev.value);
     if (ev.type==GROUP_EVENT_PROFILE) GroupFeatures_Select(&g_group_features,(GroupProfile)ev.value);
     if (ev.type==GROUP_EVENT_AUTO) GroupFeatures_Auto(&g_group_features,ev.value);
+    if (ev.type==GROUP_EVENT_SOURCE && ev.value<=DEMO_MODE_TC_ONLY) {
+      g_demo_control.requested_source_mode=ev.value;
+      ++g_group_ui_source_events;
+    }
     ++g_group_events_seen;
     ++count;
   }
@@ -2457,6 +2486,8 @@ static void group_audio_update(void)
   g_group_telemetry.scene_updates=g_group_features.scene_updates;
   g_group_telemetry.clipped=g_group_features.saturated_samples;
   g_group_telemetry.event_count=g_group_events_seen;
+  g_group_telemetry.ui_source_changes=g_group_ui_source_events;
+  g_group_telemetry.physical_gestures=g_group_ui.dispatch_count;
   g_group_telemetry.guardian_level=g_group_guardian.level;
   g_group_telemetry.guardian_events=g_group_guardian.events;
   g_group_telemetry.guardian_recoveries=g_group_guardian.recoveries;
@@ -2469,6 +2500,7 @@ static bool r25_process_short_command(const char *line)
    * '!' is also a resynchronisation marker in poll_console(), so even if a
    * previous CR/LF is lost the next command starts a clean frame. */
   if (line_eq(line, "!GP")) { group_print_status(); return true; }
+  if (line_eq(line, "!GH")) {console_write("G5|HELP|B1=1x PROFILE,2x AUTO,3x SOURCE,hold ON/OFF,hold4s RESET;!GP=STATUS;G1 DSP default OFF\r\n");return true;}
   if (line_eq(line, "!GON")) {group_event_send(GROUP_EVENT_ENABLE,1U); console_write("GROUP|ACK|ON\r\n"); return true;}
   if (line_eq(line, "!GOFF")) {group_event_send(GROUP_EVENT_ENABLE,0U); console_write("GROUP|ACK|OFF\r\n"); return true;}
   if (line_eq(line, "!GA")) {group_event_send(GROUP_EVENT_ENABLE,1U);group_event_send(GROUP_EVENT_AUTO,1U);console_write("GROUP|ACK|AUTO_LEVEL\r\n");return true;}
@@ -2478,7 +2510,7 @@ static bool r25_process_short_command(const char *line)
     group_event_send(GROUP_EVENT_PROFILE,(uint8_t)(line[2]-'0'));
     console_write("GROUP|ACK|PROFILE_QUEUED\r\n");return true;
   }
-  if (line_eq(line, "!HI")) { console_write("R21|HELLO|PASS|fw=28|base=R21_AUDIO|ctrl=R28|build=R34_PRIORITY7_CONTINUOUS_SPIN|group=G1_ADAPTIVE_BASE\r\n"); return true; }
+  if (line_eq(line, "!HI")) { console_write("R21|HELLO|PASS|fw=28|base=R21_AUDIO|ctrl=R28|build=R34_PRIORITY7_CONTINUOUS_SPIN|group=G5_STANDALONE_UI_NOTIFY\r\n"); return true; }
   if (line_eq(line, "!H"))  { r21_health(); return true; }
   if (line_eq(line, "!OS")) { r21_output_start(); return true; }
   if (line_eq(line, "!OC")) { r21_output_check(); return true; }
@@ -2988,7 +3020,7 @@ static void r28_rtos_snapshot(void)
 static bool r21_process_command(const char *line)
 {
   if (r25_process_short_command(line)) return true;
-  if (line_eq(line, "R21 HELLO")) { console_write("R21|HELLO|PASS|fw=28|base=R21_AUDIO|ctrl=R28|build=R34_PRIORITY7_CONTINUOUS_SPIN|group=G1_ADAPTIVE_BASE\r\n"); return true; }
+  if (line_eq(line, "R21 HELLO")) { console_write("R21|HELLO|PASS|fw=28|base=R21_AUDIO|ctrl=R28|build=R34_PRIORITY7_CONTINUOUS_SPIN|group=G5_STANDALONE_UI_NOTIFY\r\n"); return true; }
   if (line_eq(line, "R21 HEALTH")) { r21_health(); return true; }
   if (line_eq(line, "R21 OUT START")) { r21_output_start(); return true; }
   if (line_eq(line, "R21 OUT CHECK")) { r21_output_check(); return true; }
@@ -3234,6 +3266,7 @@ void Demo_AppInit(void)
   AudioDynamicsConfig_t cfg = AudioDynamics_DefaultConfig();
   GroupFeatures_Init(&g_group_features);
   GroupGuardian_Init(&g_group_guardian);
+  GroupUi_Init(&g_group_ui);
   g_group_events = xQueueCreate(8U, sizeof(GroupEvent));
   if (g_group_events == NULL) Demo_SetError(0xF231U);
   dwt_enable();
@@ -3290,7 +3323,7 @@ void Demo_ControlTask(void *argument)
   else console_write("RX: USART2 interrupt receiver FAILED - check err code\r\n");
   console_write("DHA RUBRIC DEMO READY - USART2 via NUCLEO ST-LINK VCP\r\n");
   console_write("261013 CONNECTIVITY: real DMA/state-machine evidence; use !FA !FV !RM\r\n");
-  console_write("GROUP G1: B1 short=profile; long=auto; !GP reports real group feature state; default OFF\r\n");
+  console_write("GROUP G5: B1 1x=profile 2x=auto 3x=source hold=on/off hold4s=reset; !GH help; default DSP OFF\r\n");
   console_write("Type HELP. Start with PING then TEST ALL.\r\n");
   create_child_tasks();
   group_button_init();
@@ -3340,10 +3373,9 @@ void Demo_ControlTask(void *argument)
  * blocks; avoid serial printing, filesystem writes and heap allocation here.
  * See Documentation/CODE_MAP.md for the related processing functions.
  *
- * In the current baseline this task has not yet been refactored into a fully
- * DMA-notification-blocked worker: profiler and worst-case latency remain
- * explicit hardware validation tasks. Do NOT claim CPU use is optimised here
- * merely because a host DSP microbenchmark improved.
+ * DMA-to-task notifications remove idle tick polling (G5); this is not
+ * yet a measured Cortex-M4 speedup. On-board latency and profiling remain
+ * required validation gates.
  */
 static void StartAudioTask(void *argument)
 {
@@ -3421,12 +3453,12 @@ static void StartAudioTask(void *argument)
     }
     g_demo_diag.audio_task_loops++;
     g_demo_diag.audio_stack_high_water = (uint32_t)uxTaskGetStackHighWaterMark(NULL);
-    /* If capture data remains, yield without sleeping so the task can catch up;
-     * otherwise block for one tick and leave CPU time for control/UI tasks. */
+    /* DMA-to-task notifications replace idle tick polling. A bounded 5-ms
+     * timeout maintains FSM/control servicing when there is no audio input. */
     if ((g_bt_cap_head != g_bt_cap_tail) || (g_tc_cap_head != g_tc_cap_tail)) {
       taskYIELD();
     } else {
-      vTaskDelay(pdMS_TO_TICKS(1U));
+      (void)ulTaskNotifyTake(pdTRUE,pdMS_TO_TICKS(5U));
     }
   }
 }
