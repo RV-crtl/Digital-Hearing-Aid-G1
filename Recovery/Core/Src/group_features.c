@@ -1,6 +1,7 @@
 #include "group_features.h"
 #include <stdint.h>
 #include <limits.h>
+#include <string.h>
 
 static int16_t sat16(int32_t x) {
     if (x > INT16_MAX) return INT16_MAX;
@@ -50,7 +51,8 @@ const char *GroupFeatures_SceneName(unsigned p) {
 void GroupFeatures_Process(GroupFeatures *f, const int16_t *in, int16_t *out, size_t n) {
     if (!f || !in || !out || n == 0U) return;
     if (!f->enabled) {
-        /* Caller keeps original unmodified buffer.  No extra copy needed. */
+        /* Bypass is a true identity transform even for distinct buffers. */
+        if (in != out) memmove(out, in, n * sizeof(*out));
         return;
     }
     /* Estimate input loudness, with bounded processing and no FFT/heap. */
@@ -75,6 +77,16 @@ void GroupFeatures_Process(GroupFeatures *f, const int16_t *in, int16_t *out, si
         if (f->automatic) {
             f->target_gain_q15=(f->scene==GROUP_SCENE_LOUD)?27853U:32768U;
         }
+    }
+    /* Fast identity path: the observer above still runs, so telemetry and
+     * 32-block scene-debounce timing remain identical.  No sample gain ramp
+     * is necessary at unity. WIND is excluded when selected manually.
+     * This saves a multiply, two gain comparisons, and an output store per
+     * sample, especially valuable for in-place 48 kHz audio blocks. */
+    if (f->gain_q15 == 32768U && f->target_gain_q15 == 32768U &&
+        (f->automatic || f->profile != GROUP_PROFILE_WIND)) {
+        if (in != out) memmove(out, in, n * sizeof(*out));
+        return;
     }
     for (size_t i=0U; i<n; ++i) {
         if (f->gain_q15 < f->target_gain_q15) {

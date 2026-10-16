@@ -1,25 +1,28 @@
-R34: OPTIONAL CONTINUOUS PRIORITY-7 SPIN (20 s), no active task delay/yield.
+# START HERE — Digital Hearing Aid Group Firmware
 
-START HERE: Documentation/R34_CONTINUOUS_SPIN_IMPORT_GUIDE.md
+This repository contains a **Nucleo-L476RG FreeRTOS integration candidate** and
+a separately supplied, **unverified custom KiCad PCB design**.
 
-The user observed HighLoad7 taking <1-5% CPU in the prior R32/R33
-burst-and-rest versions. In R34, !RH commands HighLoad7 to stay READY and
-perform real arithmetic continuously for up to 20 seconds; it competes with
-AudioTask (both priority 7). There is NO vTaskDelay() or taskYIELD() inside the
-active spin. It automatically turns off after 20 s using the TIM6 HAL tick.
+**[Open the main project README](README.md)** — overview, system diagram, exact status
+and two-click links for group members.
 
-IMPORTANT RISK: The priority-6 ControlTask / UART command handling and the
-priority-5 BtTask may be starved during those 20 s. The dashboard can freeze
-and !RX may not be serviced until the self-stop. Use CubeIDE Suspend during
-the active run, then Resume and wait for recovery. RESET board if necessary.
-Do NOT claim two physically simultaneous RUNNING tasks: STM32L476 has one core.
+| Need | Go to |
+| --- | --- |
+| Import/build in STM32CubeIDE | [Exact import guide](Documentation/GROUP_G1_IMPORT_AND_BUILD.md) |
+| Find code functions, task ownership and source files | [Code map](Documentation/CODE_MAP.md) |
+| Run real production-C mathematical tests | [Verification guide](Validation/README.md) |
+| Understand PCB/power limitations | [Hardware guide](Hardware/README.md) |
+| Present without a laptop | [Standalone showcase](Documentation/STANDALONE_SHOWCASE.md) |
+| Know what is physically verified | [Validation ladder](Documentation/VALIDATION_LADDER.md) |
 
-The existing safer !RS and !RD priority-2 CPU-load modes are preserved.
-CPU profiler, TIM2, TIM6, FreeRTOSConfig.h, tasks.c patch, DMA/SAI, audio,
-state machines, scheduler startup and priorities are unchanged from R33.
+**Safety / stability:** `!RH` activates a deliberately disruptive priority-7
+CPU-spin experiment (up to 20 seconds). It is *not* for the standalone product demo.
+No firmware in this repository is certified to limit acoustic output SPL.
 
-SETUP ORDER: If Generate Code is required, do it FIRST, then CLOSE CubeIDE,
-run PREPARE_PROJECT.bat, require 37/37 + R34 check + FINAL PREPARE PASS,
-reopen CubeIDE, Refresh, Debug configuration, Clean, Build, Flash.
+**Build order:** If CubeIDE requires CubeMX **Generate Code**, do that first,
+close the IDE, run `PREPARE_PROJECT.bat`, reopen, refresh, clean, build and flash.
+Do not flash this Nucleo pin configuration on the custom PCB without the pin,
+clock, power and peripheral audit.
 
-This release is NOT hardware-verified here. Preserve R33 as a rollback.
+Prior versions are recoverable from Git history and the dedicated
+`archive/g1-baseline-before-g4-20261017` branch.

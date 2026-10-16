@@ -1,0 +1,21 @@
+name: Export CubeIDE source ZIP
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test host code before packaging
+        run: bash Validation/run_host_validation.sh
+      - name: Archive current commit's tracked files only
+        run: |
+          mkdir -p output
+          git archive --format=zip --prefix=Digital-Hearing-Aid/ HEAD > output/Digital-Hearing-Aid-CubeIDE-${GITHUB_SHA:0:8}.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cubeide-import-source
+          path: output/*.zip
+          retention-days: 14

@@ -15,3 +15,17 @@ RESULTS_R26/
 *.zip
 *.log
 Middlewares/
+# Generated local validation evidence (never treat as measured board data)
+Validation/results/
+*.gcda
+*.gcno
+*.gcov
+.DS_Store
+# Editor/tool caches
+.vscode/
+.idea/
+*.swp
+*.swo
+# Host sanitizers and benchmark scratch
+*.profraw
+*.profdata
