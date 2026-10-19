@@ -1,0 +1,264 @@
+[
+  {
+    "id": "TC01",
+    "minutes": 1.0,
+    "name": "Standalone startup / intended power",
+    "requirements": [
+      "FUN-08"
+    ],
+    "prerequisites": "Already programmed assembled target, verified approved supply, output initially at safe low setting; ST-Link and serial cable disconnected.",
+    "procedure": [
+      "Connect intended battery or approved AC supply.",
+      "Power the device normally; do not reflash or connect debugger.",
+      "Observe startup, output mute/ramp, and successful response to an available user control."
+    ],
+    "expected": [
+      "Device starts without a laptop or reflashing.",
+      "No alarming output transient; source and control become usable."
+    ],
+    "gate": "Battery/power solution must be electrically validated."
+  },
+  {
+    "id": "TC02",
+    "minutes": 2.0,
+    "name": "Bluetooth audio input and real playback",
+    "requirements": [
+      "FUN-05",
+      "FUN-08"
+    ],
+    "prerequisites": "Paired compatible phone and approved audio signal; other inputs off; safe measured listening level.",
+    "procedure": [
+      "Select Bluetooth through the physical user interface.",
+      "Play a known speech/music excerpt on the phone, then pause and resume.",
+      "Repeat after increasing the source separation within the stated operating range."
+    ],
+    "expected": [
+      "Audio follows phone play/pause at the actual transducer without a serial monitor.",
+      "Volume changes are controlled and repeatable."
+    ],
+    "gate": "Check actual BT radio transport; original BLE audio claim is unverified."
+  },
+  {
+    "id": "TC03",
+    "minutes": 1.5,
+    "name": "Induction-loop / telecoil reception",
+    "requirements": [
+      "FUN-06",
+      "FUN-08"
+    ],
+    "prerequisites": "Real powered hearing loop or calibrated magnetic induction fixture; Bluetooth audio silent.",
+    "procedure": [
+      "Bring the telecoil into a repeatable induction field.",
+      "Select telecoil and play identifiable audio via induction.",
+      "Move telecoil away and return to show changing coupling."
+    ],
+    "expected": [
+      "Inductively received audio is audible; it is not merely direct electrical injection."
+    ],
+    "gate": "Requires a confirmed magnetic field source and assembled front end."
+  },
+  {
+    "id": "TC04",
+    "minutes": 1.5,
+    "name": "Ambient microphone and independent dual inputs",
+    "requirements": [
+      "FUN-07",
+      "PER-03",
+      "FUN-08"
+    ],
+    "prerequisites": "Verified one/two microphone channels, consistent gain and access to both acoustic angles.",
+    "procedure": [
+      "Switch to ambient mode and speak at a repeatable distance.",
+      "For dual-mic claim, speak to the left and right of the array.",
+      "Demonstrate a repeatable externally audible difference with the directional control."
+    ],
+    "expected": [
+      "Microphone sounds reach the output.",
+      "Both claimed microphone channels independently affect directional response."
+    ],
+    "gate": "NOT AVAILABLE on current integrated G5; must port and verify before declaring PASS."
+  },
+  {
+    "id": "TC05",
+    "minutes": 2.5,
+    "name": "Real source precedence, loss and recovery",
+    "requirements": [
+      "INT-03",
+      "ADV-01"
+    ],
+    "prerequisites": "Two real input sources prepared with distinguishable tones/phrases; initial mode AUTO.",
+    "procedure": [
+      "Present source A alone, then introduce source B without firmware restart.",
+      "Confirm the documented priority by identifying which sound is heard.",
+      "Disconnect the winning source; time observable mute, fallback and recovery.",
+      "Reconnect source and repeat in a different order."
+    ],
+    "expected": [
+      "Physical audio, not a GUI flag, follows the documented precedence.",
+      "No reset required; measured recovery time recorded against signed-off threshold."
+    ],
+    "gate": "Only BT/telecoil transitions can be claimed before microphone port."
+  },
+  {
+    "id": "TC06",
+    "minutes": 2.0,
+    "name": "Physical controls and unexpected sequences",
+    "requirements": [
+      "INT-01",
+      "INT-02",
+      "ADV-02"
+    ],
+    "prerequisites": "Accessible labeled fitted controls and safe audible stimulus; wear sensor if claimed.",
+    "procedure": [
+      "Use a physical control to change volume or sound profile twice.",
+      "Toggle manual/automatic source policy in a different order from the rehearsal.",
+      "If fitted, remove and replace wearable unit to demonstrate wear status."
+    ],
+    "expected": [
+      "Each action has observable audible/visual effect without UART or laptop.",
+      "No duplicate clicks or missed operation; wearer detection works if claimed."
+    ],
+    "gate": "Nucleo B1 is valid only for the Nucleo target, not custom PCB."
+  },
+  {
+    "id": "TC07",
+    "minutes": 2.0,
+    "name": "Dynamic gain, filter/noise response and feedback",
+    "requirements": [
+      "FUN-01",
+      "FUN-02",
+      "FUN-03",
+      "FUN-04"
+    ],
+    "prerequisites": "Calibrated external source, repeatable quiet/noisy recording, fixed transducer coupling; safe output.",
+    "procedure": [
+      "Play two prescribed sound input levels; compare audible or instrumented output.",
+      "Compare identical noise/speech segment with processing off/on.",
+      "Apply controlled low-level feedback challenge if suppression is implemented."
+    ],
+    "expected": [
+      "Automatic gain responds with measured different gain.",
+      "Any claimed noise/feedback improvement has externally measured evidence."
+    ],
+    "gate": "Current C filters are verified numerically; end-to-end SNR/feedback suppression NOT verified."
+  },
+  {
+    "id": "TC08",
+    "minutes": 2.0,
+    "name": "Acoustic latency, distortion and output level",
+    "requirements": [
+      "FUN-01",
+      "PER-01",
+      "PER-02",
+      "SAF-02"
+    ],
+    "prerequisites": "Preconfigured calibrated acoustic fixture and recorder; nominal signal levels; staff-approved safe tests.",
+    "procedure": [
+      "Play the defined impulse/tone stimulus and capture external source/output traces.",
+      "Measure impulse response latency, THD at nominal level, and safe acoustic output.",
+      "Compare to documented <50 ms, <3% and signed-off output-level thresholds."
+    ],
+    "expected": [
+      "Actual instrument readings within each defined threshold; method and uncertainty recorded."
+    ],
+    "gate": "Unavailable without proper calibrated transducer fixture; PCM limiter is not proof of SPL."
+  },
+  {
+    "id": "TC09",
+    "minutes": 1.0,
+    "name": "Mechanical enclosure and controls",
+    "requirements": [
+      "MEC-01",
+      "MEC-02A",
+      "MEC-02B"
+    ],
+    "prerequisites": "Assembled enclosure/headband, no unsafe exposed edges, callipers.",
+    "procedure": [
+      "Measure the earpiece envelope and inspect retained PCB, lid, strain relief, controls and connectors.",
+      "Demonstrate don/doff and head movement without cable snagging."
+    ],
+    "expected": [
+      "<=60 mm earpiece target; secure assembly and unobstructed sound inlet/output."
+    ],
+    "gate": "Current KiCad files do not prove assembled mechanical functionality."
+  },
+  {
+    "id": "TC10",
+    "minutes": 1.0,
+    "name": "Robustness with unanticipated user action",
+    "requirements": [
+      "ADV-02",
+      "INT-01"
+    ],
+    "prerequisites": "Normal playback; safe level; lecturer chooses alternate gesture sequence.",
+    "procedure": [
+      "Invite examiner to perform available legal button/encoder actions in any order.",
+      "Observe playback continuity and successful response, without reboot."
+    ],
+    "expected": [
+      "Actions remain responsive and device continues behaving safely."
+    ],
+    "gate": "Pass only after unpredictable on-hardware repetition."
+  },
+  {
+    "id": "TC11",
+    "minutes": 1.0,
+    "name": "Wear state and power-consumption change",
+    "requirements": [
+      "POW-02",
+      "INT-02"
+    ],
+    "prerequisites": "Approved meter connected to supply external to the audio path; wear sensor calibrated.",
+    "procedure": [
+      "Record current in actively worn/operating state.",
+      "Remove device and wait agreed inactivity interval; record supply current again.",
+      "Reapply wear stimulus; confirm correct return to operation."
+    ],
+    "expected": [
+      "Current difference meets signed-off limit with no boot-loop."
+    ],
+    "gate": "G5 M3 source-idle state is not MCU STOP mode; cannot claim this result yet."
+  },
+  {
+    "id": "TC12",
+    "minutes": 1.0,
+    "name": "Prior qualification evidence: endurance, environment and safety",
+    "requirements": [
+      "POW-01",
+      "ENV-01",
+      "SAF-01",
+      "MEC-02B"
+    ],
+    "prerequisites": "Dated original external records of full 24-h battery discharge, chamber and physical endurance testing; compliance evidence if claimed.",
+    "procedure": [
+      "Show only original instrument logs and hardware IDs for each long-duration test.",
+      "Confirm the demonstrated device revision matches recorded firmware and BOM.",
+      "Identify and openly declare missing studies or non-applicable compliance assertions."
+    ],
+    "expected": [
+      "Claims are supported by authentic prior observations, not estimated runtime or simulation."
+    ],
+    "gate": "This presentation does not substitute for actually carrying out long qualification trials."
+  },
+  {
+    "id": "TC13",
+    "minutes": 1.0,
+    "name": "End-of-test fault challenge and self-protection",
+    "requirements": [
+      "FUN-04",
+      "SAF-02",
+      "ADV-01",
+      "ADV-02"
+    ],
+    "prerequisites": "Sound at safe level, one physically detachable non-damaging source; any potentially destructive safety challenge approved and LAST.",
+    "procedure": [
+      "Disconnect an externally accessible input, or let examiner choose another safe fault.",
+      "Observe bounded output response, no spurious loud sound, and recovery when restored.",
+      "Do not apply a destructive test without appropriate protection and lecturer approval."
+    ],
+    "expected": [
+      "System fails safely, does not require flash/reset and resumes if recovery is supported."
+    ],
+    "gate": "No claim of protected overcurrent/short-circuit behavior without real protective hardware."
+  }
+]
