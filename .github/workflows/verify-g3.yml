@@ -33,6 +33,10 @@ jobs:
           python3 Assessment/test_validate_pack.py
           python3 Assessment/test_evidence_audit.py
           python3 Assessment/evidence_audit.py
+      - name: Preserve existing G6 rubric and full host validation gates
+        run: |
+          python3 Validation/python/check_hd_coverage.py
+          bash Validation/run_host_validation.sh
       - name: Preflight source, recovery and build dependencies
         run: python3 Tools/g1_preflight.py
       - name: Verify actual production source and numerical evidence
