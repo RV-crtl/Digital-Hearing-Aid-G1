@@ -3,7 +3,9 @@
 param(
   [switch]$SkipPortableTests,
   [switch]$SkipPdf,
-  [switch]$RequireArmReady
+  [switch]$RequireArmReady,
+  [switch]$BuildArm,
+  [string]$CubeIDEExe = ""
 )
 Set-StrictMode -Version Latest
 $ErrorActionPreference="Stop"
@@ -52,6 +54,13 @@ if ($SkipPdf) {
   if($LASTEXITCODE -ne 0) { throw "G1 PDF generation failed." }
 }
 
+if($BuildArm) {
+  & (Join-Path $Root "G1_BUILD_ARM.ps1") -CubeIDEExe $CubeIDEExe
+  if(-not (Test-Path (Join-Path $Root "Validation/results/g1_arm_build.json"))) {
+    throw "Required ARM build evidence missing; no product PASS."
+  }
+}
+
 $Revision="UNKNOWN"
 if(Get-Command git -ErrorAction SilentlyContinue) {
   $value=(& git rev-parse HEAD 2>$null)
@@ -69,6 +78,11 @@ if(-not $SkipPortableTests) {
           "Validation/results/profile_host_benchmark.csv",
           "Validation/results/kicad_audit.json")
 }
+if($BuildArm) {
+  $Art+=@("Validation/results/g1_arm_build.json",
+          "Validation/results/g1_arm_build.log",
+          "Validation/results/g1_arm_build_stderr.log")
+}
 if(-not $SkipPdf) {
   $Art+=@("Assessment/generated/SYSTEM_REQUIREMENTS_AND_BLACK_BOX_TEST_PLAN_DRAFT.pdf",
           "Assessment/generated/PRINT_A3_SYSTEM_SOFTWARE_HARDWARE_INTERFACES.pdf")
@@ -79,7 +93,7 @@ $Manifest=[ordered]@{
   generated_utc=(Get-Date).ToUniversalTime().ToString("o")
   portable_C_tests_executed=(-not $SkipPortableTests)
   draft_PDFs_generated=(-not $SkipPdf)
-  arm_compiled_by_this_script=$false
+  arm_compiled_by_this_script=[bool]$BuildArm
   physical_hardware_verified_by_this_script=$false
   artifacts=@()
 }

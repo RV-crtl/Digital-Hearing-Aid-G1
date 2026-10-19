@@ -53,7 +53,7 @@ The [full standalone guide](Documentation/G5_STANDALONE_USER_GUIDE.md) explains 
 
 ## One-command G1 quality gate
 
-On Windows, run **powershell -ExecutionPolicy Bypass -File .\G1_RUN_ALL.ps1** from the G1 repository root to audit code, requirements and evidence, exercise portable host tests, generate draft assessment PDFs and create a SHA-256-manifested ZIP. Read the [G7 one-command engineering guide](Documentation/G7_ONE_COMMAND_QUALITY_GATE.md) for dependency requirements and exactly what remains unverified. The operating firmware still requires a separate CubeIDE ARM build and physical tests.
+On Windows, run **powershell -ExecutionPolicy Bypass -File .\G1_RUN_ALL.ps1** from the G1 repository root to audit code, requirements and evidence, exercise portable host tests, generate draft assessment PDFs and create a SHA-256-manifested ZIP. Append **-BuildArm** to additionally run G1_BUILD_ARM.ps1 (requires local STM32CubeIDE and vendor firmware). Read the [G7 one-command engineering guide](Documentation/G7_ONE_COMMAND_QUALITY_GATE.md) for dependency requirements and exactly what remains unverified. The operating firmware still requires a separate CubeIDE ARM build and physical tests.
 
 ## Fast validation and performance smoke test
 

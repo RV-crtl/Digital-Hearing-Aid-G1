@@ -12,6 +12,12 @@ This executes the two-way requirements test-plan audit, mutation tests, recovery
 
 Python 3 and a native GCC/Clang host compiler are required. PDFs are generated with ReportLab installed in a local, Git-ignored .g1-tools-venv, not a global Python installation. With a missing host compiler you can run -SkipPortableTests to produce an explicitly partial report; with an offline Python environment run -SkipPdf. The -RequireArmReady option fails if an ARM compiler or required FreeRTOS source cannot be located.
 
+## Optional automated STM32CubeIDE ARM build on Windows
+
+After installing STM32CubeIDE and the STM32Cube FW_L4 V1.18.x middleware, run the separate G1_BUILD_ARM.ps1 script. It executes PREPARE_PROJECT.ps1, then an STM32CubeIDE headless Debug Clean/Build in an isolated workspace, records compiler logs, verifies the ARM ELF header, and saves a hash-and-build manifest. It never flashes firmware. Close STM32CubeIDE before running. Override -CubeIDEExe or -Workspace if auto-detection fails.
+
+You can append -BuildArm to the normal G1_RUN_ALL.ps1 command to run the headless firmware build after host checks and include ARM build logs and the ELF hash in the evidence ZIP. This option requires a working local ST toolchain, and cannot be exercised by portable GitHub CI. ST's [STM32CubeIDE user guide](https://www.st.com/resource/en/user_manual/um2609-stm32cubeide-user-guide-stmicroelectronics.pdf) documents the headless build interface.
+
 ## ARM build and hardware are separate gates
 
 The FreeRTOS vendor tree is *intentionally not committed*. A fresh G1 clone is not a self-contained ARM build: install STM32Cube FW_L4 V1.18.x, close CubeIDE, run PREPARE_PROJECT.bat and require FINAL PREPARE PASS; then Clean/Build in CubeIDE and examine actual compiler, linker, ELF/map and flash logs. The source preflight cannot prove Cortex-M4 compilation.
