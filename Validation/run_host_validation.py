@@ -36,10 +36,12 @@ def main():
         subprocess.run([str(OUT/("benchmark_profiles"+suffix))],cwd=ROOT,stdout=f,check=True)
     for script in ("Validation/python/check_vectors.py","CHECK_PROJECT.py","CHECK_GROUP.py",
                    "Validation/python/audit_kicad.py","Validation/python/check_evidence.py",
-                   "Validation/python/check_repository.py","Validation/python/verify_rtos_contract.py"):
+                   "Validation/python/check_repository.py","Validation/python/verify_rtos_contract.py",
+                   "Tests/test_publication_audit.py","Tools/publication_audit.py"):
         cmd=[sys.executable,script]
         if script.endswith("check_vectors.py"):cmd+=["Validation/results/audio_vectors.csv"]
         run(*cmd)
+    run(sys.executable,"-m","compileall","-q","Dashboard")
     print(f"PASS: host C/contract checks ({time.monotonic()-start:.1f}s). NOT an ARM or hardware PASS.")
     return 0
 if __name__=="__main__":
