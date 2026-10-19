@@ -23,6 +23,8 @@ jobs:
         run: |
           "$CC" --version | head -1
           python3 --version
+      - name: Check rubric black-box requirement traceability
+        run: python3 Validation/python/check_hd_coverage.py
       - name: Verify actual production source and numerical evidence
         run: bash Validation/run_host_validation.sh
       - name: Upload host-only vectors, analysis and benchmark
