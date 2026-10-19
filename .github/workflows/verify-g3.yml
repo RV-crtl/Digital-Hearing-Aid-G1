@@ -4,6 +4,10 @@ on:
     branches: [main, 'improve/**', 'feature/**', 'validation/**', 'fix/**', 'assessment/**']
   pull_request:
   workflow_dispatch:
+# New commits supersede obsolete builds for the same branch or pull request.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 permissions:
   contents: read
 jobs:
