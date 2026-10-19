@@ -16,6 +16,7 @@
 #include "group_features.h"
 #include "group_guardian.h"
 #include "group_ui.h"
+#include "dha_build_mode.h"
 #include "queue.h"
 #include "FreeRTOS.h"
 #include "task.h"
@@ -1912,8 +1913,13 @@ static uint32_t test_clock(void)
 
 static uint32_t test_rtos(void)
 {
+  /* Operating image does not create background stress workers. */
   return (g_demo_diag.control_task_loops > 10U && g_demo_diag.audio_task_loops > 10U &&
-          g_demo_diag.bt_task_loops > 10U && g_demo_diag.background_task_loops > 10U) ? 1U : 0U;
+          g_demo_diag.bt_task_loops > 10U
+#if DHA_ENABLE_RTOS_STRESS
+          && g_demo_diag.background_task_loops > 10U
+#endif
+          ) ? 1U : 0U;
 }
 
 static uint32_t test_dsp(void)
@@ -2604,6 +2610,14 @@ static bool r25_process_short_command(const char *line)
       (unsigned long)g_demo_debug.high7_free_stack_words);
     console_write(g_r21_line); return true;
   }
+#if !DHA_ENABLE_RTOS_STRESS
+  /* Operating firmware must not activate the individual CPU stress demos. */
+  if (line_eq(line, "!RA") || line_eq(line, "!RS") ||
+      line_eq(line, "!RD") || line_eq(line, "!RH")) {
+    console_write("PRODUCT|REJECTED|reason=rtos_stress_disabled_in_operating_build\r\n");
+    return true;
+  }
+#endif
   if (line_eq(line, "!RA")) {
     g_r32_hi_active=0U;
     g_r31_dual_load = 0U;
@@ -3169,6 +3183,8 @@ static void process_console_line(char *line)
   if (line_eq(line, "BTLINK AUTO")) { g_demo_control.bt_link_mode = DEMO_BTLINK_AUTO; console_write("OK BT link auto\r\n"); return; }
   if (line_eq(line, "BTLINK ON")) { g_demo_control.bt_link_mode = DEMO_BTLINK_FORCE_ON; console_write("OK BT link forced on\r\n"); return; }
   if (line_eq(line, "BTLINK OFF")) { g_demo_control.bt_link_mode = DEMO_BTLINK_FORCE_OFF; console_write("OK BT link forced off\r\n"); return; }
+#if DHA_ENABLE_RTOS_STRESS
+  /* Lab diagnostic command group; not callable in operating image. */
   if (line_eq(line, "TEST CLOCK")) { print_test_result("CLOCK", test_clock()); return; }
   if (line_eq(line, "TEST RTOS")) { print_test_result("RTOS", test_rtos()); return; }
   if (line_eq(line, "TEST DSP")) { print_test_result("DSP", test_dsp()); return; }
@@ -3176,6 +3192,7 @@ static void process_console_line(char *line)
   if (line_eq(line, "TEST OUTPUT")) { print_test_result("OUTPUT", test_output()); return; }
   if (line_eq(line, "TEST BT")) { print_test_result("BT401", test_bt()); return; }
   if (line_eq(line, "TEST ALL")) { test_all(); return; }
+#endif
   if (line_eq(line, "RESETDIAG")) { g_demo_control.reset_diagnostics_request = 1U; console_write("OK diagnostics reset requested\r\n"); return; }
   queue_protocol_command(line);
 }
@@ -3298,20 +3315,27 @@ void Demo_AppInit(void)
  */
 static void create_child_tasks(void)
 {
-  BaseType_t a, b, c, d, e;
+  BaseType_t a, b;
   if (g_children_started) return;
   a = xTaskCreate(StartAudioTask, "AudioTask", 1024U, NULL, 7U, &g_audio_task);
   b = xTaskCreate(StartBtTask, "BtTask", 512U, NULL, 5U, &g_bt_task);
-  c = xTaskCreate(StartBackgroundTask, "Background", 384U, NULL, 2U, &g_background_task);
-  d = xTaskCreate(StartCpuLoadB, "CPULoadB", 256U, NULL, 2U, &g_cpu_load_b_task);
-  e = xTaskCreate(StartHighPriorityLoad, "HighLoad7", 256U, NULL, 7U, &g_r32_hi_task);
+#if DHA_ENABLE_RTOS_STRESS
+  /* LAB ONLY: these three workers must not be created in operating image. */
+  BaseType_t c = xTaskCreate(StartBackgroundTask, "Background", 384U, NULL, 2U, &g_background_task);
+  BaseType_t d = xTaskCreate(StartCpuLoadB, "CPULoadB", 256U, NULL, 2U, &g_cpu_load_b_task);
+  BaseType_t e = xTaskCreate(StartHighPriorityLoad, "HighLoad7", 256U, NULL, 7U, &g_r32_hi_task);
+  if (c != pdPASS) Demo_SetError(0xF203U);
+  if (d != pdPASS) console_write("WARN: CPULoadB lab worker unavailable\r\n");
+  if (e != pdPASS) console_write("WARN: HighLoad7 lab worker unavailable\r\n");
+  g_children_started = (a == pdPASS && b == pdPASS && c == pdPASS) ? 1U : 0U;
+  console_write("RTOS: DEVELOPMENT image: Audio/BT and lab stress workers requested\r\n");
+#else
+  /* SYSTEM DEMO: no Background, CPULoadB or HighLoad7 task is created. */
+  g_children_started = (a == pdPASS && b == pdPASS) ? 1U : 0U;
+  console_write("RTOS: OPERATING image: AudioTask + BtTask; no dummy stress tasks\r\n");
+#endif
   if (a != pdPASS) Demo_SetError(0xF201U);
   if (b != pdPASS) Demo_SetError(0xF202U);
-  if (c != pdPASS) Demo_SetError(0xF203U);
-  if (d != pdPASS) console_write("WARN: CPULoadB creation failed (insufficient FreeRTOS heap); audio tasks remain available\r\n");
-  if (e != pdPASS) console_write("WARN: HighLoad7 creation failed (insufficient FreeRTOS heap); !RH unavailable\r\n");
-  g_children_started = (a == pdPASS && b == pdPASS && c == pdPASS) ? 1U : 0U;
-  console_write("RTOS: children Audio/BT/Background/CPULoadB/HighLoad7 requested after scheduler start\r\n");
 }
 
 void Demo_ControlTask(void *argument)
