@@ -37,7 +37,8 @@ def main():
     for script in ("Validation/python/check_vectors.py","CHECK_PROJECT.py","CHECK_GROUP.py",
                    "Validation/python/audit_kicad.py","Validation/python/check_evidence.py",
                    "Validation/python/check_repository.py","Validation/python/verify_rtos_contract.py",
-                   "Tests/test_publication_audit.py","Tools/publication_audit.py"):
+                   "Tests/test_publication_audit.py","Tests/test_dashboard_static.py",
+                   "Tools/publication_audit.py"):
         cmd=[sys.executable,script]
         if script.endswith("check_vectors.py"):cmd+=["Validation/results/audio_vectors.csv"]
         run(*cmd)
