@@ -1440,8 +1440,8 @@ class App(tk.Tk):
         with zipfile.ZipFile(z,'w',zipfile.ZIP_DEFLATED) as zz:
             for p in tmp.iterdir():zz.write(p,p.name)
         shutil.copy2(z,LATEST); shutil.rmtree(tmp,ignore_errors=True)
-        (ROOT/'RESULTS_LOCATION.txt').write_text(str(RESULTS.resolve())+'\n',encoding='utf-8')
-        (ROOT/'LATEST_RESULT_PATH.txt').write_text(str(z.resolve())+'\n',encoding='utf-8')
+        (RESULTS/'RESULTS_LOCATION.txt').write_text(str(RESULTS.resolve())+'\n',encoding='utf-8')
+        (RESULTS/'LATEST_RESULT_PATH.txt').write_text(str(z.resolve())+'\n',encoding='utf-8')
         self.ui(self.latest.set,str(z.resolve())); self.ui(self._log_local,f'RESULT SAVED HERE -> {z.resolve()}')
     def open_results(self):
         try: os.startfile(str(RESULTS.resolve()))
