@@ -1,3 +1,14 @@
+# Changelog
+
+## G8 — public-source engineering hardening (20 October 2026; publication and physical release **blocked**)
+
+- Added portable C boundary tests for command-frame parsing and S24 PCM decode, stereo/mono routing, gain/mute/saturation, now executed under GCC, Clang and address/UB sanitizers.
+- Added tracked-source credential/build-artifact hygiene audit, corruption tests and a human-rights clearance gate; **a passing audit is NOT permission to make the repository public**.
+- Moved dashboard result pointers into ignored local results and isolated Windows dashboard dependencies in `Dashboard/.venv`; improved output path regression checks.
+- Reduced redundant host compilations in CI while retaining requirement traceability checks, source/mirror preflight and numerical evidence.
+- Added third-party provenance inventory for ST HAL, CMSIS, group PCB, student prototypes and assessment PDFs.
+- No claim of ARM flash success, calibrated acoustic safety, custom-PCB verification, clinical suitability or redistribution rights. GitHub repository remains private until rightsholders approve.
+
 ## G5 — 17 October 2026 (staged, hardware validation pending)
 
 - DMA completion now wakes AudioTask using FreeRTOS task notifications after ring-buffer publication; 5-ms timeout services FSM when idle. TIM2 runtime profiler, FreeRTOS priorities and interrupt configuration are retained.
@@ -6,7 +17,6 @@
 - Additional deterministic portable gesture regression, static ISR-to-task priority/ownership contract and GCC/Clang + sanitizer CI.
 - Explicit hardware-measurement protocol, standalone help and known limitations.
 
-# Changelog
 
 ## G4 — maintainable GitHub project and DSP performance (host-verified candidate)
 
