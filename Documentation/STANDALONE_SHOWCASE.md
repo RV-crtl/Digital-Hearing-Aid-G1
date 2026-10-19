@@ -2,6 +2,8 @@
 
 This is a rehearsal guide, **not a record that physical experiments already passed**. The target is one assembled, protected, battery/externally powered prototype, not a dangling Nucleo/ST-LINK plus PC. Only include segments that have been rehearsed with the exact board, firmware SHA and power source.
 
+Use [G5 physical gestures](G5_STANDALONE_USER_GUIDE.md) and [RTOS timing evidence plan](G5_RTOS_AND_PERFORMANCE.md) when preparing the Nucleo demonstration. Custom PCB PC13 does not have the Nucleo user button; do not claim those gestures operate on the PCB.
+
 ## Before audience arrival
 
 1. Check audio output limit with an appropriate test load; begin muted/minimum gain. Never make uncalibrated hearing-safety assertions.

@@ -25,5 +25,14 @@ check('GroupGuardian_Update(&g_group_guardian' in src and 'g_group_guard_bypass'
       'runtime guardian connected to actual AudioTask pipeline')
 check((R/'.github/workflows/verify-g3.yml').exists(), 'CI regression workflow present')
 check((R/'Tests/test_group_guardian.c').exists(), 'guardian host regression present')
+check(same('Core/Src/group_ui.c'), 'G5 UI source recovery mirror')
+check(same('Core/Inc/group_ui.h'), 'G5 UI header recovery mirror')
+check(same('Core/Src/demo_app.c'), 'G5 firmware recovery mirror')
+check('GroupUi_Poll(&g_group_ui' in src and 'GROUP_EVENT_SOURCE' in src,
+      'physical UI state machine enqueues real source requests')
+check('vTaskNotifyGiveFromISR(g_audio_task' in src and
+      'ulTaskNotifyTake(pdTRUE,pdMS_TO_TICKS(5U))' in src,
+      'DMA-to-AudioTask event-driven RTOS handoff')
+check((R/'Tests/test_group_ui.c').exists(), 'standalone UI deterministic tests')
 if not all(x for x,_ in checks):sys.exit(1)
 print('GROUP G1 VALIDATION PASS: {} checks'.format(len(checks)))

@@ -1,14 +1,14 @@
 # Digital Hearing Aid
 
-### STM32L476RG · FreeRTOS · multi-input audio · measured engineering
+### STM32L476RG · FreeRTOS · physical user controls · event-driven audio · reproducible validation
 
-[![G4 verification](https://github.com/RV-crtl/Digital-Hearing-Aid-G1/actions/workflows/verify-g3.yml/badge.svg?branch=main)](https://github.com/RV-crtl/Digital-Hearing-Aid-G1/actions/workflows/verify-g3.yml)
+[![Portable host tests](https://github.com/RV-crtl/Digital-Hearing-Aid-G1/actions/workflows/verify-g3.yml/badge.svg?branch=main)](https://github.com/RV-crtl/Digital-Hearing-Aid-G1/actions/workflows/verify-g3.yml)
 ![MCU](https://img.shields.io/badge/MCU-STM32L476RG-226699)
 ![Platform](https://img.shields.io/badge/platform-NUCLEO--L476RG-0f766e)
 ![Hardware](https://img.shields.io/badge/custom_PCB-not_validated-8b5e3c)
 ![ML](https://img.shields.io/badge/trained_ML-not_integrated-64748b)
 
-> **Engineering prototype / team project.** The current STM32CubeIDE target is **NUCLEO-L476RG**, with Bluetooth and telecoil PCM capture, DMA speaker output, a real FreeRTOS task structure, software source selection, optional DSP profiles, and a fault-pressure guardian. The checked-in custom PCB is a **separate, unvalidated target**. This is not a certified hearing aid or validated acoustic safety device.
+> **Engineering prototype / team project.** The current STM32CubeIDE target is **NUCLEO-L476RG**, with Bluetooth and telecoil PCM capture, DMA speaker output, a real FreeRTOS task structure, software source selection, optional DSP profiles, and a fault-pressure guardian, DMA-triggered AudioTask wake-ups, and a tested standalone one-button interface. The checked-in custom PCB is a **separate, unvalidated target**. This is not a certified hearing aid or validated acoustic safety device.
 
 ![Digital Hearing Aid system overview](Assets/system-overview.svg)
 
@@ -17,22 +17,37 @@
 | Get started | Engineering and evidence | Collaboration |
 | :--- | :--- | :--- |
 | **[Import into STM32CubeIDE](Documentation/GROUP_G1_IMPORT_AND_BUILD.md)** | **[Find a function in the code](Documentation/CODE_MAP.md)** | **[Contribution standards](CONTRIBUTING.md)** |
-| [Standalone product demonstration](Documentation/STANDALONE_SHOWCASE.md) | [Run host/MATLAB verification](Validation/README.md) | [Open issues](https://github.com/RV-crtl/Digital-Hearing-Aid-G1/issues) |
-| [Current architecture](Documentation/ARCHITECTURE.md) | [Evidence and hardware gates](Documentation/VALIDATION_LADDER.md) | [Change history](CHANGELOG.md) |
+| **[Standalone controls and LED guide](Documentation/G5_STANDALONE_USER_GUIDE.md)** · [Showcase plan](Documentation/STANDALONE_SHOWCASE.md) | [Run host/MATLAB verification](Validation/README.md) | [Open issues](https://github.com/RV-crtl/Digital-Hearing-Aid-G1/issues) |
+| [Architecture](Documentation/ARCHITECTURE.md) · [RTOS/CPU measurements](Documentation/G5_RTOS_AND_PERFORMANCE.md) | [Evidence and hardware gates](Documentation/VALIDATION_LADDER.md) | [Change history](CHANGELOG.md) |
 | [Hardware/PCB design](Hardware/README.md) | [Requirement-by-requirement matrix](Documentation/REQUIREMENTS_EVIDENCE.csv) | [Pull requests](https://github.com/RV-crtl/Digital-Hearing-Aid-G1/pulls) |
 
 **New contributor?** The [one-page repository guide](Documentation/REPOSITORY_GUIDE.md) explains the directory roles, build sequence, source ownership, and how to find the tested code.
+
+## No-laptop Nucleo demonstration — physical B1 controls
+
+| Nucleo B1 gesture | Product-facing action |
+| --- | --- |
+| **1 click** | Cycle listening profile: NEUTRAL → VOICE → MUSIC → WIND |
+| **2 clicks** | Toggle **automatic loudness heuristic** (not trained AI) |
+| **3 clicks** | Request real source FSM mode: AUTO → Bluetooth → telecoil |
+| **Hold 1.2 seconds** | Toggle optional group processing |
+| **Hold 4+ seconds** | Restore neutral profile and AUTO routing |
+
+**Nucleo LD2:** off = optional DSP disabled; steady = manual profile; one short blink per second = auto-level; rapid flash = overload guardian. B1/LD2 use PC13/PA5 on the Nucleo; **those signals are not connected as user controls on the supplied custom PCB**.
+
+The [full standalone guide](Documentation/G5_STANDALONE_USER_GUIDE.md) explains debounce, compatibility, shortcuts, and limitations. All gestures are queued through FreeRTOS and consumed by AudioTask rather than changing PCM state inside a GPIO interrupt.
 
 ## What actually works, and what is still engineering work?
 
 | Subsystem | Current code | Evidence to date |
 | --- | --- | --- |
 | Bluetooth and telecoil digital capture and source FSM | Present | Portable FSM regression; original Nucleo playback needs final-assembly retest |
-| FreeRTOS / bounded control queue / task runtime diagnostics | Present | Source guards; board scheduling/latency evidence outstanding |
+| FreeRTOS / bounded control queue / DMA task notifications / runtime profiling | Present | Static ISR-priority/ownership checks; real RTOS latency requires physical verification |
 | SAI/DMA output and PCM routing | Present | Implementation exists; speaker and transducer must be retested |
 | HPF / compensation EQ / dynamics | Present | Production-C impulse vectors; independent Python mathematical verification; MATLAB script supplied |
 | G1 listening profiles, WIND filter and auto loudness *heuristic* | Present | Host C tests, including identity bypass and transitions; **not trained AI** |
 | Overload guardian | Present | Host regression verifies state policy; real DMA overload proof outstanding |
+| Nucleo B1 source/profile gestures and LD2 status | Integrated in G5 | Portable debounce/multiclick tests pass; on-board testing pending |
 | Physical rotary and PDM mic integration | Partial prototypes | Custom board hardware and firmware integration pending |
 | TinyML, USB audio, charging/balancing, production power and custom PCB firmware | **Not implemented / verified** | Requirements and hardware feasibility documented |
 
@@ -44,7 +59,7 @@ From repository root on a computer with GCC/Clang, Python 3 and Bash:
 bash Validation/run_host_validation.sh
 ```
 
-This builds and executes **production-source C tests**, exports filter vectors, checks the math independently, tests the source-selection FSM, encoder and overload guardian, audits KiCad dependencies, and writes a **host-only 128-frame DSP benchmark** to `Validation/results/profile_host_benchmark.csv`.
+This builds and executes **production-source C tests**, exports filter vectors, checks the math independently, tests the source-selection FSM, encoder, button gestures and overload guardian, audits KiCad dependencies, and writes a **host-only 128-frame DSP benchmark** to `Validation/results/profile_host_benchmark.csv`.
 
 For MATLAB, after running the host script:
 
@@ -91,3 +106,21 @@ Read [hardware constraints](Hardware/README.md), [board-porting checklist](Hardw
 ---
 
 **Team engineering repository.** Please submit changes via a branch + pull request, preserve test evidence by commit, and keep the original individual PD5 repository separate. Every claimed hardware PASS requires recorded conditions and measured results.
+
+
+## 🎓 ZEIT4232 System Demonstration & Viva — HD readiness
+
+> The supplied final rubric requires **all revised whole-system requirements** to be convincingly demonstrated before any advanced/HD extension can count. The demonstration is **black-box and physically observable**, runs **without ST-LINK or serial debugging**, and must complete in **10–20 minutes** where feasible (30-minute hard limit).
+
+| Start here | Purpose |
+| --- | --- |
+| **[HD rubric crosswalk](Documentation/HD_RUBRIC_READINESS.md)** | Explicit minimum → meets → exceeds gates |
+| **[Black-box 20-minute test plan](Documentation/BLACK_BOX_TEST_PLAN.md)** | Technician-ready test procedures with prerequisites / expected results |
+| **[System-level requirements coverage](Documentation/HD_REQUIREMENTS_COVERAGE.md)** | Requirement IDs, observable tests and unresolved blockers |
+| **[A3 hardware/software diagram](Documentation/PRINTABLE_SYSTEM_DIAGRAM.md)** | Print **two** labelled copies |
+| **[Mechanical HD acceptance](Documentation/HD_MECHANICAL_ACCEPTANCE.md)** | Case, connectors, buttons, ergonomics, fit and finish |
+| **[Individual viva technical map](Documentation/VIVA_INTERFACE_MAP.md)** | Tasks, DMA, queue contracts, faults, code ownership and troubleshooting |
+| **[Release gate](Documentation/HD_RELEASE_GATE.md)** | Mandatory verification before calling this operating system ready |
+| [Blank physical test run record](Documentation/BLACK_BOX_RESULTS_TEMPLATE.md) | External observations, instrument data and sign-off |
+
+**Important:** The original matrix still contains unintegrated features (mic, feedback, wear/power) and unmeasured limits. All tests are intentionally **NOT_RUN/BLOCKED until physically confirmed**. A green GitHub CI check does not satisfy black-box hardware validation. The draft plan must be reconciled and revised by the group before the **single combined requirements + test-plan PDF** is submitted to Moodle.

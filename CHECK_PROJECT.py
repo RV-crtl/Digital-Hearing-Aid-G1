@@ -14,7 +14,7 @@ ck('#define CAPTURE_RING_DEPTH 8U' in src,'capture ring stays RAM-safe at depth 
 ck('vTaskPrioritySet(NULL, 6U)' in src,'native ControlTask priority 6')
 ck('xTaskCreate(StartAudioTask, "AudioTask", 1024U, NULL, 7U' in src,'AudioTask priority 7 / larger stack')
 ck('taskYIELD();' in src and 'g_bt_cap_head != g_bt_cap_tail' in src,'AudioTask does not sleep with pending capture data')
-ck('taskYIELD();\n    } else {\n      vTaskDelay(pdMS_TO_TICKS(1U));' in src,'AudioTask conditional is braced to avoid FreeRTOS macro else binding')
+ck('taskYIELD();\n    } else {\n      (void)ulTaskNotifyTake(pdTRUE,pdMS_TO_TICKS(5U));' in src and src.count('vTaskNotifyGiveFromISR(g_audio_task') == 2,'AudioTask uses bounded DMA notifications and braced fast-backlog handling')
 ck('3600U * 32768ULL' in src and '4ULL * 32768ULL' in src,'conservative 4x auto-level')
 ck('26000LL' in src and '31900LL' in src,'soft-knee output limiter present')
 ck('g_r26_left_weight_q15' in src and 'g_r26_target_left_weight_q15' in src,'smoothed weighted mono fold present')

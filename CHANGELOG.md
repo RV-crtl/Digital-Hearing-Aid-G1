@@ -1,3 +1,11 @@
+## G5 — 17 October 2026 (staged, hardware validation pending)
+
+- DMA completion now wakes AudioTask using FreeRTOS task notifications after ring-buffer publication; 5-ms timeout services FSM when idle. TIM2 runtime profiler, FreeRTOS priorities and interrupt configuration are retained.
+- New portable Nucleo B1 single/double/triple/long/reset gesture decoder controls profiles and real source requests through the existing FreeRTOS queue.
+- Nucleo LD2 communicates manual, automatic and guardian-bypass states. These controls are *not* custom-PCB features.
+- Additional deterministic portable gesture regression, static ISR-to-task priority/ownership contract and GCC/Clang + sanitizer CI.
+- Explicit hardware-measurement protocol, standalone help and known limitations.
+
 # Changelog
 
 ## G4 — maintainable GitHub project and DSP performance (host-verified candidate)
