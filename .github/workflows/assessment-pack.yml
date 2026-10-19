@@ -25,6 +25,7 @@ jobs:
         run: |
           python Assessment/validate_pack.py
           python Assessment/test_validate_pack.py
+          python Assessment/test_evidence_audit.py
           python Assessment/evidence_audit.py
       - name: Install pinned major release of PDF renderer
         run: python -m pip install 'reportlab>=4,<5'

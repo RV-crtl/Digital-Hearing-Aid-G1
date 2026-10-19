@@ -28,6 +28,7 @@ New-Item -ItemType Directory -Force -Path $ResultDir | Out-Null
 
 Run-G1Python -Arguments @("Assessment/validate_pack.py")
 Run-G1Python -Arguments @("Assessment/test_validate_pack.py")
+Run-G1Python -Arguments @("Assessment/test_evidence_audit.py")
 $Preflight=@("Tools/g1_preflight.py")
 if($RequireArmReady) { $Preflight+="--require-arm-ready" }
 Run-G1Python -Arguments $Preflight

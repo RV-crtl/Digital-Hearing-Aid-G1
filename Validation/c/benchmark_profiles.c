@@ -2,11 +2,17 @@
  * Output is informational only; never use a timing threshold as a host-CI gate.
  * Measure neutral/unity versus voice attenuation and wind filtering.
  */
+#if !defined(_WIN32)
 #define _POSIX_C_SOURCE 200809L
+#endif
 #include "group_features.h"
 #include <stdint.h>
 #include <stdio.h>
+#if defined(_WIN32)
+#include <windows.h>
+#else
 #include <time.h>
+#endif
 
 #define FRAMES 128U
 #define BLOCKS 60000U
@@ -14,10 +20,19 @@ static int16_t samples[FRAMES];
 static int16_t output[FRAMES];
 static volatile uint32_t checksum;
 
+/* QPC on native Windows, POSIX clock otherwise. Host timing only. */
 static uint64_t monotonic_ns(void) {
+#if defined(_WIN32)
+    LARGE_INTEGER counter, frequency;
+    if (!QueryPerformanceFrequency(&frequency) || frequency.QuadPart <= 0 ||
+        !QueryPerformanceCounter(&counter)) return 0;
+    return (uint64_t)((double)counter.QuadPart * 1.0e9 /
+                      (double)frequency.QuadPart);
+#else
     struct timespec t;
     if (clock_gettime(CLOCK_MONOTONIC, &t) != 0) return 0;
     return ((uint64_t)t.tv_sec * 1000000000ULL) + (uint64_t)t.tv_nsec;
+#endif
 }
 
 static void run_case(const char *name, GroupProfile profile) {
