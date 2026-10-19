@@ -19,6 +19,12 @@ class DashboardSourceTests(unittest.TestCase):
             self.assertNotIn("ROOT/'" + name + "'", self.source)
             self.assertIn("RESULTS/'" + name + "'", self.source)
 
+    def test_launcher_uses_private_venv(self):
+        launcher = (ROOT / "Dashboard" / "START_DASHBOARD.bat").read_text(encoding="utf-8")
+        self.assertIn('".venv\\\\Scripts\\\\python.exe"', launcher)
+        self.assertIn('-m venv', launcher)
+        self.assertNotIn("python -m pip install", launcher)
+
     def test_pointers_generated_only_on_run_or_evidence_export(self):
         self.assertIn("if __name__=='__main__':", self.source)
         self.assertIn("App().mainloop()", self.source)
