@@ -1,0 +1,46 @@
+name: Build HD demonstration evidence pack
+on:
+  push:
+    paths:
+      - 'Assessment/**'
+      - '.github/workflows/assessment-pack.yml'
+    branches: [main, 'feature/**', 'assessment/**']
+  pull_request:
+    paths:
+      - 'Assessment/**'
+      - '.github/workflows/assessment-pack.yml'
+  workflow_dispatch:
+# New commits supersede obsolete builds for the same branch or pull request.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+permissions:
+  contents: read
+jobs:
+  printable-evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Check coverage, corruption tests and evidence claims
+        run: |
+          python Assessment/validate_pack.py
+          python Assessment/test_validate_pack.py
+          python Assessment/test_evidence_audit.py
+          python Assessment/evidence_audit.py
+      - name: Install pinned major release of PDF renderer
+        run: python -m pip install 'reportlab>=4,<5'
+      - name: Produce system requirements + plan and A3 diagram
+        run: python Assessment/generate_pack.py
+      - name: Inspect document shapes
+        run: |
+          test -s Assessment/generated/SYSTEM_REQUIREMENTS_AND_BLACK_BOX_TEST_PLAN_DRAFT.pdf
+          test -s Assessment/generated/PRINT_A3_SYSTEM_SOFTWARE_HARDWARE_INTERFACES.pdf
+      - uses: actions/upload-artifact@v4
+        with:
+          name: draft-assessment-pdfs-${{ github.sha }}
+          path: Assessment/generated/*.pdf
+          retention-days: 30

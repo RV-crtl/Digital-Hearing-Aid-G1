@@ -29,3 +29,5 @@ Validation/results/
 # Host sanitizers and benchmark scratch
 *.profraw
 *.profdata
+Assessment/generated/
+.g1-tools-venv/

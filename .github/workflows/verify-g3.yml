@@ -1,9 +1,13 @@
 name: Engineering CI — DSP, RTOS and standalone UI
 on:
   push:
-    branches: [main, 'improve/**', 'feature/**', 'validation/**', 'fix/**']
+    branches: [main, 'improve/**', 'feature/**', 'validation/**', 'fix/**', 'assessment/**']
   pull_request:
   workflow_dispatch:
+# New commits supersede obsolete builds for the same branch or pull request.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 permissions:
   contents: read
 jobs:
@@ -23,10 +27,20 @@ jobs:
         run: |
           "$CC" --version | head -1
           python3 --version
-      - name: Check rubric black-box requirement traceability
-        run: python3 Validation/python/check_hd_coverage.py
+      - name: Audit bidirectional requirements/test coverage (with mutation tests)
+        run: |
+          python3 Assessment/validate_pack.py
+          python3 Assessment/test_validate_pack.py
+          python3 Assessment/test_evidence_audit.py
+          python3 Assessment/evidence_audit.py
+      - name: Preserve existing G6 rubric and full host validation gates
+        run: |
+          python3 Validation/python/check_hd_coverage.py
+          bash Validation/run_host_validation.sh
+      - name: Preflight source, recovery and build dependencies
+        run: python3 Tools/g1_preflight.py
       - name: Verify actual production source and numerical evidence
-        run: bash Validation/run_host_validation.sh
+        run: python3 Validation/run_host_validation.py
       - name: Upload host-only vectors, analysis and benchmark
         if: always()
         uses: actions/upload-artifact@v4
@@ -55,3 +69,28 @@ jobs:
           /tmp/dha-sanitize/profiles
           /tmp/dha-sanitize/guardian
           /tmp/dha-sanitize/ui
+  windows-bundle-smoke:
+    name: One-command Windows evidence runner (source mode only)
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify PowerShell runner and integrity of structured evidence archive
+        shell: pwsh
+        run: |
+          ./G1_RUN_ALL.ps1 -SkipPortableTests -SkipPdf
+          $archive = Get-ChildItem -Path . -Filter 'G1_QUALITY_EVIDENCE_*.zip' -File |
+                     Sort-Object LastWriteTime -Descending | Select-Object -First 1
+          if ($null -eq $archive -or $archive.Length -le 200) {
+            throw 'Evidence ZIP missing or too small.'
+          }
+          Add-Type -AssemblyName System.IO.Compression.FileSystem
+          $zip=[System.IO.Compression.ZipFile]::OpenRead($archive.FullName)
+          try {
+            if(-not ($zip.Entries.FullName -contains 'G1_BUNDLE_MANIFEST.json')) {
+              throw 'Missing evidence hash manifest.'
+            }
+          } finally { $zip.Dispose() }

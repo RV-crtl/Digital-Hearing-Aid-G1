@@ -51,6 +51,10 @@ The [full standalone guide](Documentation/G5_STANDALONE_USER_GUIDE.md) explains 
 | Physical rotary and PDM mic integration | Partial prototypes | Custom board hardware and firmware integration pending |
 | TinyML, USB audio, charging/balancing, production power and custom PCB firmware | **Not implemented / verified** | Requirements and hardware feasibility documented |
 
+## One-command G1 quality gate
+
+On Windows, run **powershell -ExecutionPolicy Bypass -File .\G1_RUN_ALL.ps1** from the G1 repository root to audit code, requirements and evidence, exercise portable host tests, generate draft assessment PDFs and create a SHA-256-manifested ZIP. Append **-BuildArm** to additionally run G1_BUILD_ARM.ps1 (requires local STM32CubeIDE and vendor firmware). Read the [G7 one-command engineering guide](Documentation/G7_ONE_COMMAND_QUALITY_GATE.md) for dependency requirements and exactly what remains unverified. The operating firmware still requires a separate CubeIDE ARM build and physical tests.
+
 ## Fast validation and performance smoke test
 
 From repository root on a computer with GCC/Clang, Python 3 and Bash:
@@ -107,6 +111,7 @@ Read [hardware constraints](Hardware/README.md), [board-porting checklist](Hardw
 
 **Team engineering repository.** Please submit changes via a branch + pull request, preserve test evidence by commit, and keep the original individual PD5 repository separate. Every claimed hardware PASS requires recorded conditions and measured results.
 
+---
 
 ## 🎓 ZEIT4232 System Demonstration & Viva — HD readiness
 

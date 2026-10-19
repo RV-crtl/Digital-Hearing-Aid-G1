@@ -1,0 +1,25 @@
+Requirement Number,Requirement Description,Black-box acceptance evidence,Test Cases,Implementation/evidence gate
+FUN-01,Amplify incoming sound over 20 Hz–20 kHz as stated in Prototype Design 2,Measure end-to-end acoustic response at defined reference points,"TC07,TC08",BLOCKED: transducer bandwidth and microphones not validated
+FUN-02,Adjust gain automatically when input sound level changes,Measure output gain for two prescribed input levels,TC07,"PENDING: DSP implemented, external test outstanding"
+FUN-03,Reduce background noise using digital processing,"Compare intelligibility or SNR with identical noisy input, DSP on/off",TC07,BLOCKED: microphone integration and external SNR evidence
+FUN-04,Suppress acoustic feedback in normal use,Introduce controlled low-level feedback condition and observe stable output,"TC07,TC13",BLOCKED: feedback suppression not integrated
+FUN-05,Receive and reproduce Bluetooth audio (original spec says BLE streaming),Pair module and play audio; verify actual RF transport in equipment datasheet,TC02,PENDING: validate BT401 profile; BLE audio claim needs review
+FUN-06,Receive a genuine telecoil induction-loop audio signal,Activate loop and observe audible sound without direct electrical inject,TC03,PENDING: physical field-coupling test
+FUN-07,Acquire environmental sound with at least one physical microphone,Speak into fitted microphone while other inputs are silent,TC04,BLOCKED: DFSDM capture not integrated into group target
+FUN-08,Deliver processed sound through the intended transducer,Listen/measure actual output from each claimed input,"TC01,TC02,TC03,TC04",PENDING: complete physical end-to-end rerun
+PER-01,End-to-end audio latency < 50 ms,"External time-aligned acoustic input/output trace, all supported modes",TC08,PENDING: hardware measurement
+PER-02,Output total harmonic distortion < 3% at nominal test level,Measure THD with calibrated single-frequency input; specify loading,TC08,PENDING: hardware measurement
+PER-03,Capture two synchronized independent microphone channels,Present separated audio and prove independent channels via audible direction change,TC04,BLOCKED: dual mic acquisition not integrated
+INT-01,Physically adjust volume and listening/source modes,Operate fitted controls without computer or debugger,"TC06,TC10",PENDING: custom PCB controls incomplete; Nucleo B1 is separate
+INT-02,Detect whether device is worn,Remove/replace at calibrated sensor and observe external response,"TC06,TC11",BLOCKED: sensing channel unverified
+INT-03,Independently select microphone/Bluetooth/telecoil with prioritization,Make two sources active; externally observe correct winner then override,TC05,PARTIAL: BT/TC controller; mic path missing
+MEC-01,Earpiece largest dimension < 60 mm per submitted group requirements,Measure assembled earpiece with callipers,TC09,BLOCKED: assembled enclosure/earpiece not validated
+MEC-02A,Headband fits user comfortably and allows access to controls,Inspect assembled fit; carry out brief don/doff,TC09,PENDING: assembly/human-use check
+MEC-02B,Headband remains secure during everyday movement,Inspect prescribed short movement sequence; longer-wear study recorded separately,"TC09,TC12",PENDING: movement and endurance evidence
+POW-01,Operate ≥ 24 hours per charge,"Review dated uninterrupted 24-h standalone trial, battery start/end data",TC12,BLOCKED: battery architecture and 24-h run not verified
+POW-02,Enter a measured low-power state when not worn,Measure supply current worn/not worn using supply ammeter,TC11,BLOCKED: wear sensing and genuine MCU sleep not integrated
+ENV-01,Operate over 0–40 °C and humidity range established by group,Review environmental chamber trial with timestamped external observations,TC12,BLOCKED: no qualified chamber trial or humidity threshold
+SAF-01,Meet the stated IEC 60118-13 compliance requirement,Review standard applicability and formal independent compliance record,TC12,BLOCKED: compliance not demonstrated; verify standard applicability
+SAF-02,Limit acoustic output to a numerically agreed safe level,Measure output with appropriately calibrated transducer fixture,"TC08,TC13",BLOCKED: no calibrated SPL/vibration threshold or measurement
+ADV-01,Recover automatically from loss of the active audio source within agreed interval,Disconnect/reconnect source; stopwatch output restoration without reset,"TC05,TC13",PROPOSED HD extension; acceptance time not yet signed off
+ADV-02,Respond to varied valid user input sequences without reset or reflashing,Change modes in unfamiliar order while sound remains stable,"TC06,TC10,TC13",PROPOSED HD extension; pending physical trial
