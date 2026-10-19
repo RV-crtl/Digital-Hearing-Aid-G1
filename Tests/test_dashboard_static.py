@@ -21,7 +21,7 @@ class DashboardSourceTests(unittest.TestCase):
 
     def test_launcher_uses_private_venv(self):
         launcher = (ROOT / "Dashboard" / "START_DASHBOARD.bat").read_text(encoding="utf-8")
-        self.assertIn('".venv\\\\Scripts\\\\python.exe"', launcher)
+        self.assertIn('set "APP_PY=.venv', launcher)
         self.assertIn('-m venv', launcher)
         self.assertNotIn("python -m pip install", launcher)
 
