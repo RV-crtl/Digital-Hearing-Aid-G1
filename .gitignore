@@ -31,3 +31,6 @@ Validation/results/
 *.profdata
 Assessment/generated/
 .g1-tools-venv/
+# Compatibility: older dashboard versions wrote machine paths at repo root
+RESULTS_LOCATION.txt
+LATEST_RESULT_PATH.txt
