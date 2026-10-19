@@ -34,5 +34,7 @@ check('vTaskNotifyGiveFromISR(g_audio_task' in src and
       'ulTaskNotifyTake(pdTRUE,pdMS_TO_TICKS(5U))' in src,
       'DMA-to-AudioTask event-driven RTOS handoff')
 check((R/'Tests/test_group_ui.c').exists(), 'standalone UI deterministic tests')
+check('g_children_started = (a == pdPASS && b == pdPASS) ? 1U : 0U;' in src,
+      'only required audio/BT tasks determine core startup success')
 if not all(x for x,_ in checks):sys.exit(1)
 print('GROUP G1 VALIDATION PASS: {} checks'.format(len(checks)))

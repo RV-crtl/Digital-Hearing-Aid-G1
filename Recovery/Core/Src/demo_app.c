@@ -3327,7 +3327,7 @@ static void create_child_tasks(void)
   if (c != pdPASS) Demo_SetError(0xF203U);
   if (d != pdPASS) console_write("WARN: CPULoadB lab worker unavailable\r\n");
   if (e != pdPASS) console_write("WARN: HighLoad7 lab worker unavailable\r\n");
-  g_children_started = (a == pdPASS && b == pdPASS && c == pdPASS) ? 1U : 0U;
+  g_children_started = (a == pdPASS && b == pdPASS) ? 1U : 0U;
   console_write("RTOS: DEVELOPMENT image: Audio/BT and lab stress workers requested\r\n");
 #else
   /* SYSTEM DEMO: no Background, CPULoadB or HighLoad7 task is created. */
