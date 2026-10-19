@@ -106,3 +106,21 @@ Read [hardware constraints](Hardware/README.md), [board-porting checklist](Hardw
 ---
 
 **Team engineering repository.** Please submit changes via a branch + pull request, preserve test evidence by commit, and keep the original individual PD5 repository separate. Every claimed hardware PASS requires recorded conditions and measured results.
+
+
+## 🎓 ZEIT4232 System Demonstration & Viva — HD readiness
+
+> The supplied final rubric requires **all revised whole-system requirements** to be convincingly demonstrated before any advanced/HD extension can count. The demonstration is **black-box and physically observable**, runs **without ST-LINK or serial debugging**, and must complete in **10–20 minutes** where feasible (30-minute hard limit).
+
+| Start here | Purpose |
+| --- | --- |
+| **[HD rubric crosswalk](Documentation/HD_RUBRIC_READINESS.md)** | Explicit minimum → meets → exceeds gates |
+| **[Black-box 20-minute test plan](Documentation/BLACK_BOX_TEST_PLAN.md)** | Technician-ready test procedures with prerequisites / expected results |
+| **[System-level requirements coverage](Documentation/HD_REQUIREMENTS_COVERAGE.md)** | Requirement IDs, observable tests and unresolved blockers |
+| **[A3 hardware/software diagram](Documentation/PRINTABLE_SYSTEM_DIAGRAM.md)** | Print **two** labelled copies |
+| **[Mechanical HD acceptance](Documentation/HD_MECHANICAL_ACCEPTANCE.md)** | Case, connectors, buttons, ergonomics, fit and finish |
+| **[Individual viva technical map](Documentation/VIVA_INTERFACE_MAP.md)** | Tasks, DMA, queue contracts, faults, code ownership and troubleshooting |
+| **[Release gate](Documentation/HD_RELEASE_GATE.md)** | Mandatory verification before calling this operating system ready |
+| [Blank physical test run record](Documentation/BLACK_BOX_RESULTS_TEMPLATE.md) | External observations, instrument data and sign-off |
+
+**Important:** The original matrix still contains unintegrated features (mic, feedback, wear/power) and unmeasured limits. All tests are intentionally **NOT_RUN/BLOCKED until physically confirmed**. A green GitHub CI check does not satisfy black-box hardware validation. The draft plan must be reconciled and revised by the group before the **single combined requirements + test-plan PDF** is submitted to Moodle.
