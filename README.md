@@ -51,6 +51,10 @@ The [full standalone guide](Documentation/G5_STANDALONE_USER_GUIDE.md) explains 
 | Physical rotary and PDM mic integration | Partial prototypes | Custom board hardware and firmware integration pending |
 | TinyML, USB audio, charging/balancing, production power and custom PCB firmware | **Not implemented / verified** | Requirements and hardware feasibility documented |
 
+## One-command G1 quality gate
+
+On Windows, run **powershell -ExecutionPolicy Bypass -File .\G1_RUN_ALL.ps1** from the G1 repository root to audit code, requirements and evidence, exercise portable host tests, generate draft assessment PDFs and create a SHA-256-manifested ZIP. Read the [G7 one-command engineering guide](Documentation/G7_ONE_COMMAND_QUALITY_GATE.md) for dependency requirements and exactly what remains unverified. The operating firmware still requires a separate CubeIDE ARM build and physical tests.
+
 ## Fast validation and performance smoke test
 
 From repository root on a computer with GCC/Clang, Python 3 and Bash:

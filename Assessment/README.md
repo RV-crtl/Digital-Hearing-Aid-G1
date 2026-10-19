@@ -48,3 +48,7 @@ python3 Assessment/generate_pack.py
 GitHub Actions builds downloadable PDF artifacts from these sources. The generated PDFs are *draft outputs*, not an automated assertion that the device satisfies the requirements.
 
 For oral preparation read [Viva navigation and sample answer structures](VIVA_PREPARATION.md) and [Mechanical acceptance guide](MECHANICAL_ACCEPTANCE.md).
+
+## One-command G7 preparation
+
+From the G1 repository root, run **powershell -ExecutionPolicy Bypass -File .\G1_RUN_ALL.ps1** to create a timestamped evidence ZIP. The [G7 quality gate guide](../Documentation/G7_ONE_COMMAND_QUALITY_GATE.md) explains exact dependencies and remaining ARM and hardware gates. Two-way test-case traceability and its mutation tests are automated. The strict physical evidence audit intentionally stays blocked until all 13 external tests have documented, signed passing observations.

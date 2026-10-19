@@ -30,7 +30,7 @@ jobs:
       - name: Preflight source, recovery and build dependencies
         run: python3 Tools/g1_preflight.py
       - name: Verify actual production source and numerical evidence
-        run: bash Validation/run_host_validation.sh
+        run: python3 Validation/run_host_validation.py
       - name: Upload host-only vectors, analysis and benchmark
         if: always()
         uses: actions/upload-artifact@v4

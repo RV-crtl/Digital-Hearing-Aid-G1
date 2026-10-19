@@ -30,3 +30,4 @@ Validation/results/
 *.profraw
 *.profdata
 Assessment/generated/
+.g1-tools-venv/
