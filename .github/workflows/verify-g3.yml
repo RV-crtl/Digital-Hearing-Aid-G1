@@ -66,9 +66,13 @@ jobs:
           gcc $CFLAGS Tests/test_group_features.c Core/Src/group_features.c -o /tmp/dha-sanitize/profiles
           gcc $CFLAGS Tests/test_group_guardian.c Core/Src/group_guardian.c -o /tmp/dha-sanitize/guardian
           gcc $CFLAGS Tests/test_group_ui.c Core/Src/group_ui.c -o /tmp/dha-sanitize/ui
+          gcc $CFLAGS Tests/test_control_protocol.c Core/Src/control_protocol.c -o /tmp/dha-sanitize/protocol
+          gcc $CFLAGS Tests/test_pcm_transport.c Core/Src/pcm_transport.c Core/Src/audio_processing.c -o /tmp/dha-sanitize/pcm
           /tmp/dha-sanitize/profiles
           /tmp/dha-sanitize/guardian
           /tmp/dha-sanitize/ui
+          /tmp/dha-sanitize/protocol
+          /tmp/dha-sanitize/pcm
   windows-bundle-smoke:
     name: One-command Windows evidence runner (source mode only)
     runs-on: windows-latest
