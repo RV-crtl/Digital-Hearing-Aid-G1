@@ -55,9 +55,10 @@ New-Item -ItemType Directory -Force -Path $Results | Out-Null
 $Log=Join-Path $Results "g1_arm_build.log"
 $Errors=Join-Path $Results "g1_arm_build_stderr.log"
 $Target="$Name/$Configuration"
-$Args='--launcher.suppressErrors -nosplash -application org.eclipse.cdt.managedbuilder.core.headlessbuild -no-indexer -data "{0}" -import "{1}" -cleanBuild "{2}" -markerType cdt -printErrorMarkers' -f $Workspace,$Root,$Target
+$BuildArguments='--launcher.suppressErrors -nosplash -application org.eclipse.cdt.managedbuilder.core.headlessbuild -no-indexer -data "{0}" -import "{1}" -cleanBuild "{2}" -markerType cdt -printErrorMarkers' -f $Workspace,$Root,$Target
 Write-Host "CubeIDE headless Clean/Build $Target (NEVER FLASHES)" -ForegroundColor Cyan
-$Process=Start-Process -FilePath $CubeIDEExe -ArgumentList $Args -Wait -PassThru -NoNewWindow -RedirectStandardOutput $Log -RedirectStandardError $Errors
+$BuildStartUtc=(Get-Date).ToUniversalTime()
+$Process=Start-Process -FilePath $CubeIDEExe -ArgumentList $BuildArguments -Wait -PassThru -NoNewWindow -RedirectStandardOutput $Log -RedirectStandardError $Errors
 if ($Process.ExitCode -ne 0) {
   throw "CubeIDE failed ($($Process.ExitCode)). Inspect $Log and $Errors; do NOT flash."
 }
@@ -68,6 +69,9 @@ $Folder=Join-Path $Root $Configuration
 $Elf=Get-ChildItem -Path $Folder -Filter "*.elf" -File -Recurse -ErrorAction SilentlyContinue |
   Sort-Object LastWriteTimeUtc -Descending | Select-Object -First 1
 if ($null -eq $Elf -or $Elf.Length -lt 4096) { throw "Nonempty ELF not produced. No ARM build PASS." }
+if($Elf.LastWriteTimeUtc -lt $BuildStartUtc.AddSeconds(-3)) {
+  throw "ELF is older than this headless build: $($Elf.FullName). Refusing stale binary PASS."
+}
 $Bytes=[IO.File]::ReadAllBytes($Elf.FullName)
 if ($Bytes.Length -lt 64 -or $Bytes[0] -ne 127 -or $Bytes[1] -ne 69 -or
     $Bytes[2] -ne 76 -or $Bytes[3] -ne 70 -or $Bytes[18] -ne 40 -or $Bytes[19] -ne 0) {
