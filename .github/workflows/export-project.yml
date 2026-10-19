@@ -1,4 +1,4 @@
-name: Export CubeIDE source ZIP
+name: Export INTERNAL CubeIDE source ZIP (not cleared for public release)
 on:
   workflow_dispatch:
 permissions:
@@ -8,6 +8,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Block unauthorised public export of coursework/group/IP assets
+        env:
+          REPOSITORY_PRIVATE: ${{ github.event.repository.private }}
+        run: |
+          if [ "$REPOSITORY_PRIVATE" != "true" ]; then
+            echo "::error::Repository is public; group/IP clearance for full-tree ZIP has not been established."
+            exit 1
+          fi
       - name: Test host code before packaging
         run: bash Validation/run_host_validation.sh
       - name: Archive current commit's tracked files only

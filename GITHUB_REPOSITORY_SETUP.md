@@ -1,4 +1,6 @@
-# New GitHub repository setup — Group G1
+# Historical repository bootstrap instructions — Group G1
+
+> **ARCHIVED SETUP NOTES:** G1 already exists on GitHub. These steps were written for its original private creation. They do **not** grant permission to publish its group code, research PDFs or PCB. For current distribution decisions read [the publication gate](Documentation/PUBLICATION_GATE.md).
 
 This project MUST live in a NEW, PRIVATE GitHub repository. **Do not push to or branch from** `RV-crtl/260827-DHA_BT_Telecoil_PD5`.
 

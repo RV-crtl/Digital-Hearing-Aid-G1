@@ -14,3 +14,9 @@ Never commit private keys, BLE pairing secrets, GitHub tokens, ST-LINK serial id
 `Recovery/` mirrors are not independent implementations; if modifying protected generated code, update the matching recovery copy and run `CHECK_PROJECT.py` and `CHECK_GROUP.py`.
 
 **Labels used in PRs:** `host-verified`, `onboard-pending`, `pcb-gate`, `breaking-peripheral`, `documentation`, `experiment-only` (create labels when desired).
+
+## Open-source and publication contributions
+
+There is no project-wide licence yet. Until all owners agree on distribution terms, contributions should be confined to authorised G1 collaborators. A pull request must state provenance of copied code, datasets, KiCad libraries, images or documents; retain upstream notices and obtain rights clearance before merging anything intended for public release. Do not create a generic licence, sign off other contributors' IP or imply professional hearing-aid certification without documented authority.
+
+Use [PUBLICATION_GATE](Documentation/PUBLICATION_GATE.md) to separate source CI, permission to make the repository public, and safety/reliability validation of a physical product.

@@ -10,7 +10,7 @@ From repository root:
 bash Validation/run_host_validation.sh
 ```
 
-Needs Python 3, GCC and a POSIX shell. This compiles *actual production C sources*, runs portable unit/scenario tests, generates `Validation/results/audio_vectors.csv`, independently checks their floating-point filter mathematics, validates project/recovery guards, and runs a non-destructive KiCad source dependency audit. Generated binaries/CSV/plots belong under ignored `Validation/results/`.
+Needs Python 3, GCC and a POSIX shell. This compiles *actual production C sources*, including bounded control-protocol and PCM transport regression tests, runs portable unit/scenario tests, generates `Validation/results/audio_vectors.csv`, independently checks their floating-point filter mathematics, validates project/recovery guards, and runs a non-destructive KiCad source dependency audit. Generated binaries/CSV/plots belong under ignored `Validation/results/`.
 
 ## MATLAB filter validation (no specialist toolbox)
 
@@ -38,3 +38,7 @@ Add `Validation/matlab` to the MATLAB path first, or `cd Validation/matlab` and 
 ## Proof standard
 
 **Unit verification** establishes a module implements its specified algorithm. **Integration verification** requires observing signals/events through interacting subsystems. **Validation** demonstrates intended behaviour against product-level requirements on real hardware. For any claim of PASS, archive test conditions, measured values, hardware revision, firmware commit, calibration, pass limits and raw evidence. Host-only checks cannot certify the integrated hearing aid.
+
+## Publication-source and GUI smoke checks
+
+Host validation also runs `Tests/test_publication_audit.py`, `Tools/publication_audit.py` and `Tests/test_dashboard_static.py`. These check selected high-confidence token formats, generated/tracked files, local dashboard path hygiene and GUI syntax. The output is `Validation/results/publication_audit.json` (ignored). They **do not** scan all git history, verify ownership/licences for group or third-party assets, test a dashboard device connection, or permit a public/clinical release. Review [PUBLICATION_GATE](../Documentation/PUBLICATION_GATE.md) before distribution.

@@ -33,13 +33,11 @@ jobs:
           python3 Assessment/test_validate_pack.py
           python3 Assessment/test_evidence_audit.py
           python3 Assessment/evidence_audit.py
-      - name: Preserve existing G6 rubric and full host validation gates
-        run: |
-          python3 Validation/python/check_hd_coverage.py
-          bash Validation/run_host_validation.sh
+      - name: Preserve existing G6 rubric traceability gate
+        run: python3 Validation/python/check_hd_coverage.py
       - name: Preflight source, recovery and build dependencies
         run: python3 Tools/g1_preflight.py
-      - name: Verify actual production source and numerical evidence
+      - name: Verify production C, protocol, PCM, publication hygiene and host numerical evidence
         run: python3 Validation/run_host_validation.py
       - name: Upload host-only vectors, analysis and benchmark
         if: always()
@@ -66,9 +64,13 @@ jobs:
           gcc $CFLAGS Tests/test_group_features.c Core/Src/group_features.c -o /tmp/dha-sanitize/profiles
           gcc $CFLAGS Tests/test_group_guardian.c Core/Src/group_guardian.c -o /tmp/dha-sanitize/guardian
           gcc $CFLAGS Tests/test_group_ui.c Core/Src/group_ui.c -o /tmp/dha-sanitize/ui
+          gcc $CFLAGS Tests/test_control_protocol.c Core/Src/control_protocol.c -o /tmp/dha-sanitize/protocol
+          gcc $CFLAGS Tests/test_pcm_transport.c Core/Src/pcm_transport.c Core/Src/audio_processing.c -o /tmp/dha-sanitize/pcm
           /tmp/dha-sanitize/profiles
           /tmp/dha-sanitize/guardian
           /tmp/dha-sanitize/ui
+          /tmp/dha-sanitize/protocol
+          /tmp/dha-sanitize/pcm
   windows-bundle-smoke:
     name: One-command Windows evidence runner (source mode only)
     runs-on: windows-latest

@@ -20,6 +20,8 @@ def main():
       ("encoder","Tests/test_encoder.c","Core/Src/group_encoder.c"),
       ("guardian","Tests/test_group_guardian.c","Core/Src/group_guardian.c"),
       ("group_ui","Tests/test_group_ui.c","Core/Src/group_ui.c"),
+      ("control_protocol","Tests/test_control_protocol.c","Core/Src/control_protocol.c"),
+      ("pcm_transport","Tests/test_pcm_transport.c","Core/Src/pcm_transport.c","Core/Src/audio_processing.c"),
       ("audio_vectors","Validation/c/audio_vectors.c","Core/Src/audio_dynamics.c"),
       ("benchmark_profiles","Validation/c/benchmark_profiles.c","Core/Src/group_features.c"),
       ("connectivity","Tests/test_connectivity_scenarios.c","Core/Src/connectivity_controller.c"),
@@ -27,17 +29,20 @@ def main():
     start=time.monotonic()
     for name,*sources in groups:
         run(cc,*flags,*sources,"-o",OUT/(name+suffix))
-    for name in ("features","encoder","guardian","group_ui","connectivity"):
+    for name in ("features","encoder","guardian","group_ui","control_protocol","pcm_transport","connectivity"):
         run(OUT/(name+suffix))
     run(OUT/("audio_vectors"+suffix),OUT/"audio_vectors.csv")
     with (OUT/"profile_host_benchmark.csv").open("w",encoding="utf-8") as f:
         subprocess.run([str(OUT/("benchmark_profiles"+suffix))],cwd=ROOT,stdout=f,check=True)
     for script in ("Validation/python/check_vectors.py","CHECK_PROJECT.py","CHECK_GROUP.py",
                    "Validation/python/audit_kicad.py","Validation/python/check_evidence.py",
-                   "Validation/python/check_repository.py","Validation/python/verify_rtos_contract.py"):
+                   "Validation/python/check_repository.py","Validation/python/verify_rtos_contract.py",
+                   "Tests/test_publication_audit.py","Tests/test_dashboard_static.py",
+                   "Tools/publication_audit.py"):
         cmd=[sys.executable,script]
         if script.endswith("check_vectors.py"):cmd+=["Validation/results/audio_vectors.csv"]
         run(*cmd)
+    run(sys.executable,"-m","compileall","-q","Dashboard")
     print(f"PASS: host C/contract checks ({time.monotonic()-start:.1f}s). NOT an ARM or hardware PASS.")
     return 0
 if __name__=="__main__":

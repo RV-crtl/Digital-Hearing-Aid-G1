@@ -18,7 +18,7 @@ ROOT = Path(__file__).resolve().parent.parent
 RESULTS = ROOT / 'RESULTS_R26'
 RESULTS.mkdir(exist_ok=True)
 LATEST = ROOT / 'SEND_THIS_TO_CHATGPT_LATEST.zip'
-(ROOT / 'RESULTS_LOCATION.txt').write_text(str(RESULTS.resolve()) + '\n', encoding='utf-8')
+# Do not rewrite a tracked repository file with a machine-specific path on import.
 BAUD = 115200
 
 STAGES = {
@@ -1440,8 +1440,8 @@ class App(tk.Tk):
         with zipfile.ZipFile(z,'w',zipfile.ZIP_DEFLATED) as zz:
             for p in tmp.iterdir():zz.write(p,p.name)
         shutil.copy2(z,LATEST); shutil.rmtree(tmp,ignore_errors=True)
-        (ROOT/'RESULTS_LOCATION.txt').write_text(str(RESULTS.resolve())+'\n',encoding='utf-8')
-        (ROOT/'LATEST_RESULT_PATH.txt').write_text(str(z.resolve())+'\n',encoding='utf-8')
+        (RESULTS/'RESULTS_LOCATION.txt').write_text(str(RESULTS.resolve())+'\n',encoding='utf-8')
+        (RESULTS/'LATEST_RESULT_PATH.txt').write_text(str(z.resolve())+'\n',encoding='utf-8')
         self.ui(self.latest.set,str(z.resolve())); self.ui(self._log_local,f'RESULT SAVED HERE -> {z.resolve()}')
     def open_results(self):
         try: os.startfile(str(RESULTS.resolve()))
@@ -1450,4 +1450,7 @@ class App(tk.Tk):
         try: os.startfile(str(ROOT.resolve()))
         except Exception: self._log_local(str(ROOT.resolve()))
 
-if __name__=='__main__': App().mainloop()
+if __name__=='__main__':
+    # This pointer is local build output, ignored by git and never public source.
+    (RESULTS / 'RESULTS_LOCATION.txt').write_text(str(RESULTS.resolve()) + '\n', encoding='utf-8')
+    App().mainloop()

@@ -23,6 +23,14 @@
 
 **New contributor?** The [one-page repository guide](Documentation/REPOSITORY_GUIDE.md) explains the directory roles, build sequence, source ownership, and how to find the tested code.
 
+## Publication and hardware-release status
+
+**This repository is still private and does not yet have a project-wide open-source licence.** G1 is a student/team **NUCLEO-L476RG engineering prototype**, not a finished commercial/clinical hearing aid. Green CI verifies host source checks only; it cannot establish acoustic safety, enclosure reliability, medical conformity, supply/battery protection or custom-PCB functionality.
+
+Before opening the repository to the public, clear contributor/institution rights and supplied third-party files. See the [public-source and device release gate](Documentation/PUBLICATION_GATE.md), [third-party provenance](Documentation/THIRD_PARTY_PROVENANCE.md), [security disclosure process](SECURITY.md) and [physical release checklist](Documentation/RELEASE_CHECKLIST.md).
+
+`python3 Tools/publication_audit.py --output Validation/results/publication_audit.json` checks the *tracked source tree* for certain accidental credentials, generated files and vendor notices; it **does not scan all git history** or grant publication permission. Raw source, hardware and assessment files remain subject to manual review. The repository must not be represented as medical or acoustic-safety validated.
+
 ## No-laptop Nucleo demonstration — physical B1 controls
 
 | Nucleo B1 gesture | Product-facing action |
