@@ -9,7 +9,7 @@
     "prerequisites": "Already programmed assembled target, verified approved supply, output initially at safe low setting; ST-Link and serial cable disconnected.",
     "procedure": [
       "Connect intended battery or approved AC supply.",
-      "Power the device normally; do not reflash or connect debugger.",
+      "Power the device normally with programming and serial connections physically unplugged.",
       "Observe startup, output mute/ramp, and successful response to an available user control."
     ],
     "expected": [
