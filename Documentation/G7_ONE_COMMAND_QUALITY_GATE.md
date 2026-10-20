@@ -49,3 +49,9 @@ Run Assessment/evidence_audit.py --strict **only for final release certification
 The **final course demonstration** is external black-box testing: aim for 10–20 minutes, not more than 30; show the audio system operating on intended power with ST-Link and serial debugger disconnected; print two system diagrams; submit one revised requirements/test-plan PDF. Physically damaging-condition tests come last and require a safe, appropriate measurement fixture.
 
 **Open physical blockers:** DFSDM microphone(s), feedback cancellation, hearing-fit state and genuine low-power transition, battery endurance, custom PCB electrical/controls port, safe acoustic output, THD, latency and mechanical fit. Treat these as unverified until measured. A green GitHub check is not an HD grade or a clinical safety certification.
+
+## G9 integrity hardening (20 October 2026)
+
+The full host test pipeline now audits every tracked Markdown relative link and rejects case-insensitive filename collisions that would affect Windows checkouts. The tests also mutate the ARM report to prove that stale runs, wrong firmware revisions, wrong build folders, tampered executables, and incorrect flashing claims are rejected. These checks run under GitHub Actions and require no physical hardware.
+
+When `G1_RUN_ALL.ps1 -BuildArm` is used, the script first clears any old ARM report, builds using the installed local CubeIDE/FW_L4, and then verifies the new report with `Tools/verify_arm_evidence.py`. It verifies the source commit, current-run timestamp, built executable's ARM ELF signature, size and SHA-256 before setting the manifest's ARM-build flag. The ELF and local hardware still require their own engineering review; source-only CI does not build the ARM project. An unknown commit (e.g. when using an exported ZIP without Git history) is recorded as `UNKNOWN`, not silently converted into a verified Git provenance.
