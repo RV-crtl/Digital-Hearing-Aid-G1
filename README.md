@@ -59,6 +59,10 @@ The [full standalone guide](Documentation/G5_STANDALONE_USER_GUIDE.md) explains 
 | Physical rotary and PDM mic integration | Partial prototypes | Custom board hardware and firmware integration pending |
 | TinyML, USB audio, charging/balancing, production power and custom PCB firmware | **Not implemented / verified** | Requirements and hardware feasibility documented |
 
+## Repository-wide folder integrity
+
+G9 adds whole-repository Markdown link and Windows filename-collision checks, compilation of every HAL-independent application C module under GCC/Clang, validation of evidence ZIP contents against SHA-256, and strict local ARM report provenance/freshness checks. See [G9 repository audit](Documentation/G9_REPOSITORY_INTEGRITY_AUDIT.md). These automated checks do **not** resolve the externally missing KiCad libraries, build an ARM binary in GitHub CI or certify device safety.
+
 ## One-command G1 quality gate
 
 On Windows, run **powershell -ExecutionPolicy Bypass -File .\G1_RUN_ALL.ps1** from the G1 repository root to audit code, requirements and evidence, exercise portable host tests, generate draft assessment PDFs and create a SHA-256-manifested ZIP. Append **-BuildArm** to additionally run G1_BUILD_ARM.ps1 (requires local STM32CubeIDE and vendor firmware). Read the [G7 one-command engineering guide](Documentation/G7_ONE_COMMAND_QUALITY_GATE.md) for dependency requirements and exactly what remains unverified. The operating firmware still requires a separate CubeIDE ARM build and physical tests.
