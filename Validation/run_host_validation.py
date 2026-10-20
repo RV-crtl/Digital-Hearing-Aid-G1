@@ -45,7 +45,7 @@ def main():
                    "Validation/python/audit_kicad.py","Validation/python/check_evidence.py",
                    "Validation/python/check_repository.py","Validation/python/verify_rtos_contract.py",
                    "Validation/python/test_tree_integrity.py","Validation/python/check_tree_integrity.py",
-                   "Tools/test_verify_arm_evidence.py",
+                   "Tools/test_verify_arm_evidence.py","Tools/test_verify_evidence_bundle.py",
                    "Tests/test_publication_audit.py","Tests/test_dashboard_static.py",
                    "Tools/publication_audit.py"):
         cmd=[sys.executable,script]
