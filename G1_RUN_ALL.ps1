@@ -54,17 +54,24 @@ if ($SkipPdf) {
   if($LASTEXITCODE -ne 0) { throw "G1 PDF generation failed." }
 }
 
-if($BuildArm) {
-  & (Join-Path $Root "G1_BUILD_ARM.ps1") -CubeIDEExe $CubeIDEExe
-  if(-not (Test-Path (Join-Path $Root "Validation/results/g1_arm_build.json"))) {
-    throw "Required ARM build evidence missing; no product PASS."
-  }
-}
-
 $Revision="UNKNOWN"
 if(Get-Command git -ErrorAction SilentlyContinue) {
   $value=(& git rev-parse HEAD 2>$null)
-  if($LASTEXITCODE -eq 0) { $Revision=$value.Trim() }
+  if($LASTEXITCODE -eq 0 -and ([string]$value).Length -eq 40) { $Revision=([string]$value).Trim() }
+}
+
+$ArmBuildVerified=$false
+if($BuildArm) {
+  # Prior evidence never counts for a new invocation.
+  $ReportPath=Join-Path $ResultDir "g1_arm_build.json"
+  if (Test-Path $ReportPath) { Remove-Item -LiteralPath $ReportPath -Force }
+  $ArmBuildStarted=(Get-Date).ToUniversalTime()
+  & (Join-Path $Root "G1_BUILD_ARM.ps1") -CubeIDEExe $CubeIDEExe
+  Run-G1Python -Arguments @("Tools/verify_arm_evidence.py",
+    "--report", $ReportPath, "--project-root", $Root,
+    "--not-before", $ArmBuildStarted.ToString("o"),
+    "--expected-revision", $Revision)
+  $ArmBuildVerified=$true
 }
 $Art=@(
   "Assessment/requirements.csv",
@@ -76,7 +83,8 @@ $Art=@(
 if(-not $SkipPortableTests) {
   $Art+=@("Validation/results/audio_vectors.csv",
           "Validation/results/profile_host_benchmark.csv",
-          "Validation/results/kicad_audit.json")
+          "Validation/results/kicad_audit.json",
+          "Validation/results/publication_audit.json")
 }
 if($BuildArm) {
   $Art+=@("Validation/results/g1_arm_build.json",
@@ -93,7 +101,8 @@ $Manifest=[ordered]@{
   generated_utc=(Get-Date).ToUniversalTime().ToString("o")
   portable_C_tests_executed=(-not $SkipPortableTests)
   draft_PDFs_generated=(-not $SkipPdf)
-  arm_compiled_by_this_script=[bool]$BuildArm
+  arm_compiled_by_this_script=$ArmBuildVerified
+  arm_evidence_cryptographically_verified=$ArmBuildVerified
   physical_hardware_verified_by_this_script=$false
   artifacts=@()
 }

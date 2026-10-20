@@ -1,5 +1,15 @@
 # Changelog
 
+## G9 — folder integrity and reproducible evidence validation (20 October 2026)
+
+- Verify all tracked Markdown relative links and Windows case-insensitive path collisions with mutation tests.
+- Compile 16 hardware-independent production C modules under host GCC/Clang, including previously uncompiled telecoil, signal-quality and connectivity service modules.
+- Validate the actual hash of every Windows evidence-bundle file, safe ZIP entry names, and no forged ARM/hardware passes; test deliberate tampering.
+- Reject stale/foreign ARM build reports: verify source commit, build start time, expected ELF folder, ARM signature and SHA-256. Parse all root PowerShell scripts in Windows CI.
+- Fix stale repository guide status and document external KiCad libraries, missing local FreeRTOS, and necessary acoustic/hardware work as *open* blockers.
+- No claim of completed Cortex-M4 compilation or physical medical-device certification. Public visibility and PD5 unchanged.
+
+
 ## G8 — public-source engineering hardening (20 October 2026; publication and physical release **blocked**)
 
 - Added portable C boundary tests for command-frame parsing and S24 PCM decode, stereo/mono routing, gain/mute/saturation, now executed under GCC, Clang and address/UB sanitizers.

@@ -78,8 +78,14 @@ if ($Bytes.Length -lt 64 -or $Bytes[0] -ne 127 -or $Bytes[1] -ne 69 -or
   throw "ELF header is not for ARM Cortex-M. Do not flash."
 }
 $Sha=(Get-FileHash -LiteralPath $Elf.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+$FirmwareCommit="UNKNOWN"
+if (Get-Command git -ErrorAction SilentlyContinue) {
+  $GitSha=(& git -C $Root rev-parse HEAD 2>$null)
+  if ($LASTEXITCODE -eq 0 -and ([string]$GitSha).Length -eq 40) { $FirmwareCommit=([string]$GitSha).Trim() }
+}
 $Report=[ordered]@{
   status="ARM_CLEAN_BUILD_PASS"; project=$Name; configuration=$Configuration;
+  firmware_commit=$FirmwareCommit;
   time_utc=(Get-Date).ToUniversalTime().ToString("o");
   executable_path=$Elf.FullName; executable_sha256=$Sha; executable_bytes=$Elf.Length;
   cubide_path=$CubeIDEExe; stdout_log=$Log; stderr_log=$Errors;

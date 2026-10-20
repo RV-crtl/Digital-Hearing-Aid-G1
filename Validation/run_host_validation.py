@@ -26,6 +26,13 @@ def main():
       ("benchmark_profiles","Validation/c/benchmark_profiles.c","Core/Src/group_features.c"),
       ("connectivity","Tests/test_connectivity_scenarios.c","Core/Src/connectivity_controller.c"),
     )
+    # Compile every application module that has no HAL/FreeRTOS dependency.
+    # A successful subset of unit tests must not hide errors in unused portable files.
+    portable_modules=("audio_processing","pcm_transport","audio_dynamics","telecoil_filter","telecoil_detector","signal_quality","connectivity_service","connectivity_actions","bt_profile","control_protocol","tc_cleanup","group_features","group_guardian","group_ui","group_encoder","connectivity_controller",)
+    objects=OUT/"portable_compile"
+    objects.mkdir(exist_ok=True)
+    for module in portable_modules:
+        run(cc,*flags,"-c",f"Core/Src/{module}.c","-o",objects/(module+".o"))
     start=time.monotonic()
     for name,*sources in groups:
         run(cc,*flags,*sources,"-o",OUT/(name+suffix))
@@ -37,6 +44,8 @@ def main():
     for script in ("Validation/python/check_vectors.py","CHECK_PROJECT.py","CHECK_GROUP.py",
                    "Validation/python/audit_kicad.py","Validation/python/check_evidence.py",
                    "Validation/python/check_repository.py","Validation/python/verify_rtos_contract.py",
+                   "Validation/python/test_tree_integrity.py","Validation/python/check_tree_integrity.py",
+                   "Tools/test_verify_arm_evidence.py","Tools/test_verify_evidence_bundle.py",
                    "Tests/test_publication_audit.py","Tests/test_dashboard_static.py",
                    "Tools/publication_audit.py"):
         cmd=[sys.executable,script]

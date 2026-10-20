@@ -42,3 +42,7 @@ Add `Validation/matlab` to the MATLAB path first, or `cd Validation/matlab` and 
 ## Publication-source and GUI smoke checks
 
 Host validation also runs `Tests/test_publication_audit.py`, `Tools/publication_audit.py` and `Tests/test_dashboard_static.py`. These check selected high-confidence token formats, generated/tracked files, local dashboard path hygiene and GUI syntax. The output is `Validation/results/publication_audit.json` (ignored). They **do not** scan all git history, verify ownership/licences for group or third-party assets, test a dashboard device connection, or permit a public/clinical release. Review [PUBLICATION_GATE](../Documentation/PUBLICATION_GATE.md) before distribution.
+
+## G9 whole-tree checks and reproducible evidence
+
+Portable verification now compiles all 16 HAL-independent production modules under GCC/Clang and checks all tracked Markdown relative links and case-folded Windows paths. Windows CI also parses every root PowerShell script and validates the *contents* of a G1 quality ZIP with `Tools/verify_evidence_bundle.py`, not just the presence of a manifest. `Tools/verify_arm_evidence.py` refuses stale, wrong-commit or altered ELF reports; simulated mutation tests exercise those rejection paths. See [G9 folder audit](../Documentation/G9_REPOSITORY_INTEGRITY_AUDIT.md).
