@@ -37,6 +37,7 @@ def main():
     for script in ("Validation/python/check_vectors.py","CHECK_PROJECT.py","CHECK_GROUP.py",
                    "Validation/python/audit_kicad.py","Validation/python/check_evidence.py",
                    "Validation/python/check_repository.py","Validation/python/verify_rtos_contract.py",
+                   "Validation/python/test_tree_integrity.py","Validation/python/check_tree_integrity.py",
                    "Tests/test_publication_audit.py","Tests/test_dashboard_static.py",
                    "Tools/publication_audit.py"):
         cmd=[sys.executable,script]
