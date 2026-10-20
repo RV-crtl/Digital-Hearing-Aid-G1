@@ -106,6 +106,8 @@ jobs:
           if ($null -eq $archive -or $archive.Length -le 200) {
             throw 'Evidence ZIP missing or too small.'
           }
+          python Tools/verify_evidence_bundle.py $archive.FullName
+          python Tools/test_verify_evidence_bundle.py
           Add-Type -AssemblyName System.IO.Compression.FileSystem
           $zip=[System.IO.Compression.ZipFile]::OpenRead($archive.FullName)
           try {
