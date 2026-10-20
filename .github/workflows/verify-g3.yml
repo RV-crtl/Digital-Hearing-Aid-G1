@@ -84,6 +84,9 @@ jobs:
         shell: pwsh
         run: |
           ./G1_RUN_ALL.ps1 -SkipPortableTests -SkipPdf
+          python Tools/test_verify_arm_evidence.py
+          python Validation/python/test_tree_integrity.py
+          python Validation/python/check_tree_integrity.py
           $archive = Get-ChildItem -Path . -Filter 'G1_QUALITY_EVIDENCE_*.zip' -File |
                      Sort-Object LastWriteTime -Descending | Select-Object -First 1
           if ($null -eq $archive -or $archive.Length -le 200) {
