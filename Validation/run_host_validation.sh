@@ -40,6 +40,7 @@ python3 Tests/test_dashboard_static.py
 python3 Validation/python/test_tree_integrity.py
 python3 Validation/python/check_tree_integrity.py
 python3 Tools/test_verify_arm_evidence.py
+python3 Tools/test_verify_evidence_bundle.py
 python3 Tools/publication_audit.py --output Validation/results/publication_audit.json
 python3 -m compileall -q Dashboard
 printf '\nPASS: G5 host DSP vectors, FSM, encoder, guardian, evidence trace and KiCad source audit.\n'
