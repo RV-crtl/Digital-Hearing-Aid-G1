@@ -59,7 +59,7 @@ def verify(path: Path) -> list[str]:
                 data_hash = hashlib.sha256(archive.read(name)).hexdigest()
                 if entry.get("sha256") != data_hash:
                     errors.append(f"SHA-256 mismatch for: {name}")
-            extra = set(names) - expected - {MANIFEST}
+            extra = {name for name in names if not name.endswith('/')} - expected - {MANIFEST}
             if extra:
                 errors.append("Unmanifested ZIP members: " + ", ".join(sorted(extra)[:10]))
             if not artifacts:
