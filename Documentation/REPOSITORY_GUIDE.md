@@ -20,7 +20,7 @@
 
 ## GitHub conventions
 
-- `main`: host-tested G7 engineering integration after PR #10; G8 hardening is reviewed separately; **hardware/ARM validation still pending**. Original G1 is archived under `archive/g1-baseline-before-g4-20261017` for rollback.
+- `main`: G8 source-hardening integration after merged PR #12; G9 folder-integrity improvements are under review; **hardware/ARM validation still pending**. Original G1 is archived under `archive/g1-baseline-before-g4-20261017` for rollback.
 - `Core/`: the application that the IDE compiles; `Recovery/`: copies restored after CubeMX; `References/`: original contributors' work, not linked into the current application.
 - `Validation/results/`: generated and ignored, not immutable proof. CI artifacts are attached to the specific commit.
 - Firmware changes must include portable regressions; board-affecting changes must identify pin/peripheral impact and bring-up checks.
