@@ -69,7 +69,7 @@
           <div class="control-group"><span class="control-title">Camera preset</span><div class="segmented" role="group" aria-label="Camera view"><button class="view-btn active" data-view="iso">ISO</button><button class="view-btn" data-view="top">TOP</button><button class="view-btn" data-view="side">SIDE</button></div></div>
           <div class="control-group"><label class="control-title" for="explode">Assembly separation <span id="explodeValue">0%</span></label><input id="explode" type="range" min="0" max="100" value="0" aria-label="Assembly separation"></div>
           <div class="control-switches"><label class="switch-row"><span>Auto rotation</span><input id="rotateToggle" type="checkbox" checked><span class="switch"></span></label><label class="switch-row"><span>Wireframe</span><input id="wireframeToggle" type="checkbox"><span class="switch"></span></label><label class="switch-row"><span>Housing visible</span><input id="housingToggle" type="checkbox" checked><span class="switch"></span></label></div>
-          <button id="resetModel" class="button button-line">Reset view <span>↺</span></button>
+          <button id="resetModel" class="button button-line">Reset view <span>↺</span></button><button id="loadLocalModel" class="button button-line" type="button" style="margin-top:9px">Open local CAD (.glb) <span>↗</span></button><input id="localModel" type="file" accept=".glb,model/gltf-binary" class="visually-hidden" aria-label="Choose GLB assembly model">
           <div class="model-caption">Provided assembly: <strong>3MF → GLB</strong><br><span id="modelMode">Checking for model asset</span></div>
         </aside>
       </div>
