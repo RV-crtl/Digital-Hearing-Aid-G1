@@ -54,3 +54,5 @@ Site code is solely a user interface; never use the interactive signal-map as a 
 The single-page [Systems Atlas](index.html#atlas) maps the standalone board's 2S LiFePO₄ supply, regulated rails, Bluetooth and telecoil samples, intended PDM/DFSDM microphone path, DMA half/full-buffer callbacks, FreeRTOS notification, AudioTask ownership, output FIFO and SAI2B audio. Every interactive node links to tracked firmware or actual KiCad source.
 
 The separate **preference learning laboratory** simulates the new portable `Core/Src/preference_learner.c` contextual learner with explicit increase/decrease controls. It never contacts a physical device or uploads user data. This is a behaviour model, not a validated medical hearing-aid classifier. See `Documentation/G11_STANDALONE_RUBRIC_AND_ADAPTATION.md` for the remaining production-integration and acoustic tests.
+
+The system atlas includes a **Print A3 System Diagram** link to `print-architecture.html` for the rubric's system-interface and viva printout. Print in landscape at A3 size. Bring two prints; this design map must be checked against the actual custom PCB before the exam.
