@@ -6,7 +6,7 @@ CFLAGS=(-std=c11 -O2 -Wall -Wextra -Werror -I Core/Inc)
 CC=${CC:-gcc}
 "$CC" "${CFLAGS[@]}" Tests/test_group_features.c Core/Src/group_features.c -o # Compile-only all portable modules even when they are not directly linked by a host test.
 mkdir -p Validation/results/portable_compile
-PORTABLE_MODULES=(audio_processing pcm_transport audio_dynamics telecoil_filter telecoil_detector signal_quality connectivity_service connectivity_actions bt_profile control_protocol tc_cleanup group_features group_guardian group_ui group_encoder connectivity_controller)
+PORTABLE_MODULES=(audio_processing pcm_transport audio_dynamics telecoil_filter telecoil_detector signal_quality connectivity_service connectivity_actions bt_profile control_protocol tc_cleanup group_features group_guardian group_ui group_encoder connectivity_controller preference_learner)
 for module in "${PORTABLE_MODULES[@]}"; do
   "$CC" "${CFLAGS[@]}" -c "Core/Src/$module.c" -o "Validation/results/portable_compile/$module.o"
 done
@@ -14,6 +14,8 @@ Validation/results/test_features
 "$CC" "${CFLAGS[@]}" Tests/test_encoder.c Core/Src/group_encoder.c -o Validation/results/test_encoder
 "$CC" "${CFLAGS[@]}" Tests/test_group_guardian.c Core/Src/group_guardian.c -o Validation/results/test_guardian
 "$CC" "${CFLAGS[@]}" Tests/test_group_ui.c Core/Src/group_ui.c -o Validation/results/test_group_ui
+Validation/results/test_preference_learner
+"$CC" "${CFLAGS[@]}" Tests/test_preference_learner.c Core/Src/preference_learner.c -o Validation/results/test_preference_learner
 "$CC" "${CFLAGS[@]}" Tests/test_control_protocol.c Core/Src/control_protocol.c -o Validation/results/test_control_protocol
 "$CC" "${CFLAGS[@]}" Tests/test_pcm_transport.c Core/Src/pcm_transport.c Core/Src/audio_processing.c -o Validation/results/test_pcm_transport
 "$CC" "${CFLAGS[@]}" Validation/c/audio_vectors.c Core/Src/audio_dynamics.c -o Validation/results/audio_vectors
