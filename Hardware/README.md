@@ -24,3 +24,11 @@ It enumerates unresolved library path references, project/schematic presence and
 6. Fabricate only after manufacturer stack-up checks, Gerber review, DFM and real continuity/power-up tests.
 
 For the risk and peripheral porting checklist see [`CUSTOM_PCB_PORTING_CHECKLIST.md`](CUSTOM_PCB_PORTING_CHECKLIST.md).
+
+## G11 intended battery and microphone architecture
+
+The end product is one **custom PCB** with **two 26650 LiFePO₄ cells, 3.25 V nominal each, connected in series (2S, nominal 6.50 V)**. The exact chosen cells and protection/BMS, charge method (if any), balancing, undervoltage, input transients, board regulators and amplifier supply all require a real electrical safety audit. Never treat the GitHub Pages power diagram as approval to apply an unregulated pack directly to 3.3 V MCU pins.
+
+The PCB U13 pin map identifies **DFSDM1_CKOUT (pad 10) and DFSDM1_DATIN2 (pad 35)** for the digital microphone. The checked-in `Core/Src/main.c` does not initialize a DFSDM driver; microphone capture/routing is a firmware integration requirement despite the physical circuit being designed. The provided 3MF is the source-accurate mechanical *design*, not an electrical/fabrication test report.
+
+Refer to [G11 rubric and integration gate](../Documentation/G11_STANDALONE_RUBRIC_AND_ADAPTATION.md) and [standalone black-box test plan](../Assessment/CUSTOM_PCB_BLACK_BOX_TEST_PLAN.md). The hardware owner should attach actual PCB test evidence in issue #2, microphone port status in issue #4 and pack protection data in issue #5.
