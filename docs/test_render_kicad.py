@@ -26,6 +26,9 @@ class RealKiCadPlots(unittest.TestCase):
                 self.assertEqual(name_for(Path(root+"-"+suffix+".svg")),expected)
         self.assertEqual(name_for(Path("260510-Digital_hearing_aid.svg")),
                          "260510-Digital hearing aid")
+        self.assertEqual(name_for(Path("Mid-Supply_Buffer.svg")), "Mid-Supply Buffer")
+        self.assertEqual(name_for(Path("Processor.svg")), "Processor")
+        self.assertEqual(name_for(Path("CCP.svg")), "CCP")
 
     def test_png_base64_whitespace_is_fixed_without_changing_image(self):
         binary=b"\x89PNG\r\n\x1a\n"+b"example source art"
