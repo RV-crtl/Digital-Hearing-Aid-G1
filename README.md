@@ -8,9 +8,17 @@
 ![Hardware](https://img.shields.io/badge/custom_PCB-not_validated-8b5e3c)
 ![ML](https://img.shields.io/badge/trained_ML-not_integrated-64748b)
 
-> **Engineering prototype / team project.** The current STM32CubeIDE target is **NUCLEO-L476RG**, with Bluetooth and telecoil PCM capture, DMA speaker output, a real FreeRTOS task structure, software source selection, optional DSP profiles, and a fault-pressure guardian, DMA-triggered AudioTask wake-ups, and a tested standalone one-button interface. The checked-in custom PCB is a **separate, unvalidated target**. This is not a certified hearing aid or validated acoustic safety device.
+> **Engineering prototype / team project.** The current STM32CubeIDE target is **custom PCB intended for standalone demonstration; NUCLEO-L476RG is the presently source-integrated firmware baseline**, with Bluetooth and telecoil PCM capture, DMA speaker output, a real FreeRTOS task structure, software source selection, optional DSP profiles, and a fault-pressure guardian, DMA-triggered AudioTask wake-ups, and a tested standalone one-button interface. The checked-in custom PCB is a **separate, unvalidated target**. This is not a certified hearing aid or validated acoustic safety device.
 
 ![Digital Hearing Aid system overview](Assets/system-overview.svg)
+
+## G11: standalone target and interactive systems atlas
+
+**Demonstration target:** the physical custom PCB, untethered, powered by **2 × 26650 LiFePO4 cells connected in series (3.25 V nominal per cell, 6.50 V nominal pack)**. PC/ST-LINK and NUCLEO are **not** part of operating mode. The team reports working hardware; its precise board revision and final integrated image still need reproducible on-board tests for this Git SHA. Never route 6.5 V directly to the MCU supply pins: verify actual regulator/protection/balance circuit and safe operating range.
+
+The [visual systems atlas](https://rv-crtl.github.io/Digital-Hearing-Aid-G1/#architecture) explains the complete signal/data/control and power flow, DMA buffer hand-offs, RTOS task priorities, microphone PDM/DFSDM path, Bluetooth/telecoil and optional learning. The [G11 custom-PCB assessment plan](Documentation/G11_STANDALONE_CUSTOM_PCB_RELEASE_PLAN.md) maps these items directly to the external black-box demonstration rubric.
+
+**Implemented vs research:** the microphone's PCB clock/data nets exist but its DFSDM firmware integration is not established; `Core/Src/adaptive_preferences.c` now implements a portable, bounded user-feedback preference algorithm with deterministic host tests, but it is not yet physically wired into MCU capture, control state or nonvolatile memory. The website's learning demo is a simulator, not a claim of deployed hardware AI.
 
 ## Choose your route
 
@@ -25,7 +33,7 @@
 
 ## Publication and hardware-release status
 
-**This repository is still private and does not yet have a project-wide open-source licence.** G1 is a student/team **NUCLEO-L476RG engineering prototype**, not a finished commercial/clinical hearing aid. Green CI verifies host source checks only; it cannot establish acoustic safety, enclosure reliability, medical conformity, supply/battery protection or custom-PCB functionality.
+**This repository is currently public; a project-wide open-source licence has not been confirmed.** Public visibility does not by itself grant reuse rights. G1 is a student/team **NUCLEO-L476RG engineering prototype**, not a finished commercial/clinical hearing aid. Green CI verifies host source checks only; it cannot establish acoustic safety, enclosure reliability, medical conformity, supply/battery protection or custom-PCB functionality.
 
 Before opening the repository to the public, clear contributor/institution rights and supplied third-party files. See the [public-source and device release gate](Documentation/PUBLICATION_GATE.md), [third-party provenance](Documentation/THIRD_PARTY_PROVENANCE.md), [security disclosure process](SECURITY.md) and [physical release checklist](Documentation/RELEASE_CHECKLIST.md).
 

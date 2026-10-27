@@ -16,6 +16,7 @@
   {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"}}
   </script>
   <script type="module" src="./app.js"></script>
+  <script type="module" src="./system-lab.js"></script>
   <link rel="icon" href="./favicon.svg" type="image/svg+xml">
 </head>
 <body>
@@ -24,7 +25,7 @@
   <header class="site-header">
     <a class="brand" href="#top" aria-label="G1 Home"><span class="brand-mark"><span></span></span><span>G1<span class="brand-slash">/</span><span class="brand-sub">LAB</span></span></a>
     <nav class="nav-links" aria-label="Main navigation">
-      <a href="#device">Device</a><a href="#signal">Signal path</a><a href="#schematics">Schematics</a><a href="#firmware">Firmware</a><a href="#verification">Validation</a>
+      <a href="#device">Device</a><a href="#architecture">System atlas</a><a href="#signal">Signal path</a><a href="#schematics">Schematics</a><a href="#firmware">Firmware</a><a href="#verification">Validation</a>
     </nav>
     <a class="nav-github" href="https://github.com/RV-crtl/Digital-Hearing-Aid-G1" target="_blank" rel="noopener noreferrer"><span class="status-dot"></span> View repository <span aria-hidden="true">↗</span></a>
     <button id="mobileNav" class="mobile-nav" aria-label="Toggle navigation" aria-expanded="false">☰</button>
@@ -34,7 +35,7 @@
       <div class="hero-copy">
         <div class="eyebrow"><span class="pulse-dot"></span> DIGITAL AUDIO ENGINEERING <span class="separator">/</span> G1</div>
         <h1>Inside<br>the <em>signal.</em></h1>
-        <p class="hero-desc">From electromagnetic induction to digital sound. Explore the architecture, circuitry and code behind an STM32-based hearing-aid engineering prototype.</p>
+        <p class="hero-desc">A standalone STM32 custom-board audio system with Bluetooth, telecoil and planned microphone acquisition. Explore the real circuitry, FreeRTOS, DMA and control logic.</p>
         <div class="hero-cta"><a class="button button-primary" href="#device">Explore the device <span>↗</span></a><a class="button button-ghost" href="#schematics">View schematics <span>↘</span></a></div>
         <div class="hero-metadata"><span><b>01</b> Hardware</span><span><b>02</b> Embedded software</span><span><b>03</b> Verification</span></div>
       </div>
@@ -70,7 +71,7 @@
           <div class="control-group"><label class="control-title" for="explode">Assembly separation <span id="explodeValue">0%</span></label><input id="explode" type="range" min="0" max="100" value="0" aria-label="Assembly separation"></div>
           <div class="control-switches"><label class="switch-row"><span>Auto rotation</span><input id="rotateToggle" type="checkbox" checked><span class="switch"></span></label><label class="switch-row"><span>Wireframe</span><input id="wireframeToggle" type="checkbox"><span class="switch"></span></label><label class="switch-row"><span>Housing visible</span><input id="housingToggle" type="checkbox" checked><span class="switch"></span></label></div>
           <button id="resetModel" class="button button-line">Reset view <span>↺</span></button><button id="loadLocalModel" class="button button-line" type="button" style="margin-top:9px">Open your 3D CAD (.3mf / .glb) <span>↗</span></button><input id="localModel" type="file" accept=".3mf,.glb,model/gltf-binary,model/3mf" class="visually-hidden" aria-label="Choose 3MF or GLB assembly model">
-          <div class="model-caption">Provided assembly: <strong>3MF → GLB</strong><br><span id="modelMode">Checking for model asset</span></div>
+          <div class="model-caption">Provided assembly: <strong>Local 3MF / hosted GLB</strong><br><span id="modelMode">Checking for model asset</span></div>
         </aside>
       </div>
       <div class="spec-grid">
@@ -99,6 +100,36 @@
       </div>
     </section>
 
+    <section id="architecture" class="section wrap atlas-section" aria-labelledby="atlas-title">
+      <div class="section-label">SYSTEM / FULL ELECTRICAL + SOFTWARE MAP</div>
+      <button id="atlasPrint" type="button" class="button button-ghost atlas-print">Print architecture at A3 ↗</button>
+      <div class="section-heading"><div><h2 id="atlas-title">One system.<span> Every signal.</span></h2><p>Explore the standalone custom-PCB target, bus ownership, DMA buffers, RTOS tasks and proposed adaptation. Click a signal source, then select individual blocks.</p></div><span class="section-index">SYSTEM ATLAS</span></div>
+      <div class="atlas-hero">
+        <div><small>DEPLOYMENT TARGET</small><strong>Custom PCB only</strong><p>No Nucleo, ST-LINK, serial console or tethered PC in operating mode. A phone is optional only as a Bluetooth audio source.</p></div>
+        <div><small>POWER SOURCE</small><strong>2 × 26650 LiFePO₄</strong><p>2 cells in series · nominal 6.5 V based on 3.25 V/cell. Regulated rails, protection, balance and cell-voltage operating limits require measured verification.</p></div>
+        <div><small>PROCESSOR</small><strong>STM32L476RG</strong><p>FreeRTOS priority scheduling · 24-bit SAI receive words · PCM processing · DMA-driven output.</p></div>
+      </div>
+      <div class="atlas-panel">
+        <div class="atlas-head"><div><small>INTERACTIVE / DATA PLANE</small><h3 id="atlasFlowTitle">Bluetooth audio</h3></div><span id="atlasFlowState" class="atlas-pill">Firmware transport</span></div>
+        <div class="atlas-tabs" role="group" aria-label="Select physical input signal"><button type="button" data-atlas-source="bt" aria-pressed="true">Bluetooth / SAI</button><button type="button" data-atlas-source="tc" aria-pressed="false">Telecoil / SAI</button><button type="button" data-atlas-source="mic" aria-pressed="false">Microphone / PDM <small>integration target</small></button></div>
+        <p id="atlasFlowDesc" class="atlas-copy"></p>
+        <div id="atlasFlowSteps" class="atlas-flow" aria-label="Signal stages"></div>
+        <p id="atlasInspect" class="atlas-inspect" aria-live="polite">Select any block to inspect buffer ownership, processing or physical interface.</p>
+        <div class="atlas-bits"><div><small>CAPTURE FORMAT</small><strong>24-bit SAI words</strong><p>RX circular DMA → completed-half snapshot; convert to signed PCM for processing.</p></div><div><small>REAL-TIME SYNCHRONIZATION</small><strong>ISR → task notification</strong><p>Notify AudioTask only after publishing a complete buffer. AudioTask services the control FSM periodically.</p></div><div><small>OUTPUT FORMAT</small><strong>16-bit PCM / SAI2B</strong><p>Mono FIFO → L/R slot mapping → SAI2B TX DMA → amplifier / transducer.</p></div></div>
+      </div>
+      <div class="atlas-panel">
+        <div class="atlas-head"><div><small>INTERACTIVE / CONTROL PLANE</small><h3>RTOS task ownership &amp; priorities</h3></div><span class="atlas-pill">Production-source references</span></div>
+        <p class="atlas-copy">Peripheral IRQs publish buffers, a high-priority audio task owns DSP state, and lower-priority work handles control and communications. Select a task to view its responsibilities and source.</p>
+        <div class="atlas-tasks" id="atlasTasks"></div><div class="atlas-inspect"><span id="atlasTaskInspect">Select any task to inspect its real-time contract.</span> <a id="atlasTaskSource" href="https://github.com/RV-crtl/Digital-Hearing-Aid-G1/blob/main/Core/Src/demo_app.c" target="_blank" rel="noopener noreferrer">Source ↗</a></div>
+      </div>
+      <div class="atlas-panel atlas-learning">
+        <div class="atlas-head"><div><small>INTERACTIVE / ADAPTATION RESEARCH</small><h3>Preference learning, without a cloud</h3></div><span class="atlas-pill">Simulator · not deployed firmware</span></div>
+        <p class="atlas-copy">Proposed on-device adaptation uses bounded contextual preferences: microphone/source statistics (level and frequency-band energy), current mode, history and user volume adjustments. Explicit changes would be stronger feedback than inferred intent. This demonstration stores nothing and <strong>does not claim that learning already runs on the PCB.</strong></p>
+        <div class="atlas-learning-controls"><label for="atlasLearningLevel">Observed loudness scene <select id="atlasLearningLevel"><option value="0">Quiet</option><option value="1">Moderate</option><option value="2">Loud</option></select></label><label for="atlasLearningAction">User feedback <select id="atlasLearningAction"><option value="up">Volume up</option><option value="down">Volume down</option></select></label><button id="atlasLearnButton" type="button">Teach preference ↗</button><button type="button" id="atlasLearningReset">Reset</button></div>
+        <div class="atlas-learning-output"><div><small>SCENE</small><strong id="atlasLearningScene">quiet</strong></div><div><small>LEARNED OFFSET</small><strong id="atlasLearningGain">+0.0 dB</strong></div><div><small>RULE</small><strong>–6 to +3 dB bounded</strong></div></div><p id="atlasLearningResult" class="atlas-inspect">Simulation only.</p>
+        <p class="atlas-copy">Production integration additionally requires user-input capture on the custom PCB, validated gain/output caps, a fault-safe fallback, robust nonvolatile updates, retention policy, signal-feature extraction, and real-world testing.</p>
+      </div>
+    </section>
     <section id="schematics" class="section wrap">
       <div class="section-label">03 / HARDWARE DESIGN</div>
       <div class="section-heading"><div><h2>The circuitry, <span>unfolded.</span></h2><p>Explore the real KiCad design files. The gallery uses full-resolution SVG sheets when exported in the Pages build.</p></div><span class="section-index">03 — 05</span></div>
@@ -110,7 +141,7 @@
     <section id="firmware" class="section code-section">
       <div class="wrap"><div class="section-label">04 / EMBEDDED SYSTEM</div><div class="section-heading"><div><h2>Real code. <span>Live architecture.</span></h2><p>Browse selected production C modules directly from the public GitHub repository—no fabricated code screenshots.</p></div><span class="section-index">04 — 05</span></div>
       <div class="code-shell">
-        <div class="code-sidebar"><div class="code-sidebar-label">SOURCE EXPLORER <span>C / STM32</span></div><button class="file-tab active" data-file="Core/Src/demo_app.c"><span class="file-icon">C</span><span>demo_app.c</span></button><button class="file-tab" data-file="Core/Src/group_features.c"><span class="file-icon">C</span><span>group_features.c</span></button><button class="file-tab" data-file="Core/Src/connectivity_controller.c"><span class="file-icon">C</span><span>connectivity_controller.c</span></button><button class="file-tab" data-file="Core/Src/group_ui.c"><span class="file-icon">C</span><span>group_ui.c</span></button><button class="file-tab" data-file="Core/Src/pcm_transport.c"><span class="file-icon">C</span><span>pcm_transport.c</span></button><div class="sidebar-foot">REAL REPOSITORY SOURCE<br><span>main branch · read only</span></div></div>
+        <div class="code-sidebar"><div class="code-sidebar-label">SOURCE EXPLORER <span>C / STM32</span></div><button class="file-tab active" data-file="Core/Src/demo_app.c"><span class="file-icon">C</span><span>demo_app.c</span></button><button class="file-tab" data-file="Core/Src/group_features.c"><span class="file-icon">C</span><span>group_features.c</span></button><button class="file-tab" data-file="Core/Src/connectivity_controller.c"><span class="file-icon">C</span><span>connectivity_controller.c</span></button><button class="file-tab" data-file="Core/Src/group_ui.c"><span class="file-icon">C</span><span>group_ui.c</span></button><button class="file-tab" data-file="Core/Src/pcm_transport.c"><span class="file-icon">C</span><span>pcm_transport.c</span></button><button class="file-tab" data-file="Core/Src/scene_features.c"><span class="file-icon">C</span><span>scene_features.c</span></button><button class="file-tab" data-file="Core/Src/adaptive_preferences.c"><span class="file-icon">C</span><span>adaptive_preferences.c</span></button><div class="sidebar-foot">REAL REPOSITORY SOURCE<br><span>main branch · read only</span></div></div>
         <div class="code-main"><div class="code-toolbar"><span class="three-dots"><i></i><i></i><i></i></span><span id="activeFile">Core/Src/demo_app.c</span><a id="codeOnGithub" href="https://github.com/RV-crtl/Digital-Hearing-Aid-G1/blob/main/Core/Src/demo_app.c" target="_blank" rel="noopener noreferrer">Open on GitHub ↗</a></div><div class="code-scroll"><pre id="codePreview" aria-label="Selected source code">Loading repository source…</pre></div><div class="code-status"><span><span class="status-dot"></span> <span id="codeStatus">Connecting to GitHub…</span></span><span>Preview only · full file on GitHub</span></div></div>
       </div></div>
     </section>

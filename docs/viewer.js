@@ -189,13 +189,15 @@ export function bootViewer({reducedMotion=false}={}){
   $("housingToggle").addEventListener("change",showHousing);
   controls.addEventListener("start",()=>{manualInput=true;transitioning=false;});
   controls.addEventListener("end",()=>{manualInput=false;});
-  setAssembly(placeholderAssembly(),false);
-  setWireframe();
-  showHousing();
+  // G11: never substitute a fictional device for the actual supplied CAD.
+  // Until the approved GLB is hosted, show an empty stage with an explicit
+  // local-load invitation. Native 3MF input is handled without upload.
+  status.textContent="Real model required · load your 3MF or the hosted approved GLB";
+  mode.textContent="No fictional preview — load the actual CAD assembly";
   new GLTFLoader().load("./assets/g1-assembly.glb",
-    gltf=>setAssembly(gltf.scene,true),
+    gltf=>{setAssembly(gltf.scene,true);setWireframe();showHousing();},
     undefined,
-    ()=>{status.textContent="Interactive design concept · full CAD available as a separate asset";});
+    ()=>{status.textContent="Choose Open your 3D CAD to view the authentic assembly";});
 
   function resize(){
     const width=Math.max(1,wrap.clientWidth),height=Math.max(1,wrap.clientHeight);

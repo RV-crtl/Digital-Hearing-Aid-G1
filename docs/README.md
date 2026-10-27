@@ -1,6 +1,6 @@
 # G1 / Inside the Signal — GitHub Pages visual lab
 
-The site lives entirely in this `docs/` directory and is independent of the embedded project. It adds:
+The site lives entirely in this `docs/` directory. It documents the current software separately from the standalone custom-PCB target and its remaining firmware verification gates. It adds:
 
 - A responsive, motion-rich engineering design showcase and a 3D assembly viewer (drag, zoom, rotation, camera presets, wireframe, housing, exploded assembly).
 - A dual-path Bluetooth/telecoil functional signal-map and **real** GitHub-sourced C code browser.
@@ -48,3 +48,9 @@ python -m http.server 8000 --directory docs
 Visit `http://localhost:8000`. Loading native WebGL and real code previews requires internet access for the pinned Three.js module CDN and public GitHub source. A plain `file://` open is not sufficient for browser module imports and fetch operations. The website uses no analytics, no server/database, and no device-control back end.
 
 Site code is solely a user interface; never use the interactive signal-map as a measured real-time physical recording.
+
+## G11: complete signal and task map
+
+The [system atlas](index.html#architecture) is a single-page, keyboard-accessible diagram of Bluetooth, telecoil, and proposed PDM microphone routes, including serial words, circular RX DMA, completed-half snapshots, task notifications, AudioTask ownership, PCM FIFO, SAI2B TX DMA and output electronics. It explains 2 × 26650 LiFePO4 3.25 V nominal cells **in series**, uses no NUCLEO as part of the final operating system, and shows the RTOS hierarchy with clickable production C sources. The contextual preference demo is a **browser simulator**, with portable algorithm source in `Core/Src/adaptive_preferences.c`, not a field-ready learned device.
+
+For the rubric and bench acceptance, see [standalone custom-PCB release plan](../Documentation/G11_STANDALONE_CUSTOM_PCB_RELEASE_PLAN.md). The authentic 3MF can be opened privately; no synthetic model is shown by default. An owner-approved `g1-assembly.glb` in `docs/assets` is still needed to show the genuine model automatically to every public visitor.

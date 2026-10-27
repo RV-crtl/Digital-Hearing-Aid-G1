@@ -20,8 +20,12 @@
 
 ## GitHub conventions
 
-- `main`: G8 source-hardening integration after merged PR #12; G9 folder-integrity improvements are under review; **hardware/ARM validation still pending**. Original G1 is archived under `archive/g1-baseline-before-g4-20261017` for rollback.
+- `main`: G10 visual lab baseline; G11 custom-PCB architecture and learning additions staged for review; **hardware/ARM validation still pending**. Original G1 is archived under `archive/g1-baseline-before-g4-20261017` for rollback.
 - `Core/`: the application that the IDE compiles; `Recovery/`: copies restored after CubeMX; `References/`: original contributors' work, not linked into the current application.
 - `Validation/results/`: generated and ignored, not immutable proof. CI artifacts are attached to the specific commit.
 - Firmware changes must include portable regressions; board-affecting changes must identify pin/peripheral impact and bring-up checks.
 - Do not present unimplemented TinyML, PDM microphone, USB-C battery charging, custom-PCB control, or calibrated audio safety as finished features.
+
+## Current target distinction
+
+**Final demonstrator:** self-powered custom PCB, two 26650 LiFePO4 series cells (3.25 V nominal each), no Nucleo/PC. **Existing integrated source:** STM32 Nucleo firmware baseline until PCB-specific peripheral mapping, control hardware, microphone DFSDM driver and measured output safety are verified. Use [G11 integration/black-box guide](G11_STANDALONE_CUSTOM_PCB_RELEASE_PLAN.md) and the [interactive full-system atlas](https://rv-crtl.github.io/Digital-Hearing-Aid-G1/#architecture).

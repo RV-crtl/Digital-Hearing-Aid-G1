@@ -1,0 +1,28 @@
+name: G11 reproducible source candidate (not hardware release)
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  candidate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Run source and website validators
+        run: |
+          python3 docs/validate_site.py
+          python3 Validation/python/check_tree_integrity.py
+          python3 Tools/publication_audit.py
+      - name: Assemble traceable source-only candidate
+        run: python3 Tools/g11_make_candidate.py
+      - name: Publish internal workflow artifact only
+        uses: actions/upload-artifact@v4
+        with:
+          name: G1-Source-Candidate-${{ github.sha }}
+          path: Validation/results/G1_SOURCE_CANDIDATE.zip
+          if-no-files-found: error
+          retention-days: 14

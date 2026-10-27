@@ -9,15 +9,15 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 SITE = ROOT / "docs"
 REQUIRED = ["index.html", "styles.css", "app.js", "viewer.js", "favicon.svg",
-            "render_kicad.py", "validate_site.py"]
-SECTIONS = ["device", "signal", "schematics", "firmware", "verification"]
+            "render_kicad.py", "validate_site.py", "system-lab.js"]
+SECTIONS = ["architecture", "device", "signal", "schematics", "firmware", "verification"]
 SCHEMATICS = ["Connectivity", "Audio", "Telecoil_Buffer_Circuits",
               "Analog_Frontend", "Amplifier", "Output", "Power",
               "Processor", "STM32", "User Interface", "Active_Bandpass_Filter",
               "Mid-Supply_Buffer", "CCP"]
 CODE = ["Core/Src/demo_app.c", "Core/Src/group_features.c",
         "Core/Src/connectivity_controller.c", "Core/Src/group_ui.c",
-        "Core/Src/pcm_transport.c"]
+        "Core/Src/pcm_transport.c", "Core/Src/scene_features.c", "Core/Src/adaptive_preferences.c"]
 
 
 def check() -> list[str]:
@@ -30,6 +30,11 @@ def check() -> list[str]:
     html = (SITE / "index.html").read_text(encoding="utf-8")
     js = (SITE / "app.js").read_text(encoding="utf-8")
     viewer = (SITE / "viewer.js").read_text(encoding="utf-8")
+    atlas = (SITE / "system-lab.js").read_text(encoding="utf-8")
+    if not all(key in atlas for key in ("atlasFlowSteps", "atlasTasks", "atlasLearnButton")):
+        errors.append("G11 full system interactive atlas controls absent")
+    for name in ("Core/Inc/adaptive_preferences.h", "Core/Src/adaptive_preferences.c", "Tests/test_adaptive_preferences.c", "Core/Inc/scene_features.h", "Core/Src/scene_features.c", "Tests/test_scene_features.c"):
+        if not (ROOT / name).is_file(): errors.append("Missing adaptive learner source: " + name)
     for part in SECTIONS:
         if f'id="{part}"' not in html:
             errors.append(f"Missing accessible site section: {part}")
