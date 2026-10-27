@@ -25,11 +25,17 @@
 
 ## Publication and hardware-release status
 
-**This repository is still private and does not yet have a project-wide open-source licence.** G1 is a student/team **NUCLEO-L476RG engineering prototype**, not a finished commercial/clinical hearing aid. Green CI verifies host source checks only; it cannot establish acoustic safety, enclosure reliability, medical conformity, supply/battery protection or custom-PCB functionality.
+**This GitHub repository is currently public and still lacks a project-wide licence.** G1 is a student/team **NUCLEO-L476RG engineering prototype**, not a finished commercial/clinical hearing aid. Green CI verifies host source checks only; it cannot establish acoustic safety, enclosure reliability, medical conformity, supply/battery protection or custom-PCB functionality.
 
 Before opening the repository to the public, clear contributor/institution rights and supplied third-party files. See the [public-source and device release gate](Documentation/PUBLICATION_GATE.md), [third-party provenance](Documentation/THIRD_PARTY_PROVENANCE.md), [security disclosure process](SECURITY.md) and [physical release checklist](Documentation/RELEASE_CHECKLIST.md).
 
 `python3 Tools/publication_audit.py --output Validation/results/publication_audit.json` checks the *tracked source tree* for certain accidental credentials, generated files and vendor notices; it **does not scan all git history** or grant publication permission. Raw source, hardware and assessment files remain subject to manual review. The repository must not be represented as medical or acoustic-safety validated.
+
+## G11 interactive systems atlas and adaptive DSP research
+
+The [interactive one-page System Atlas](docs/index.html#atlas) shows the final **custom-PCB design intent** rather than treating Nucleo/USB as the operating product. It covers the intended **2 × 26650 LiFePO₄ (3.25 V nominal each in series)** supply, voltage rails, Bluetooth/telecoil inputs, **digital microphone DFSDM design**, DMA half/full-buffer ownership, FreeRTOS task priorities, bounded GroupEvent control plane, DSP and output. Clicking any block links to the **actual original** firmware/KiCad file.
+
+`Core/Src/preference_learner.c` is a tested, heap-free **online contextual preference-learning component**: it groups loudness × coarse frequency × source into 27 contexts, learns from volume-up/down feedback, rate-limits repeats and proposes **attenuation only** at or below unity. **It is not yet wired to the custom PCB controls, persistent storage or calibrated speaker output.** The website includes a clearly marked interactive demo; do not describe it as fully deployed TinyML. See [G11 engineering traceability](Documentation/G11_STANDALONE_RUBRIC_AND_ADAPTATION.md).
 
 ## No-laptop Nucleo demonstration — physical B1 controls
 
