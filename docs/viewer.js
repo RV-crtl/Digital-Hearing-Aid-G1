@@ -154,6 +154,24 @@ export function bootViewer({reducedMotion=false}={}){
   }
   $$(".view-btn").forEach(b=>b.addEventListener("click",()=>setView(b.dataset.view)));
   $("resetModel").addEventListener("click",resetCamera);
+  $("loadLocalModel").addEventListener("click",()=>$("localModel").click());
+  $("localModel").addEventListener("change",async event=>{
+    const file=event.target.files&&event.target.files[0];
+    if(!file)return;
+    if(file.size>40*1024*1024||!file.name.toLowerCase().endsWith(".glb")){
+      status.textContent="Please select a GLB smaller than 40 MB";return;
+    }
+    status.textContent="Parsing local CAD file (stays on this device)…";
+    try{
+      const array=await file.arrayBuffer();
+      new GLTFLoader().parse(array,"",gltf=>{
+        setAssembly(gltf.scene,true);
+        mode.textContent="Local CAD loaded • never uploaded to a server";
+        status.textContent="Local "+file.name+" · drag or explode to explore";
+      },()=>{status.textContent="The selected GLB is damaged or unsupported";});
+    }catch(err){status.textContent="Unable to read this local model";}
+    event.target.value="";
+  });
   $("explode").addEventListener("input",updateExplode);
   $("wireframeToggle").addEventListener("change",setWireframe);
   $("housingToggle").addEventListener("change",showHousing);
