@@ -43,12 +43,12 @@ if(atlas){
  <div class="atlas-section-heading atlas-learning-head"><div><span class="micro-label">ONLINE ADAPTIVE PREFERENCE MODEL</span><h3>Let feedback shape a context.</h3></div><p>Interactive deterministic example of the portable C learner. A training simulator, <strong>not connected to the hearing aid</strong>.</p></div>
  <div class="atlas-learning" id="atlasLearning">
   <div class="atlas-learn-controls">
-   <label>Scene loudness <strong id="sceneLevelText">Moderate</strong><input id="atlasLoudness" type="range" min="0" max="2" value="1"></label>
-   <label>Spectral content <strong id="spectralText">Mid-range</strong><input id="atlasSpectrum" type="range" min="0" max="2" value="1"></label>
+   <label>Input peak amplitude <strong id="sceneLevelText">10,000 PCM counts</strong><input id="atlasLoudness" type="range" min="100" max="28000" step="100" value="10000"></label>
+   <label>Input sine frequency <strong id="spectralText">6,000 Hz</strong><input id="atlasSpectrum" type="range" min="100" max="15000" step="100" value="6000"></label>
    <label>Input context <select id="atlasContext"><option value="0">Bluetooth</option><option value="1">Telecoil</option><option value="2">Microphone (design)</option></select></label>
    <div class="atlas-feedback"><button type="button" id="prefDown" class="atlas-feedback-down">− User lowers volume</button><button type="button" id="prefUp" class="atlas-feedback-up">+ User raises volume</button></div><button type="button" id="prefReset" class="atlas-reset">Reset demo learning</button>
   </div>
-  <div class="atlas-learn-output"><span class="micro-label">BOUNDED ADAPTATION / EXAMPLE</span><div class="atlas-big-number" id="atlasGain">100<small>% relative level</small></div><div class="atlas-meter"><span id="atlasFill"></span></div><div class="atlas-learning-metrics"><span><small>Observations</small><strong id="atlasSamples">0</strong></span><span><small>Context confidence</small><strong id="atlasConfidence">Untrained</strong></span><span><small>Policy</small><strong>Attenuation-only</strong></span></div><p id="atlasLearnMessage">The model starts neutral. Give feedback multiple times in the same context to learn a bounded preference; other contexts remain independent.</p><div class="atlas-bands"><span>BASS</span><i></i><span>MID</span><i></i><span>TREBLE</span></div></div>
+  <div class="atlas-learn-output"><span class="micro-label">SYNTHETIC SIGNAL / FEATURE EXTRACTION (48 kHz)</span><svg id="atlasWave" class="atlas-wave" viewBox="0 0 440 88" preserveAspectRatio="none" aria-label="Synthetic PCM waveform preview"><path d="" stroke="#7debd4" stroke-width="1.7" fill="none"/></svg><span class="atlas-featureline" id="atlasFeatures">Context: measuring…</span><span class="micro-label">BOUNDED ADAPTATION / EXAMPLE</span><div class="atlas-big-number" id="atlasGain">100<small>% relative level</small></div><div class="atlas-meter"><span id="atlasFill"></span></div><div class="atlas-learning-metrics"><span><small>Observations</small><strong id="atlasSamples">0</strong></span><span><small>Context confidence</small><strong id="atlasConfidence">Untrained</strong></span><span><small>Policy</small><strong>Attenuation-only</strong></span></div><p id="atlasLearnMessage">The model starts neutral. Give feedback multiple times in the same context to learn a bounded preference; other contexts remain independent.</p><div class="atlas-bands"><span>BASS</span><i></i><span>MID</span><i></i><span>TREBLE</span></div></div>
  </div>
  <div class="atlas-warning"><strong>Production boundary.</strong> The source contains the real on-device-sized preference model and repeatable unit tests. A custom-PCB feedback event path, nonvolatile opt-in, electrical protection, acoustic gain calibration and IEC/regulatory evidence are still separate requirements. A positive correction never causes gain above unity in this model.</div>`;
  const $=(s,el=atlas)=>el.querySelector(s);
@@ -89,11 +89,24 @@ if(atlas){
  // deliberately omitted to allow manual educational feedback at user pace.
  const model=Array.from({length:27},()=>({bias:0,count:0}));
  const loudLabels=["Quiet","Moderate","Loud"],bandLabels=["Bass / low","Mid-range","Treble / high"];
- const active=()=>Number($("#atlasContext").value)*9+Number($("#atlasLoudness").value)*3+Number($("#atlasSpectrum").value);
+ function features(){
+  const peak=Number($("#atlasLoudness").value),hz=Number($("#atlasSpectrum").value);
+  const pcm=Array.from({length:128},(_,i)=>Math.round(peak*Math.sin(2*Math.PI*hz*i/48000)));
+  let magnitude=0,difference=0;for(let i=1;i<pcm.length;i++){magnitude+=Math.abs(pcm[i]);difference+=Math.abs(pcm[i]-pcm[i-1]);}
+  const mean=Math.floor(pcm.reduce((sum,v)=>sum+Math.abs(v),0)/pcm.length);
+  const level=mean<240?0:(mean>7500?2:1);
+  const band=magnitude<16?1:(difference<magnitude/2?0:(difference>magnitude+magnitude/2?2:1));
+  return {pcm,peak,hz,mean,level,band};
+ }
+ const active=()=>{const f=features();return Number($("#atlasContext").value)*9+f.level*3+f.band;};
  function paint(){
   const cell=model[active()];
-  $("#sceneLevelText").textContent=loudLabels[Number($("#atlasLoudness").value)];
-  $("#spectralText").textContent=bandLabels[Number($("#atlasSpectrum").value)];
+  const f=features();
+  $("#sceneLevelText").textContent=f.peak.toLocaleString()+" PCM counts";
+  $("#spectralText").textContent=f.hz.toLocaleString()+" Hz";
+  $("#atlasFeatures").textContent="Mean |PCM|: "+f.mean+" · "+loudLabels[f.level]+" · "+bandLabels[f.band]+" spectrum proxy";
+  const points=f.pcm.map((y,i)=>(i*440/127).toFixed(1)+","+(44-y*38/32768).toFixed(1)).join(" ");
+  $("#atlasWave path").setAttribute("d","M "+points.replace(/ /g," L "));
   const q15=cell.count>=2&&cell.bias<0?Math.max(24576,32768+cell.bias*1024):32768;
   const percent=Math.round(q15/32768*100);
   $("#atlasGain").innerHTML=String(percent)+'<small>% relative level</small>';
