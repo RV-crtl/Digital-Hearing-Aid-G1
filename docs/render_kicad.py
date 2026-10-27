@@ -32,11 +32,32 @@ def norm(s: str) -> str:
 
 
 def name_for(path: Path) -> str:
-    stem = norm(path.stem)
+    # KiCad names hierarchy exports like "root-Connectivity-Analog Frontend-Power.svg".
+    # Classify by the FINAL sheet name. The old contains() approach incorrectly
+    # classified every page as "Connectivity" because it appears in the parent path.
+    leaf = path.stem.split("-")[-1].strip()
+    aliases = {"audioinput": "Audio", "stm32l476rg": "STM32",
+               "controlconnectivityandpower": "Top-level overview"}
+    code = norm(leaf)
+    if code in aliases:
+        return aliases[code]
     for name in KNOWN:
-        if norm(name) in stem:
+        if norm(name) == code:
             return name.replace("_", " ")
-    return path.stem
+    return leaf
+
+
+def normalize_embedded_images(path: Path) -> None:
+    # KiCad 10 may insert whitespace and omit base64 padding inside embedded
+    # screenshots. Normalise to make SVG render in both browsers and SVG tools.
+    original = path.read_text(encoding="utf-8")
+    def clean(match: re.Match[str]) -> str:
+        payload = re.sub(r"\\s+", "", match.group(2))
+        return match.group(1) + payload + "=" * (-len(payload) % 4)
+    fixed = re.sub(r"(data:image/(?:png|jpeg);base64,)([A-Za-z0-9+/=\\s]+)",
+                   clean, original)
+    if fixed != original:
+        path.write_text(fixed, encoding="utf-8")
 
 
 def main() -> int:
@@ -55,7 +76,22 @@ def main() -> int:
     else:
         error = "kicad-cli not available; source-link gallery fallback retained"
         print("NOTICE:", error)
+    # A few sheets are retained as standalone source files outside the saved root
+    # hierarchy. Plot them individually to make the gallery more complete.
+    if cli:
+        for orphan in ("Processor.kicad_sch", "Mid-Supply_Buffer.kicad_sch",
+                       "CCP.kicad_sch"):
+            source = SHEETS / orphan
+            if source.is_file():
+                extra = subprocess.run(
+                    [cli, "sch", "export", "svg", "--output", str(PLOTS), str(source)],
+                    cwd=SHEETS, capture_output=True, text=True, timeout=120)
+                if extra.returncode:
+                    print(f"NOTICE: standalone {orphan} SVG export unavailable: " +
+                          (extra.stderr or extra.stdout)[-400:], file=sys.stderr)
     files = sorted(PLOTS.glob("*.svg"))
+    for path in files:
+        normalize_embedded_images(path)
     # Save only paths inside the curated site directory. Never publish other repo files.
     manifest = {
         "source": "Hardware/Original_KiCad/260510-Digital_hearing_aid.kicad_sch",
