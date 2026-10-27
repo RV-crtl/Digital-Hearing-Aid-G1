@@ -48,3 +48,9 @@ python -m http.server 8000 --directory docs
 Visit `http://localhost:8000`. Loading native WebGL and real code previews requires internet access for the pinned Three.js module CDN and public GitHub source. A plain `file://` open is not sufficient for browser module imports and fetch operations. The website uses no analytics, no server/database, and no device-control back end.
 
 Site code is solely a user interface; never use the interactive signal-map as a measured real-time physical recording.
+
+## G11 rubric-oriented systems atlas
+
+The single-page [Systems Atlas](index.html#atlas) maps the standalone board's 2S LiFePO₄ supply, regulated rails, Bluetooth and telecoil samples, intended PDM/DFSDM microphone path, DMA half/full-buffer callbacks, FreeRTOS notification, AudioTask ownership, output FIFO and SAI2B audio. Every interactive node links to tracked firmware or actual KiCad source.
+
+The separate **preference learning laboratory** simulates the new portable `Core/Src/preference_learner.c` contextual learner with explicit increase/decrease controls. It never contacts a physical device or uploads user data. This is a behaviour model, not a validated medical hearing-aid classifier. See `Documentation/G11_STANDALONE_RUBRIC_AND_ADAPTATION.md` for the remaining production-integration and acoustic tests.
