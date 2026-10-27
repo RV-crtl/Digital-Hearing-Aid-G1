@@ -35,8 +35,11 @@ def name_for(path: Path) -> str:
     # KiCad names hierarchy exports like "root-Connectivity-Analog Frontend-Power.svg".
     # Classify by the FINAL sheet name. The old contains() approach incorrectly
     # classified every page as "Connectivity" because it appears in the parent path.
-    if path.stem == "260510-Digital_hearing_aid":
-        return "260510-Digital hearing aid"
+    # Standalone source files may contain hyphens within their OWN names.
+    # Match the exact file stem before interpreting '-' as hierarchy delimiter.
+    for name in KNOWN:
+        if norm(path.stem) == norm(name):
+            return name.replace("_", " ")
     leaf = path.stem.split("-")[-1].strip()
     aliases = {"audioinput": "Audio", "stm32l476rg": "STM32",
                "controlconnectivityandpower": "Top-level overview"}
@@ -92,6 +95,21 @@ def main() -> int:
                     print(f"NOTICE: standalone {orphan} SVG export unavailable: " +
                           (extra.stderr or extra.stdout)[-400:], file=sys.stderr)
     files = sorted(PLOTS.glob("*.svg"))
+    # Exporting a standalone subsystem that also embeds the main hierarchy can
+    # duplicate every nested page. Keep one correctly labelled sheet per name:
+    # prefer the exported original top-level hierarchy over its repeated copy.
+    distinct = {}
+    for path in files:
+        name = name_for(path)
+        prior = distinct.get(name)
+        if prior is None or (path.name.startswith("260510-") and
+                             not prior.name.startswith("260510-")):
+            distinct[name] = path
+    selected = set(distinct.values())
+    for path in files:
+        if path not in selected:
+            path.unlink()
+    files = sorted(selected)
     for path in files:
         normalize_embedded_images(path)
     # Save only paths inside the curated site directory. Never publish other repo files.
