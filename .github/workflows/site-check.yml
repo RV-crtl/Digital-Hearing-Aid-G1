@@ -70,8 +70,11 @@ jobs:
           manifest=json.loads(Path('docs/plots/manifest.json').read_text())
           count=len(manifest["schematics"])
           print(f"Original KiCad SVG pages exported: {count}")
-          if count < 1:
-              raise SystemExit("No real KiCad SVG plots generated; do not publish an empty gallery as if it were CAD.")
+          if count < 12:
+              raise SystemExit("Incomplete KiCad SVG export; fewer than 12 original hierarchy sheets.")
+          names=[item["name"] for item in manifest["schematics"]]
+          if len(names)!=len(set(names)):
+              raise SystemExit("Duplicated schematic sheet names must be deduplicated before publishing.")
           assert all((Path("docs")/item["path"]).is_file() for item in manifest["schematics"])
           PY
       - name: Archive actual native schematic previews
