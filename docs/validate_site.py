@@ -17,7 +17,8 @@ SCHEMATICS = ["Connectivity", "Audio", "Telecoil_Buffer_Circuits",
               "Mid-Supply_Buffer", "CCP"]
 CODE = ["Core/Src/demo_app.c", "Core/Src/group_features.c",
         "Core/Src/connectivity_controller.c", "Core/Src/group_ui.c",
-        "Core/Src/pcm_transport.c"]
+        "Core/Src/pcm_transport.c", "Core/Src/preference_learner.c",
+        "Core/Src/speaker_output.c", "Core/Src/rtos_bootstrap.c"]
 
 
 def check() -> list[str]:
