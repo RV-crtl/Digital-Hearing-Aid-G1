@@ -21,7 +21,7 @@ flowchart LR
  GUARD -->|bypass optional G1 DSP| A
 ```
 
-Microphone DFSDM, USB audio, charger, custom PCB GPIO, and trained AI are **design candidates**, not running paths here.
+The original KiCad includes a DFSDM digital microphone interface, a final custom-PCB GPIO pin map, and an intended standalone **2 × 26650 LiFePO₄ 3.25 V/cell series pack (~6.5 V nominal)**. Those elements are real design inputs, but the checked-in operating firmware still uses the Nucleo B1/LD2 UI and has no proven DFSDM mic capture/routing or custom PCB electrical build. The new **portable** G1 contextual preference learner compiles and passes host/sanitizer tests; it is not yet fed by physical PCB volume feedback. USB audio, safe pack charging/balancing and trained-neural-network scene recognition remain separate open features.
 
 ## Concurrent responsibilities
 
@@ -34,7 +34,7 @@ Microphone DFSDM, USB audio, charger, custom PCB GPIO, and trained AI are **desi
 | HighLoad7 priority 7 | **20 s disruptive scheduler experiment** | Prohibited in normal hearing-aid use; may starve ControlTask |
 | DMA IRQ callbacks | Signal capture/transfer completed | Keep short, bounded; do not do heavy DSP or blocking I/O in interrupts |
 
-**Current limitation:** AudioTask still uses mixed queue-draining / yield logic inherited from R34. The proposed notification-driven architecture is not implemented just by drawing it here. Optimise only against measured CPU load, buffer depth and deadline data, without jeopardising playback.
+**Current G5 source behaviour:** the RX DMA half/full callbacks publish capture-block data and notify AudioTask. The task drains bounded capture rings and uses a task notification with a 5 ms idle timeout. This is implemented in source, not just diagrammed; the independent custom PCB build and measured IRQ-to-output latency still require hardware validation. Keep all optimisation behind verified physical deadlines and clean acoustic behaviour.
 
 ## Engineering time budget
 
@@ -54,3 +54,7 @@ Do not call the automatic three-level loudness heuristic 'trained TinyML.' Do no
 DMA ISR producers copy full PCM blocks, execute the publication memory barrier, advance their capture head, and only then call `vTaskNotifyGiveFromISR()`. The higher-priority AudioTask drains bounded queues and blocks with `ulTaskNotifyTake(pdTRUE,5ms)` when both are empty. This allows non-audio FSM servicing even in the absence of PCM; the actual IRQ-to-audio scheduling latency requires an STM32 test.
 
 The Nucleo PC13 button is debounced by `group_ui.c` in ControlTask. A FreeRTOS `GroupEvent` queue moves profile and routing requests to AudioTask, which exclusively owns optional DSP and FSM controls. See [the scheduling guide](G5_RTOS_AND_PERFORMANCE.md) and [one-button user guide](G5_STANDALONE_USER_GUIDE.md).
+
+## G11 source-linked architecture and assessment
+
+Use the [one-page interactive System Atlas](../docs/index.html#atlas), [printable A3 diagram](../docs/print-architecture.html), [standalone PCB rubric and adaptive research plan](G11_STANDALONE_RUBRIC_AND_ADAPTATION.md) and [19-minute black-box test plan](../Assessment/CUSTOM_PCB_BLACK_BOX_TEST_PLAN.md). The four priority classes, data/control separation and DMA capacity are explicitly derived from checked-in source and must be validated on the standalone final PCB, not inferred from synthetic website animations.
