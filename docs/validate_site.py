@@ -38,7 +38,7 @@ def check() -> list[str]:
     for target in re.findall(r'(?:src|href)="(\./[^"]+)"', html):
         if not (SITE / target[2:]).is_file():
             errors.append(f"Unresolved local web asset: {target}")
-    if not all(token in viewer for token in ["GLTFLoader", "OrbitControls", "g1-assembly.glb", "placeholderAssembly"]):
+    if not all(token in viewer for token in ["GLTFLoader", "ThreeMFLoader", "OrbitControls", "g1-assembly.glb", "placeholderAssembly"]):
         errors.append("3D viewer lacks true-CAD loading or fallback")
     if not all(token in html for token in ['id="schematicDialog"', 'id="codePreview"', 'id="modelViewport"']):
         errors.append("Interactive page components missing")
