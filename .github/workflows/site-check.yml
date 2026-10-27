@@ -37,6 +37,7 @@ jobs:
         run: |
           node --input-type=module --check < docs/app.js
           node --input-type=module --check < docs/viewer.js
+          node --input-type=module --check < docs/system-atlas.js
       - name: Confirm publication folder has no environment secrets
         run: |
           test -s docs/index.html
