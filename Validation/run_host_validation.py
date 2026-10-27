@@ -20,6 +20,7 @@ def main():
       ("encoder","Tests/test_encoder.c","Core/Src/group_encoder.c"),
       ("guardian","Tests/test_group_guardian.c","Core/Src/group_guardian.c"),
       ("group_ui","Tests/test_group_ui.c","Core/Src/group_ui.c"),
+      ("preference_learner","Tests/test_preference_learner.c","Core/Src/preference_learner.c"),
       ("control_protocol","Tests/test_control_protocol.c","Core/Src/control_protocol.c"),
       ("pcm_transport","Tests/test_pcm_transport.c","Core/Src/pcm_transport.c","Core/Src/audio_processing.c"),
       ("audio_vectors","Validation/c/audio_vectors.c","Core/Src/audio_dynamics.c"),
@@ -28,7 +29,7 @@ def main():
     )
     # Compile every application module that has no HAL/FreeRTOS dependency.
     # A successful subset of unit tests must not hide errors in unused portable files.
-    portable_modules=("audio_processing","pcm_transport","audio_dynamics","telecoil_filter","telecoil_detector","signal_quality","connectivity_service","connectivity_actions","bt_profile","control_protocol","tc_cleanup","group_features","group_guardian","group_ui","group_encoder","connectivity_controller",)
+    portable_modules=("audio_processing","pcm_transport","audio_dynamics","telecoil_filter","telecoil_detector","signal_quality","connectivity_service","connectivity_actions","bt_profile","control_protocol","tc_cleanup","group_features","group_guardian","group_ui","group_encoder","connectivity_controller","preference_learner",)
     objects=OUT/"portable_compile"
     objects.mkdir(exist_ok=True)
     for module in portable_modules:
@@ -36,7 +37,7 @@ def main():
     start=time.monotonic()
     for name,*sources in groups:
         run(cc,*flags,*sources,"-o",OUT/(name+suffix))
-    for name in ("features","encoder","guardian","group_ui","control_protocol","pcm_transport","connectivity"):
+    for name in ("features","encoder","guardian","group_ui","preference_learner","control_protocol","pcm_transport","connectivity"):
         run(OUT/(name+suffix))
     run(OUT/("audio_vectors"+suffix),OUT/"audio_vectors.csv")
     with (OUT/"profile_host_benchmark.csv").open("w",encoding="utf-8") as f:

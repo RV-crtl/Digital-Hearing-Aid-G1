@@ -1,0 +1,12 @@
+changelog:
+  categories:
+    - title: Firmware and runtime
+      labels: [firmware, enhancement]
+    - title: Website and 3D documentation
+      labels: [website, documentation]
+    - title: Reliability, tests and safety
+      labels: [bug, tests, safety]
+    - title: Maintenance
+      labels: [dependencies, maintenance]
+  exclude:
+    labels: [skip-changelog]

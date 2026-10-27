@@ -8,16 +8,17 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SITE = ROOT / "docs"
-REQUIRED = ["index.html", "styles.css", "app.js", "viewer.js", "favicon.svg",
+REQUIRED = ["index.html", "styles.css", "app.js", "viewer.js", "system-atlas.js", "system-atlas.css", "print-architecture.html", "favicon.svg",
             "render_kicad.py", "validate_site.py"]
-SECTIONS = ["device", "signal", "schematics", "firmware", "verification"]
+SECTIONS = ["device", "signal", "atlas", "schematics", "firmware", "verification"]
 SCHEMATICS = ["Connectivity", "Audio", "Telecoil_Buffer_Circuits",
               "Analog_Frontend", "Amplifier", "Output", "Power",
               "Processor", "STM32", "User Interface", "Active_Bandpass_Filter",
               "Mid-Supply_Buffer", "CCP"]
 CODE = ["Core/Src/demo_app.c", "Core/Src/group_features.c",
         "Core/Src/connectivity_controller.c", "Core/Src/group_ui.c",
-        "Core/Src/pcm_transport.c"]
+        "Core/Src/pcm_transport.c", "Core/Src/preference_learner.c",
+        "Core/Src/speaker_output.c", "Core/Src/rtos_bootstrap.c"]
 
 
 def check() -> list[str]:
@@ -38,12 +39,20 @@ def check() -> list[str]:
     for target in re.findall(r'(?:src|href)="(\./[^"]+)"', html):
         if not (SITE / target[2:]).is_file():
             errors.append(f"Unresolved local web asset: {target}")
-    if not all(token in viewer for token in ["GLTFLoader", "ThreeMFLoader", "OrbitControls", "g1-assembly.glb", "placeholderAssembly"]):
-        errors.append("3D viewer lacks true-CAD loading or fallback")
+    if not all(token in viewer for token in ["GLTFLoader", "ThreeMFLoader", "OrbitControls", "g1-assembly.glb", "cadEmptyLoad"]):
+        errors.append("3D viewer lacks authentic CAD loading and missing-model state")
+    if "id=\"cadEmpty\"" not in html:
+        errors.append("Missing honest unavailable-CAD state")
     if not all(token in html for token in ['id="schematicDialog"', 'id="codePreview"', 'id="modelViewport"']):
         errors.append("Interactive page components missing")
     if not all(name in js for name in SCHEMATICS):
         errors.append("Schematic navigation omits an original KiCad sheet")
+    if not (SITE / "print-architecture.html").is_file():
+        errors.append("Missing A3 printable system overview")
+    if "system-atlas.js" not in html or "id=\"atlasMount\"" not in html:
+        errors.append("Missing interactive one-page system atlas")
+    if not (ROOT / "Core/Src/preference_learner.c").is_file():
+        errors.append("Adaptive preference model source missing")
     for name in CODE:
         if not (ROOT / name).is_file() or name not in html:
             errors.append(f"Code explorer references missing firmware source: {name}")

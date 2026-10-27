@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>G1 / Complete System Architecture · A3</title>
+<style>
+@page{size:A3 landscape;margin:11mm}
+*{box-sizing:border-box}
+body{background:#ecf3f6;color:#0b1d2b;font:12px/1.43 system-ui,-apple-system,Segoe UI,Arial,sans-serif;margin:0}
+.sheet{max-width:1500px;margin:20px auto;background:white;padding:22px 34px;box-shadow:0 12px 70px #143a4b25;border:1px solid #c8d6df}
+header{display:flex;justify-content:space-between;align-items:center;padding-bottom:15px;border-bottom:3px solid #0a786a}
+header h1{font-size:29px;letter-spacing:-.07em;margin:0}
+header span{font:700 10px monospace;letter-spacing:.13em;color:#27695e}
+p{margin:0}
+h2{font-size:16px;letter-spacing:-.03em;margin:17px 0 7px}
+small{font-size:10px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.powerbar{display:grid;grid-template-columns:1.2fr .4fr 1fr .4fr 1.4fr;gap:6px;align-items:center;margin:12px 0}
+.block{border:1px solid #9dc4c4;border-radius:7px;background:#eaf6f2;min-height:54px;padding:9px}
+.block strong{display:block;font-size:12px}
+.block span{display:block;color:#3d656b;font-size:10px}
+.block.power{background:#fff3d6;border-color:#dcb96b}
+.block.control{background:#edf0ff;border-color:#bac7e4}
+.block.design{background:#f3eefc;border-color:#d3bdea}
+.arrow{text-align:center;font-size:20px;color:#008878}
+.audio{display:grid;grid-template-columns:1.25fr .24fr 1fr .24fr 1fr .24fr 1.1fr .24fr 1fr .24fr 1.2fr;gap:5px;align-items:stretch}
+.audio .block{min-height:117px}
+.audio .arrow{display:grid;place-items:center}
+.pill{font:700 10px monospace;color:#0b6d62;letter-spacing:.03em}
+.inputs{display:flex;flex-direction:column;gap:3px}
+.inputs>div{padding:5px;border:1px solid #8ebabe;border-radius:4px;background:#fff;font-size:10px}
+.inputs>.candidate{background:#f0e9fa}
+.flow{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.t{border:1px solid #b0bdd0;background:#f5f7fc;padding:9px;border-radius:7px;min-height:91px}
+.t>strong{display:block;font-size:13px}
+.t>span{display:block;color:#52677b;font-size:10px}
+.t code{color:#155c89;font-size:10px}
+table{width:100%;border-collapse:collapse;font-size:10px}
+td,th{padding:6px 8px;border:1px solid #b5cdd2;text-align:left;vertical-align:top}
+th{background:#def0ec}
+.critical{padding:8px 11px;background:#fff4e2;border-left:3px solid #d7a745;margin-top:12px;font-size:10px}
+.fineprint{color:#50727a;font-size:9px;margin-top:11px}
+.actions{display:flex;justify-content:space-between;gap:8px}
+button,.back{padding:10px 16px;border:1px solid #156c66;border-radius:7px;background:#0b7b6e;color:#fff;cursor:pointer}
+@media print{body{background:#fff} .sheet{margin:0;padding:0;border:0;box-shadow:none}.actions{display:none} header{padding-top:0} h1{font-size:27px} h2{margin-top:12px}.audio .block{min-height:108px}}
+@media(max-width:900px){.sheet{padding:14px}.audio{display:flex;flex-wrap:wrap}.audio .block{flex:1 1 130px}.row{grid-template-columns:1fr}.flow{grid-template-columns:repeat(2,1fr)}}
+</style></head><body><div class="sheet">
+<header><div><span>ZEIT4232 · COMPLETE HARDWARE / SOFTWARE INTERFACE OVERVIEW</span><h1>G1 / Inside the Signal</h1><p>Standalone custom PCB · intended 2S LiFePO₄ supply · data plane, control plane and synchronization</p></div><div class="actions"><a class="back" href="./index.html#atlas">← Atlas</a><button onclick="window.print()">Print A3 landscape</button></div></header>
+<h2>01 / POWER: NO HOST, NO NUCLEO</h2>
+<div class="powerbar"><div class="block power"><strong>2 × 26650 LiFePO₄</strong><span>Cells in series · 3.25 V nominal each · 6.5 V nominal pack</span></div><span class="arrow">→</span><div class="block power"><strong>Pack protection / power conditioning</strong><span>Cell, wiring and fault limits need bench evidence</span></div><span class="arrow">→</span><div class="block power"><strong>Regulated supply domains</strong><span>MCU 3.3 V and analogue/digital audio rails, grounds and amplifier</span></div></div>
+<h2>02 / AUDIO DATA: HARDWARE → DMA → REAL-TIME OWNER → OUTPUT</h2>
+<div class="audio">
+<div class="block"><div class="pill">INPUTS / SOURCE</div><div class="inputs"><div><b>Bluetooth</b> · SAI1A</div><div><b>Telecoil</b> · analogue + SAI2A</div><div class="candidate"><b>PDM microphone</b> · DFSDM1 [design; port pending]</div></div></div>
+<div class="arrow">→</div>
+<div class="block"><div class="pill">RX PERIPHERALS</div><strong>24-bit PCM / 32-bit DMA words</strong><span>SAI RX circular halves; half/full IRQ; copy to capture ring; publish before notify</span></div>
+<div class="arrow">→</div>
+<div class="block"><div class="pill">RTOS WAKEUP</div><strong>ISR → notification</strong><span>vTaskNotifyGiveFromISR; AudioTask ulTaskNotifyTake; 8-slot capture ring</span></div>
+<div class="arrow">→</div>
+<div class="block"><div class="pill">AUDIO OWNER</div><strong>AudioTask · P7</strong><span>Source FSM, 24-to-16-bit decode, DSP, optional attenuation, guardian recovery</span></div>
+<div class="arrow">→</div>
+<div class="block"><div class="pill">TX DATA BUFFER</div><strong>Elastic sample FIFO</strong><span>4096 mono samples; clock drift control; stereo output framing</span></div>
+<div class="arrow">→</div>
+<div class="block"><div class="pill">PHYSICAL OUTPUT</div><strong>SAI2B + TX DMA</strong><span>External amplifier / transducer. Calibrate actual level before ear use.</span></div>
+</div>
+<h2>03 / CONTROL PLANE: NO AUDIO SAMPLES INSIDE CONTROL QUEUE</h2>
+<div class="row">
+<div class="block control"><strong>Actual board rotary / touch / control intent → ControlTask</strong><span>PCB pins require port; Nucleo B1 PC13 and LD2 PA5 are not on the custom board. Filter user events, map them into compact GroupEvent{type,value} values and xQueueSend(...,0) into 8-entry queue. AudioTask is sole DSP/PCM state writer.</span></div>
+<div class="block design"><strong>Contextual preference learning · integration phase</strong><span>RAM table: 3 source × 3 loudness × 3 spectral buckets = 27 contexts. Learn only from explicit up/down feedback. Two valid observations required; cooldown 250 ms; recommend 0.75–1.0 relative Q15 attenuation, never amplify above unity.</span></div>
+</div>
+<h2>04 / FREE RTOS OWNERSHIP & SYNCHRONIZATION</h2>
+<div class="flow">
+<div class="t"><strong>AudioTask · priority 7</strong><span>Owns PCM, DSP, source FSM, guardian, output FIFO. Consumes queue. Bounded DMA processing.</span><code>demo_app.c</code></div>
+<div class="t"><strong>ControlTask · priority 6</strong><span>Debounce and UI; enqueue commands without changing audio state. PCB driver port pending.</span><code>group_ui.c</code></div>
+<div class="t"><strong>Bluetooth task · priority 5</strong><span>Link health, input status; no direct overwrite of AudioTask source buffers.</span><code>connectivity_controller.c</code></div>
+<div class="t"><strong>Background · lower priority</strong><span>Non-audio work and telemetry, no priority-7 synthetic stress tasks in operating image.</span><code>demo_app.c</code></div>
+</div>
+<h2>05 / INTERFACE CONTRACT & TEST-LEVEL HONESTY</h2>
+<table><thead><tr><th>Boundary</th><th>Payload & owner</th><th>Timing / fault contract</th></tr></thead><tbody>
+<tr><td>SAI receive → DMA</td><td>24-bit signed audio inside 32-bit words, ISR-producer / AudioTask-consumer</td><td>48 kHz target; half/full capture; ring must not overrun</td></tr>
+<tr><td>ISR → AudioTask</td><td>Task notification only after complete data publication</td><td>No heap/blocking/logging in IRQ; bounded drain and counters</td></tr>
+<tr><td>ControlTask → AudioTask</td><td>Copied GroupEvent values via queue of eight</td><td>Zero-timeout queue send, observable drop count, sole AudioTask writer</td></tr>
+<tr><td>Adaptive preferences</td><td>Explicit user feedback; fixed 27-cell RAM memory</td><td>No boost above unity; not yet custom-PCB integrated or calibrated</td></tr>
+<tr><td>Power and final PCB</td><td>2S LiFePO₄ → regulators → GPIO/SAI/DFSDM/amp</td><td>Measured protection, pin AF, board bring-up and acoustic safety required</td></tr>
+</tbody></table>
+<div class="critical"><strong>Rubric reminder:</strong> Demonstrate only observable whole-system tests (10–20 min goal, 30 max), using final self-powered device without ST-Link or serial debug; no dummy RTOS tasks. Printed diagram is a viva aid, not proof of operating status. KiCad pin mapping / final hardware timing / adaptive output remain acceptance gates.</div>
+<p class="fineprint">Source of truth: Core/Src/demo_app.c; group_ui.c; preference_learner.c; speaker_output.c; Hardware/STM32_U13_PINMAP.csv and KiCad project; Documentation/G11_STANDALONE_RUBRIC_AND_ADAPTATION.md. © G1 contributors; redistribution rights must be confirmed.</p>
+</div></body></html>

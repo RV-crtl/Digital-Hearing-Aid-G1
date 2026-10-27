@@ -104,6 +104,7 @@ export function bootViewer({reducedMotion=false}={}){
   function setAssembly(next,isCAD){
     if(assembly)scene.remove(assembly);
     assembly=next;loadedCAD=isCAD;
+    const empty=document.getElementById("cadEmpty");if(empty)empty.hidden=true;
     const bnd=new THREE.Box3().setFromObject(assembly);
     const center=bnd.getCenter(new THREE.Vector3());
     assembly.position.sub(center);
@@ -156,6 +157,7 @@ export function bootViewer({reducedMotion=false}={}){
   $$(".view-btn").forEach(b=>b.addEventListener("click",()=>setView(b.dataset.view)));
   $("resetModel").addEventListener("click",resetCamera);
   $("loadLocalModel").addEventListener("click",()=>$("localModel").click());
+  $("cadEmptyLoad").addEventListener("click",()=>$("localModel").click());
   $("localModel").addEventListener("change",async event=>{
     const file=event.target.files&&event.target.files[0];
     if(!file)return;
@@ -189,13 +191,14 @@ export function bootViewer({reducedMotion=false}={}){
   $("housingToggle").addEventListener("change",showHousing);
   controls.addEventListener("start",()=>{manualInput=true;transitioning=false;});
   controls.addEventListener("end",()=>{manualInput=false;});
-  setAssembly(placeholderAssembly(),false);
+  status.textContent="Load the original 3MF / GLB to inspect the real CAD assembly";
+  mode.textContent="No invented model is displayed when the true CAD asset is unavailable";
   setWireframe();
   showHousing();
   new GLTFLoader().load("./assets/g1-assembly.glb",
     gltf=>setAssembly(gltf.scene,true),
     undefined,
-    ()=>{status.textContent="Interactive design concept · full CAD available as a separate asset";});
+    ()=>{status.textContent="Actual model not hosted yet · choose your supplied 3MF or GLB";});
 
   function resize(){
     const width=Math.max(1,wrap.clientWidth),height=Math.max(1,wrap.clientHeight);

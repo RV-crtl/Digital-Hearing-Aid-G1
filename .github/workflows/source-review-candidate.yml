@@ -1,0 +1,66 @@
+name: Prepare reviewable source candidate (not a validated firmware release)
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  source-candidate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify G1 production-independent C and release integrity
+        run: |
+          python3 Assessment/validate_pack.py
+          python3 Tools/g1_preflight.py
+          python3 Validation/run_host_validation.py
+          python3 docs/validate_site.py
+          node --input-type=module --check < docs/system-atlas.js
+      - name: Assemble revision-locked source-only review package
+        env:
+          G1_SOURCE_SHA: ${{ github.sha }}
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          from zipfile import ZipFile, ZIP_DEFLATED
+          import hashlib, json, os
+          roots=('Core/','Tests/','Documentation/G11_STANDALONE_RUBRIC_AND_ADAPTATION.md',
+                 'docs/index.html','docs/system-atlas.js','docs/system-atlas.css',
+                 'docs/print-architecture.html','README.md')
+          paths=[]
+          for item in roots:
+              path=Path(item)
+              if path.is_dir():
+                  paths.extend(p for p in path.rglob('*') if p.is_file())
+              elif path.is_file():
+                  paths.append(path)
+              else:
+                  raise SystemExit('Missing review package input: '+item)
+          paths=sorted(set(paths),key=lambda p:p.as_posix())
+          out=Path('review-artifacts')
+          out.mkdir(exist_ok=True)
+          sha=os.environ['G1_SOURCE_SHA']
+          status=('G1 SOURCE-ONLY ENGINEERING REVIEW PACKAGE\n'
+                  'Build SHA: '+sha+'\n'
+                  'This archive is NOT a flashed STM32 firmware, validated 2S battery, tested PCB,\n'
+                  'calibrated acoustic medical device, tested microphone route or complete licensed distribution.\n'
+                  'Use original GitHub repository for dependency notices and exact version history.\n')
+          manifest={'project':'G1 prototype source review','git_sha':sha,'device_validated':False,
+                    'arm_binary_included':False,'files':[]}
+          with ZipFile(out/'G1_SOURCE_REVIEW.zip','w',compression=ZIP_DEFLATED,compresslevel=8) as z:
+              for p in paths:
+                  blob=p.read_bytes()
+                  z.writestr(p.as_posix(),blob)
+                  manifest['files'].append({'path':p.as_posix(),'sha256':hashlib.sha256(blob).hexdigest(),'size_bytes':len(blob)})
+              z.writestr('EVIDENCE_STATUS.txt',status)
+              z.writestr('SOURCE_MANIFEST.json',json.dumps(manifest,indent=2)+'\n')
+          (out/'SOURCE_MANIFEST.json').write_text(json.dumps(manifest,indent=2)+'\n')
+          print('Review files:',len(paths),'Git SHA:',sha)
+          PY
+      - name: Upload review artifacts (never publish firmware release)
+        uses: actions/upload-artifact@v4
+        with:
+          name: g1-source-review-${{ github.sha }}
+          path: review-artifacts/
+          retention-days: 30
+          if-no-files-found: error
