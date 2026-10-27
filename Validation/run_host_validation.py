@@ -18,6 +18,7 @@ def main():
     groups=(
       ("features","Tests/test_group_features.c","Core/Src/group_features.c"),
       ("preferences","Tests/test_adaptive_preferences.c","Core/Src/adaptive_preferences.c"),
+      ("scene_features","Tests/test_scene_features.c","Core/Src/scene_features.c"),
       ("encoder","Tests/test_encoder.c","Core/Src/group_encoder.c"),
       ("guardian","Tests/test_group_guardian.c","Core/Src/group_guardian.c"),
       ("group_ui","Tests/test_group_ui.c","Core/Src/group_ui.c"),
@@ -29,15 +30,15 @@ def main():
     )
     # Compile every application module that has no HAL/FreeRTOS dependency.
     # A successful subset of unit tests must not hide errors in unused portable files.
-    portable_modules=("adaptive_preferences","audio_processing","pcm_transport","audio_dynamics","telecoil_filter","telecoil_detector","signal_quality","connectivity_service","connectivity_actions","bt_profile","control_protocol","tc_cleanup","group_features","group_guardian","group_ui","group_encoder","connectivity_controller",)
+    portable_modules=("scene_features","adaptive_preferences","audio_processing","pcm_transport","audio_dynamics","telecoil_filter","telecoil_detector","signal_quality","connectivity_service","connectivity_actions","bt_profile","control_protocol","tc_cleanup","group_features","group_guardian","group_ui","group_encoder","connectivity_controller",)
     objects=OUT/"portable_compile"
     objects.mkdir(exist_ok=True)
     for module in portable_modules:
         run(cc,*flags,"-c",f"Core/Src/{module}.c","-o",objects/(module+".o"))
     start=time.monotonic()
     for name,*sources in groups:
-        run(cc,*flags,*sources,"-o",OUT/(name+suffix))
-    for name in ("preferences","features","encoder","guardian","group_ui","control_protocol","pcm_transport","connectivity"):
+        run(cc,*flags,*sources,"-o",OUT/(name+suffix),"-lm")
+    for name in ("scene_features","preferences","features","encoder","guardian","group_ui","control_protocol","pcm_transport","connectivity"):
         run(OUT/(name+suffix))
     run(OUT/("audio_vectors"+suffix),OUT/"audio_vectors.csv")
     with (OUT/"profile_host_benchmark.csv").open("w",encoding="utf-8") as f:
