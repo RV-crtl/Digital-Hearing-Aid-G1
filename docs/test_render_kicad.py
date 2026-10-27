@@ -28,9 +28,9 @@ class RealKiCadPlots(unittest.TestCase):
                          "260510-Digital hearing aid")
 
     def test_png_base64_whitespace_is_fixed_without_changing_image(self):
-        binary=b"\\x89PNG\\r\\n\\x1a\\n"+b"example source art"
+        binary=b"\x89PNG\r\n\x1a\n"+b"example source art"
         encoded=base64.b64encode(binary).decode("ascii").rstrip("=")
-        spaced=encoded[:10]+"  "+encoded[10:19]+"\\n"+encoded[19:]
+        spaced=encoded[:10]+"  "+encoded[10:19]+"\n"+encoded[19:]
         with tempfile.TemporaryDirectory() as folder:
             path=Path(folder)/"test.svg"
             path.write_text('<svg><image href="data:image/png;base64,'+spaced+'"/></svg>',
@@ -39,7 +39,7 @@ class RealKiCadPlots(unittest.TestCase):
             text=path.read_text(encoding="utf-8")
             part=text.split("base64,",1)[1].split('"',1)[0]
             self.assertNotIn(" ",part)
-            self.assertNotIn("\\n",part)
+            self.assertNotIn("\n",part)
             self.assertEqual(base64.b64decode(part),binary)
 
 
