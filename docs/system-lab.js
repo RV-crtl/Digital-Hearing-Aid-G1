@@ -29,6 +29,6 @@ let weights=new Float32Array(3),counts=new Uint8Array(3);
 const levels=["quiet","moderate","loud"];
 function step(){const k=Number(level.value);$("atlasLearningScene").textContent=levels[k];$("atlasLearningGain").textContent=(weights[k]>=0?"+":"")+weights[k].toFixed(1)+" dB";indicator.textContent="Simulated preference offset in "+levels[k]+" scene; unsaved, not running on the board.";}
 level?.addEventListener("input",step);
-action?.addEventListener("click",()=>{const k=Number(level.value),userAction=action.value==="up"?1:-1;counts[k]++;const rate=1/Math.sqrt(counts[k]);weights[k]=Math.max(-6,Math.min(3,weights[k]+userAction*0.8*rate));step();});
+$("atlasLearnButton")?.addEventListener("click",()=>{const k=Number(level.value),userAction=action.value==="up"?1:-1;counts[k]++;const rate=1/Math.sqrt(counts[k]);weights[k]=Math.max(-6,Math.min(3,weights[k]+userAction*0.8*rate));step();});
 $("atlasLearningReset")?.addEventListener("click",()=>{weights.fill(0);counts.fill(0);step();});
 if(level)step();
