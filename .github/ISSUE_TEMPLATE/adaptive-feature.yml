@@ -1,0 +1,29 @@
+name: Adaptive preference / audio quality
+description: Track deterministic bounded on-device learning behaviour
+title: "[ADAPTIVE] "
+body:
+  - type: dropdown
+    id: source
+    attributes:
+      label: Audio input
+      options: [Bluetooth, Telecoil, Digital microphone (design)]
+    validations:
+      required: true
+  - type: textarea
+    id: baseline
+    attributes:
+      label: Frequency/amplitude context, explicit user feedback and expected response
+    validations:
+      required: true
+  - type: textarea
+    id: safety
+    attributes:
+      label: Safety / latency / CPU / queue budget
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Automated tests and external black-box acceptance
+    validations:
+      required: true
