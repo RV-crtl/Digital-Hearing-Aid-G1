@@ -78,3 +78,13 @@
 .cad-empty{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:12;width:min(390px,85%);padding:32px 22px;text-align:center;border:1px solid #31586a;border-radius:20px;background:linear-gradient(155deg,rgba(15,40,52,.96),rgba(8,20,32,.98));box-shadow:0 24px 90px #0008;backdrop-filter:blur(18px)}.cad-empty[hidden]{display:none}.cad-empty-orbit{display:block;font-size:75px;color:#78eacb;line-height:1.1;text-shadow:0 0 40px #5ae5cb9a}.cad-empty strong{display:block;margin:13px 0;font:600 23px "Space Grotesk",sans-serif}.cad-empty p{font-size:12px;line-height:1.7;color:#a1bbc6}.cad-empty button{background:#6de9cb;border:0;border-radius:10px;padding:12px 20px;color:#09202a;font-weight:800;font-size:12px;margin-top:8px}
 
 .atlas-wave{width:100%;height:95px;border:1px solid #355365;border-radius:12px;background:repeating-linear-gradient(0deg,transparent 0,transparent 22px,#36606e33 23px),linear-gradient(145deg,#091d30,#0c2630);margin:18px 0 10px;display:block}.atlas-featureline{font:600 11px/1.6 monospace;color:#82c5bf;margin:1px 0 19px}
+
+.atlas-memory{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:0;border-top:1px solid #234657;border-bottom:1px solid #234657;background:#0a1826}
+.atlas-memory>div{padding:17px 18px;min-width:0}
+.atlas-memory>div+div{border-left:1px solid #284756}
+.atlas-memory span{display:block;color:#80cfc3;font:700 9px/1.4 monospace;letter-spacing:.13em}
+.atlas-memory strong{display:block;color:#f0fffa;font:600 clamp(22px,2.6vw,35px)/1.3 "Space Grotesk",sans-serif;letter-spacing:-.05em;margin-top:6px}
+.atlas-memory strong small{font:500 11px monospace;color:#8cbbbd;letter-spacing:0}
+.atlas-memory p{font-size:11px;line-height:1.5;color:#7997a8;margin-top:4px;margin-bottom:0}
+@media(max-width:950px){.atlas-memory{grid-template-columns:repeat(2,minmax(0,1fr))}.atlas-memory>div:nth-child(3){border-left:0;border-top:1px solid #284756}.atlas-memory>div:nth-child(4){border-top:1px solid #284756}}
+@media(max-width:540px){.atlas-memory{grid-template-columns:1fr}.atlas-memory>div+div,.atlas-memory>div:nth-child(3),.atlas-memory>div:nth-child(4){border-left:0;border-top:1px solid #284756}}
