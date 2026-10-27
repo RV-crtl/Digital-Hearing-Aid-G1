@@ -37,6 +37,8 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends kicad
           kicad-cli version
+      - name: Test native KiCad plot mapping and image decoding
+        run: python3 docs/test_render_kicad.py
       - name: Export hierarchical KiCad original to zoomable SVGs
         run: python docs/render_kicad.py
       - name: Confirm only curated site folder is published
