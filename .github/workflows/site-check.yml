@@ -38,6 +38,11 @@ jobs:
           node --input-type=module --check < docs/app.js
           node --input-type=module --check < docs/viewer.js
           node --input-type=module --check < docs/system-atlas.js
+      - name: Verify the one-page A3 overview is included
+        run: |
+          test -s docs/print-architecture.html
+          grep -q '2 × 26650' docs/print-architecture.html
+          grep -q 'AudioTask' docs/print-architecture.html
       - name: Confirm publication folder has no environment secrets
         run: |
           test -s docs/index.html
