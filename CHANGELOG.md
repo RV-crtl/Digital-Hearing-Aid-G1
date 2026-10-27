@@ -1,5 +1,14 @@
 # Changelog
 
+## G11 — standalone custom-PCB system atlas and contextual learning prototype (28 October 2026)
+
+- Added immersive whole-system website section: power, SAI RX/TX DMA, PCM/bit ownership, FreeRTOS tasks, microphone path, and clickable source-code links.
+- Added portable C contextual preference learner with bounded per-scene dB offset, explicit user feedback and host/sanitizer regressions. **Not connected to custom PCB controls or audio processing yet.**
+- Removed the fictional default device model; real 3MF private inspection remains available and the public GLB awaits authorised upload.
+- Fixed drifting shell validation script to invoke the canonical Python host runner.
+- Documented two-series-cell 26650 LiFePO4 supply, real PCB target, microphone/DFSDM integration gate and black-box/RTOS viva evidence.
+
+
 ## G9 — folder integrity and reproducible evidence validation (20 October 2026)
 
 - Verify all tracked Markdown relative links and Windows case-insensitive path collisions with mutation tests.
