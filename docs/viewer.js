@@ -3,6 +3,7 @@
 import * as THREE from "three";
 import {OrbitControls} from "three/addons/controls/OrbitControls.js";
 import {GLTFLoader} from "three/addons/loaders/GLTFLoader.js";
+import {ThreeMFLoader} from "three/addons/loaders/3MFLoader.js";
 
 const $=id=>document.getElementById(id);
 const colors={board:0x285e51,shell:0x354d5b,chip:0x26313f,copper:0xe5bf60,wire:0x88dfcc};
@@ -158,17 +159,28 @@ export function bootViewer({reducedMotion=false}={}){
   $("localModel").addEventListener("change",async event=>{
     const file=event.target.files&&event.target.files[0];
     if(!file)return;
-    if(file.size>40*1024*1024||!file.name.toLowerCase().endsWith(".glb")){
-      status.textContent="Please select a GLB smaller than 40 MB";return;
+    const extension=file.name.toLowerCase();
+    if(file.size>80*1024*1024||!(extension.endsWith(".glb")||extension.endsWith(".3mf"))){
+      status.textContent="Please select a 3MF or GLB smaller than 80 MB";return;
     }
     status.textContent="Parsing local CAD file (stays on this device)…";
     try{
       const array=await file.arrayBuffer();
-      new GLTFLoader().parse(array,"",gltf=>{
-        setAssembly(gltf.scene,true);
+      const loaded=assembly=>{
+        setAssembly(assembly,true);
         mode.textContent="Local CAD loaded • never uploaded to a server";
         status.textContent="Local "+file.name+" · drag or explode to explore";
-      },()=>{status.textContent="The selected GLB is damaged or unsupported";});
+      };
+      if(extension.endsWith(".3mf")){
+        const loader=new ThreeMFLoader();
+        const group=loader.parse(array);
+        // 3MF can contain many thousands of parts; flatten only the scene graph,
+        // preserving the geometry and original part transforms.
+        loaded(group);
+      }else{
+        new GLTFLoader().parse(array,"",gltf=>loaded(gltf.scene),
+          ()=>{status.textContent="The selected GLB is damaged or unsupported";});
+      }
     }catch(err){status.textContent="Unable to read this local model";}
     event.target.value="";
   });
