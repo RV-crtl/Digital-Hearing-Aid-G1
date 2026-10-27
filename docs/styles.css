@@ -44,3 +44,24 @@
 @media(max-width:1050px){.atlas-flow{grid-template-columns:repeat(4,1fr)}.atlas-tasks{grid-template-columns:repeat(3,1fr)}.atlas-node:after{display:none}}
 @media(max-width:650px){.atlas-hero,.atlas-bits,.atlas-learning-output{grid-template-columns:1fr}.atlas-flow{grid-template-columns:repeat(2,1fr)}.atlas-tasks{grid-template-columns:1fr 1fr}.atlas-hero>div{min-height:0}.atlas-panel{padding:18px}.atlas-head{flex-direction:column}.atlas-task{min-height:170px}}
 @media(max-width:410px){.atlas-tasks{grid-template-columns:1fr}}
+
+/* A3 presentation export for the G11 viva system diagram; print two copies. */
+@media print{
+ @page{size:A3 landscape;margin:10mm}
+ html,body{background:white!important;color:#111!important;overflow:visible!important}
+ .ambient,.site-header,.hero,.spec-ticker,#device,#signal,#schematics,#firmware,#verification,.footer,dialog,.atlas-print,.atlas-learning-controls,.atlas-learning,.atlas-tabs,.atlas-node:after{display:none!important}
+ main,.wrap,.atlas-section{width:100%!important;margin:0!important;padding:0!important;max-width:none!important}
+ .atlas-section{display:block!important}
+ .atlas-section .section-heading h2{font-size:24pt!important;color:#131820!important}
+ .atlas-hero,.atlas-bits{display:grid!important;grid-template-columns:repeat(3,1fr)!important}
+ .atlas-panel,.atlas-hero>div,.atlas-node,.atlas-task,.atlas-bits>div{background:white!important;color:#101a25!important;box-shadow:none!important;border:1px solid #7f8c97!important;break-inside:avoid!important}
+ .atlas-panel{padding:8mm!important;margin:3mm 0!important;break-inside:avoid!important}
+ .atlas-flow{grid-template-columns:repeat(7,1fr)!important;gap:2mm!important}
+ .atlas-node{min-height:18mm!important;padding:2mm!important}
+ .atlas-node strong,.atlas-task strong,.atlas-head h3,.atlas-hero strong,.atlas-bits strong,.atlas-learning-output strong{color:#111!important;font-size:10pt!important}
+ .atlas-node span,.atlas-copy,.atlas-hero p,.atlas-bits p,.atlas-task small,.atlas-inspect{color:#313d49!important}
+ .atlas-tasks{grid-template-columns:repeat(5,1fr)!important}
+ .atlas-task{min-height:25mm!important;padding:3mm!important}
+ .atlas-inspect,.atlas-pill{background:white!important;color:#141414!important}
+ .atlas-hero small,.atlas-bits small,.atlas-head small,.atlas-task-priority{color:#19685b!important}
+}
