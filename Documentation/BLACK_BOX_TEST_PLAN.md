@@ -1,8 +1,10 @@
 # BLACK BOX — System Demonstration Test Plan (target 20 minutes)
 
-**Draft for assessor approval / technician execution.** This plan follows the *System Demonstration and Viva* template, p. 7. **Not a record of successful tests.** The operating MCU must already be flashed, powered from intended supply, enclosed and running without ST-LINK or serial debug UART. Conduct the tests in this sequence. External measurement instruments are permitted where directly tied to a system requirement. A Bluetooth phone is permitted if naturally part of the device.
+**G11 standalone custom-PCB draft for assessor approval / technician execution.** This plan follows the *System Demonstration and Viva* template, p. 7. **Not a record of successful tests.** The operating MCU must already be flashed, powered from the intended **two series-connected 26650 LiFePO4 cells (6.50 V nominal pack)**, enclosed, and running **without NUCLEO, PC, ST-LINK or serial debug UART**. Conduct the tests in this sequence. External measurement instruments are permitted where directly tied to a system requirement. A Bluetooth phone is permitted if naturally part of the device.
 
-> **Release gate:** Several tests are currently BLOCKED by missing custom-PCB and microphone integration. This document cannot be submitted as an “all PASS” plan until those are resolved or scope formally revised. Adjust estimated times through rehearsal; target <=20 min, absolute maximum 30 min.
+> **Release gate:** The team reports that the custom-PCB hardware operates, but current-commit integrated evidence is not captured here and **PDM microphone/DFSDM firmware integration remains a source-level gap**. This document cannot be submitted as an “all PASS” plan until those are resolved or scope formally revised. Adjust estimated times through rehearsal; target <=20 min, absolute maximum 30 min.
+
+See also the [G11 integrated bus/ownership and battery acceptance plan](G11_STANDALONE_CUSTOM_PCB_RELEASE_PLAN.md). No microphone or AI performance test may be marked PASS without the actual end-to-end installed function.
 
 ## Test coverage table
 
