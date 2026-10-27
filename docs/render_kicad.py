@@ -54,7 +54,7 @@ def normalize_embedded_images(path: Path) -> None:
     def clean(match: re.Match[str]) -> str:
         payload = re.sub(r"\s+", "", match.group(2))
         return match.group(1) + payload + "=" * (-len(payload) % 4)
-    fixed = re.sub(r"(data:image/(?:png|jpeg);base64,)([A-Za-z0-9+/=\\s]+)",
+    fixed = re.sub(r"(data:image/(?:png|jpeg);base64,)([A-Za-z0-9+/=\s]+)",
                    clean, original)
     if fixed != original:
         path.write_text(fixed, encoding="utf-8")
