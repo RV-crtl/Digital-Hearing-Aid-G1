@@ -29,6 +29,7 @@ jobs:
         run: |
           node --input-type=module --check < docs/app.js
           node --input-type=module --check < docs/viewer.js
+          node --input-type=module --check < docs/system-atlas.js
       - name: Install KiCad SVG exporter for visualisation
         run: |
           sudo apt-get update -qq
