@@ -15,6 +15,10 @@ on:
       - '.github/workflows/site-check.yml'
   workflow_dispatch:
 
+concurrency:
+  group: visual-lab-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
