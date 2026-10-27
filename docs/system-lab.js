@@ -32,3 +32,5 @@ level?.addEventListener("input",step);
 $("atlasLearnButton")?.addEventListener("click",()=>{const k=Number(level.value),userAction=action.value==="up"?1:-1;counts[k]++;const rate=1/Math.sqrt(counts[k]);weights[k]=Math.max(-6,Math.min(3,weights[k]+userAction*0.8*rate));step();});
 $("atlasLearningReset")?.addEventListener("click",()=>{weights.fill(0);counts.fill(0);step();});
 if(level)step();
+
+$("atlasPrint")?.addEventListener("click",()=>window.print());
