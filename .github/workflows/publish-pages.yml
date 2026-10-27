@@ -1,0 +1,66 @@
+name: Publish G1 Interactive Lab (GitHub Pages)
+
+# Manual first deployment: configure Settings > Pages > Source > GitHub Actions.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: g1-pages-deployment
+  cancel-in-progress: false
+
+jobs:
+  build-site:
+    name: Validate visual website and plot original KiCad sheets
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate website routes and actual repository references
+        run: python docs/validate_site.py
+      - name: Check JavaScript module syntax
+        run: |
+          node --input-type=module --check < docs/app.js
+          node --input-type=module --check < docs/viewer.js
+      - name: Install KiCad SVG exporter for visualisation
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends kicad
+      - name: Export hierarchical KiCad original to zoomable SVGs
+        run: python docs/render_kicad.py
+      - name: Confirm only curated site folder is published
+        run: |
+          test -s docs/index.html
+          test -s docs/styles.css
+          test -s docs/app.js
+          test -s docs/viewer.js
+          test -s docs/plots/manifest.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          data=json.loads(Path('docs/plots/manifest.json').read_text())
+          print('Native KiCad SVG views:',len(data['schematics']))
+          print('CAD model present:',Path('docs/assets/g1-assembly.glb').exists())
+          assert data['view_only'] is True
+          PY
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: ./docs
+  deploy:
+    name: Publish website
+    needs: build-site
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

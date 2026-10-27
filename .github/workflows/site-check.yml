@@ -1,0 +1,42 @@
+name: G1 Visual Lab — website integrity
+
+on:
+  pull_request:
+    paths:
+      - 'docs/**'
+      - 'Tools/convert_3mf_to_glb.py'
+      - '.github/workflows/publish-pages.yml'
+      - '.github/workflows/site-check.yml'
+  push:
+    branches: [main, 'feature/**', 'fix/**']
+    paths:
+      - 'docs/**'
+      - 'Tools/convert_3mf_to_glb.py'
+      - '.github/workflows/site-check.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  site-integrity:
+    name: Static site routes, syntax and source links
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate site links and source files
+        run: python3 docs/validate_site.py
+      - name: Compile Python publication tools without runtime dependencies
+        run: python3 -m py_compile docs/render_kicad.py docs/validate_site.py Tools/convert_3mf_to_glb.py
+      - name: Validate JavaScript module syntax without CDN access
+        run: |
+          node --input-type=module --check < docs/app.js
+          node --input-type=module --check < docs/viewer.js
+      - name: Confirm publication folder has no environment secrets
+        run: |
+          test -s docs/index.html
+          if [ -e docs/.env ] || [ -e docs/credentials.json ]; then
+            echo "::error::Private environment/configuration in Pages publication folder"
+            exit 1
+          fi

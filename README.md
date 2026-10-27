@@ -59,6 +59,12 @@ The [full standalone guide](Documentation/G5_STANDALONE_USER_GUIDE.md) explains 
 | Physical rotary and PDM mic integration | Partial prototypes | Custom board hardware and firmware integration pending |
 | TinyML, USB audio, charging/balancing, production power and custom PCB firmware | **Not implemented / verified** | Requirements and hardware feasibility documented |
 
+## Interactive visual website / GitHub Pages
+
+**G1 / Inside the Signal** is a responsive engineering showcase in [`docs/`](docs/README.md). It includes a WebGL model viewer, functional Bluetooth/telecoil signal map, filterable KiCad schematic gallery with native SVG plotting during deployment, and a browser of the actual embedded C source.
+
+**Launch instructions:** [GitHub Pages setup and CAD upload](docs/README.md). Expected public address **after activation**: https://rv-crtl.github.io/Digital-Hearing-Aid-G1/ . The website is a demonstration interface—not a live data feed, product certification, or independently validated custom-PCB design.
+
 ## Repository-wide folder integrity
 
 G9 adds whole-repository Markdown link and Windows filename-collision checks, compilation of every HAL-independent application C module under GCC/Clang, validation of evidence ZIP contents against SHA-256, and strict local ARM report provenance/freshness checks. See [G9 repository audit](Documentation/G9_REPOSITORY_INTEGRITY_AUDIT.md). These automated checks do **not** resolve the externally missing KiCad libraries, build an ARM binary in GitHub CI or certify device safety.
