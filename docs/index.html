@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#06101c">
+  <meta name="description" content="G1: an interactive look at an STM32-based hearing-aid engineering prototype, with 3D assembly explorer, schematics, and real source code.">
+  <meta property="og:title" content="G1 / Inside the Signal">
+  <meta property="og:description" content="Explore the hardware, signal path and software behind a student-engineered audio system.">
+  <title>G1 / Inside the Signal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./styles.css">
+  <script type="importmap">
+  {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"}}
+  </script>
+  <script type="module" src="./app.js"></script>
+  <link rel="icon" href="./favicon.svg" type="image/svg+xml">
+</head>
+<body>
+  <div class="ambient ambient--a" aria-hidden="true"></div>
+  <div class="ambient ambient--b" aria-hidden="true"></div>
+  <header class="site-header">
+    <a class="brand" href="#top" aria-label="G1 Home"><span class="brand-mark"><span></span></span><span>G1<span class="brand-slash">/</span><span class="brand-sub">LAB</span></span></a>
+    <nav class="nav-links" aria-label="Main navigation">
+      <a href="#device">Device</a><a href="#signal">Signal path</a><a href="#schematics">Schematics</a><a href="#firmware">Firmware</a><a href="#verification">Validation</a>
+    </nav>
+    <a class="nav-github" href="https://github.com/RV-crtl/Digital-Hearing-Aid-G1" target="_blank" rel="noopener noreferrer"><span class="status-dot"></span> View repository <span aria-hidden="true">↗</span></a>
+    <button id="mobileNav" class="mobile-nav" aria-label="Toggle navigation" aria-expanded="false">☰</button>
+  </header>
+  <main id="top">
+    <section class="hero wrap">
+      <div class="hero-copy">
+        <div class="eyebrow"><span class="pulse-dot"></span> DIGITAL AUDIO ENGINEERING <span class="separator">/</span> G1</div>
+        <h1>Inside<br>the <em>signal.</em></h1>
+        <p class="hero-desc">From electromagnetic induction to digital sound. Explore the architecture, circuitry and code behind an STM32-based hearing-aid engineering prototype.</p>
+        <div class="hero-cta"><a class="button button-primary" href="#device">Explore the device <span>↗</span></a><a class="button button-ghost" href="#schematics">View schematics <span>↘</span></a></div>
+        <div class="hero-metadata"><span><b>01</b> Hardware</span><span><b>02</b> Embedded software</span><span><b>03</b> Verification</span></div>
+      </div>
+      <div class="hero-card">
+        <div class="hero-card-top"><span><span class="status-dot"></span> SYSTEM / OVERVIEW</span><span class="subtle">G1 · 2026</span></div>
+        <div class="hero-graphic" aria-hidden="true">
+          <div class="rings"><div class="ring ring-1"></div><div class="ring ring-2"></div><div class="ring ring-3"></div></div>
+          <svg viewBox="0 0 500 365" role="presentation" class="hero-wave"><defs><linearGradient id="wg" x1="0" y1="0" x2="1" y2="0"><stop stop-color="#65f7d1"/><stop offset=".52" stop-color="#77b9fa"/><stop offset="1" stop-color="#b199ff"/></linearGradient></defs><path d="M0 184 C26 184 26 184 51 184 S75 180 87 172 106 202 117 210 133 121 147 119 171 241 182 252 200 68 216 63 239 274 253 280 277 89 291 83 312 222 327 235 342 147 352 141 367 199 380 201 396 164 412 164 429 186 446 186 472 184 500 184" stroke="url(#wg)" stroke-width="4" fill="none" stroke-linecap="round"/><path d="M0 184 H500" stroke="#a7dfff" stroke-opacity=".14" stroke-dasharray="4 9"/></svg>
+          <div class="hero-chip hero-chip-a"><i></i> RF / AUDIO INPUT</div><div class="hero-chip hero-chip-b"><i></i> SIGNAL PROCESSING</div><div class="hero-chip hero-chip-c"><i></i> ANALOG OUTPUT</div>
+          <div class="graphic-center"><span>REAL-TIME</span><strong>DSP</strong><small>STM32 / Cortex-M4</small></div>
+        </div>
+        <div class="hero-card-bottom"><span>ENGINEERING PROTOTYPE</span><span>NOT A CERTIFIED MEDICAL DEVICE</span></div>
+      </div>
+    </section>
+    <div class="spec-ticker" aria-label="Project specifications"><div class="ticker-inner"><span>STM32L476RG</span><i></i><span>ARM CORTEX-M4</span><i></i><span>FREERTOS</span><i></i><span>BLUETOOTH AUDIO</span><i></i><span>TELECOIL INPUT</span><i></i><span>48 kHz TARGET</span><i></i><span>CUSTOM PCB DESIGN</span></div></div>
+
+    <section id="device" class="section wrap">
+      <div class="section-label">01 / PHYSICAL SYSTEM</div>
+      <div class="section-heading"><div><h2>Engineering, <span>in three dimensions.</span></h2><p>Inspect the mechanical assembly from every angle. Rotate, zoom and separate layers to look inside.</p></div><span class="section-index">01 — 05</span></div>
+      <div class="device-panel">
+        <div class="device-stage" id="deviceStage">
+          <div class="device-stage-overlay"><span class="live-tag"><span class="status-dot"></span> 3D EXPLORER</span><div id="modelStatus" class="model-status">Loading interactive viewer…</div></div>
+          <div class="stage-grid" aria-hidden="true"></div>
+          <div id="modelViewport" class="model-viewport" aria-label="Interactive 3D CAD viewer" role="img"></div>
+          <div class="axis-corner"><span class="axis-x">X</span> <span class="axis-y">Y</span> <span class="axis-z">Z</span></div>
+          <div class="stage-hint">DRAG TO ROTATE <span>·</span> SCROLL TO ZOOM</div>
+        </div>
+        <aside class="device-controls">
+          <span class="micro-label">CAD / CONTROLS</span>
+          <h3>Explore the <em>assembly.</em></h3>
+          <p class="control-desc">Interactive model prepared from the supplied 3MF assembly. The full-resolution GLB loads when the companion asset is installed; otherwise a clearly labelled conceptual fallback appears.</p>
+          <div class="control-group"><span class="control-title">Camera preset</span><div class="segmented" role="group" aria-label="Camera view"><button class="view-btn active" data-view="iso">ISO</button><button class="view-btn" data-view="top">TOP</button><button class="view-btn" data-view="side">SIDE</button></div></div>
+          <div class="control-group"><label class="control-title" for="explode">Assembly separation <span id="explodeValue">0%</span></label><input id="explode" type="range" min="0" max="100" value="0" aria-label="Assembly separation"></div>
+          <div class="control-switches"><label class="switch-row"><span>Auto rotation</span><input id="rotateToggle" type="checkbox" checked><span class="switch"></span></label><label class="switch-row"><span>Wireframe</span><input id="wireframeToggle" type="checkbox"><span class="switch"></span></label><label class="switch-row"><span>Housing visible</span><input id="housingToggle" type="checkbox" checked><span class="switch"></span></label></div>
+          <button id="resetModel" class="button button-line">Reset view <span>↺</span></button>
+          <div class="model-caption">Provided assembly: <strong>3MF → GLB</strong><br><span id="modelMode">Checking for model asset</span></div>
+        </aside>
+      </div>
+      <div class="spec-grid">
+        <div class="spec-card"><span>PROCESSOR</span><strong>STM32L476RG</strong><small>Arm Cortex-M4 MCU</small></div>
+        <div class="spec-card"><span>AUDIO ROUTING</span><strong>Dual-source</strong><small>Bluetooth + telecoil</small></div>
+        <div class="spec-card"><span>FIRMWARE</span><strong>FreeRTOS</strong><small>Event-driven task architecture</small></div>
+        <div class="spec-card"><span>PCB DESIGN</span><strong>KiCad</strong><small>Original design · verification pending</small></div>
+      </div>
+    </section>
+
+    <section id="signal" class="section signal-section">
+      <div class="wrap"><div class="section-label">02 / SIGNAL ARCHITECTURE</div><div class="section-heading"><div><h2>Follow the <span>sound.</span></h2><p>Switch the input source and trace how samples move through the embedded system.</p></div><span class="section-index">02 — 05</span></div>
+        <div class="signal-app">
+          <div class="signal-top"><div class="source-switch" role="group" aria-label="Select signal input"><button data-source="bluetooth" class="source-btn active">◉ &nbsp; Bluetooth</button><button data-source="telecoil" class="source-btn">◎ &nbsp; Telecoil</button></div><div class="signal-indicator"><span class="status-dot"></span> INTERACTIVE SIGNAL MAP</div></div>
+          <div class="signal-chain" id="signalChain">
+            <div class="chain-node" data-node="input"><span class="node-num">01 / RECEIVE</span><div class="node-icon">◉</div><h3 id="chainInputTitle">Bluetooth audio</h3><p id="chainInputText">External Bluetooth audio input and link observations.</p></div>
+            <div class="chain-wire"><span></span><span class="travel-dot"></span></div>
+            <div class="chain-node"><span class="node-num">02 / ACQUIRE</span><div class="node-icon">▤</div><h3>PCM capture</h3><p>SAI, DMA buffers and source arbitration.</p></div>
+            <div class="chain-wire"><span></span><span class="travel-dot delay-1"></span></div>
+            <div class="chain-node emph"><span class="node-num">03 / PROCESS</span><div class="node-icon">≋</div><h3>STM32 + DSP</h3><p>Bounded audio processing and group profiles.</p></div>
+            <div class="chain-wire"><span></span><span class="travel-dot delay-2"></span></div>
+            <div class="chain-node"><span class="node-num">04 / OUTPUT</span><div class="node-icon">◁</div><h3>Audio output</h3><p>SAI audio output toward the external amplifier.</p></div>
+          </div>
+          <div class="signal-insights"><div><span>SELECTED INPUT</span><strong id="selectedInput">Bluetooth</strong></div><div><span>SCHEDULER</span><strong>FreeRTOS</strong></div><div><span>PROCESSING</span><strong>48 kHz nominal</strong></div><div><span>DIAGRAM TYPE</span><strong>Functional architecture</strong></div></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="schematics" class="section wrap">
+      <div class="section-label">03 / HARDWARE DESIGN</div>
+      <div class="section-heading"><div><h2>The circuitry, <span>unfolded.</span></h2><p>Explore the real KiCad design files. The gallery uses full-resolution SVG sheets when exported in the Pages build.</p></div><span class="section-index">03 — 05</span></div>
+      <div class="schematics-toolbar"><div class="filter-tabs" role="group" aria-label="Filter schematics"><button class="filter-btn active" data-filter="all">All sheets</button><button class="filter-btn" data-filter="audio">Audio</button><button class="filter-btn" data-filter="control">Control</button><button class="filter-btn" data-filter="power">Power</button></div><div id="schematicCount" class="gallery-count">Original KiCad files</div></div>
+      <div class="schematics-grid" id="schematicsGrid" aria-live="polite"></div>
+      <p class="section-note"><span>ⓘ</span> These are prototype design documents. Visualisation does not establish KiCad ERC/DRC, fabrication readiness, or electrical safety.</p>
+    </section>
+
+    <section id="firmware" class="section code-section">
+      <div class="wrap"><div class="section-label">04 / EMBEDDED SYSTEM</div><div class="section-heading"><div><h2>Real code. <span>Live architecture.</span></h2><p>Browse selected production C modules directly from the public GitHub repository—no fabricated code screenshots.</p></div><span class="section-index">04 — 05</span></div>
+      <div class="code-shell">
+        <div class="code-sidebar"><div class="code-sidebar-label">SOURCE EXPLORER <span>C / STM32</span></div><button class="file-tab active" data-file="Core/Src/demo_app.c"><span class="file-icon">C</span><span>demo_app.c</span></button><button class="file-tab" data-file="Core/Src/group_features.c"><span class="file-icon">C</span><span>group_features.c</span></button><button class="file-tab" data-file="Core/Src/connectivity_controller.c"><span class="file-icon">C</span><span>connectivity_controller.c</span></button><button class="file-tab" data-file="Core/Src/group_ui.c"><span class="file-icon">C</span><span>group_ui.c</span></button><button class="file-tab" data-file="Core/Src/pcm_transport.c"><span class="file-icon">C</span><span>pcm_transport.c</span></button><div class="sidebar-foot">REAL REPOSITORY SOURCE<br><span>main branch · read only</span></div></div>
+        <div class="code-main"><div class="code-toolbar"><span class="three-dots"><i></i><i></i><i></i></span><span id="activeFile">Core/Src/demo_app.c</span><a id="codeOnGithub" href="https://github.com/RV-crtl/Digital-Hearing-Aid-G1/blob/main/Core/Src/demo_app.c" target="_blank" rel="noopener noreferrer">Open on GitHub ↗</a></div><div class="code-scroll"><pre id="codePreview" aria-label="Selected source code">Loading repository source…</pre></div><div class="code-status"><span><span class="status-dot"></span> <span id="codeStatus">Connecting to GitHub…</span></span><span>Preview only · full file on GitHub</span></div></div>
+      </div></div>
+    </section>
+
+    <section id="verification" class="section wrap last-section">
+      <div class="section-label">05 / TESTING & OPEN WORK</div>
+      <div class="section-heading"><div><h2>Evidence over <span>assumptions.</span></h2><p>A transparent view of what the project checks automatically—and what still needs real-world verification.</p></div><span class="section-index">05 — 05</span></div>
+      <div class="validation-grid">
+        <article class="validation-card"><span class="validation-icon">✓</span><span class="validation-kicker">HOST-SIDE VERIFICATION</span><h3>Software quality gates</h3><p>GCC, Clang, sanitizers, portable C and source-integrity tests run in GitHub Actions. See the latest run for current status.</p><a href="https://github.com/RV-crtl/Digital-Hearing-Aid-G1/actions" target="_blank" rel="noopener noreferrer">Open CI checks ↗</a></article>
+        <article class="validation-card"><span class="validation-icon neutral">↗</span><span class="validation-kicker">PHYSICAL ENGINEERING</span><h3>Hardware testing</h3><p>Real STM32 ARM build, bench playback, power integrity, acoustic output and custom PCB validation require separate measured evidence.</p><a href="https://github.com/RV-crtl/Digital-Hearing-Aid-G1/blob/main/Documentation/RELEASE_CHECKLIST.md" target="_blank" rel="noopener noreferrer">Release checklist ↗</a></article>
+        <article class="validation-card"><span class="validation-icon violet">⤴</span><span class="validation-kicker">DESIGN VALIDATION</span><h3>Schematic dependencies</h3><p>The KiCad source design exists, but external library resolution and complete ERC/DRC remain outstanding.</p><a href="https://github.com/RV-crtl/Digital-Hearing-Aid-G1/blob/main/Hardware/README.md" target="_blank" rel="noopener noreferrer">Hardware status ↗</a></article>
+      </div>
+      <div class="final-cta"><div><span>WANT TO DIG DEEPER?</span><h2>Go beyond the surface.</h2><p>Browse implementation details, validation scripts, design files and the project history.</p></div><a class="button button-primary" href="https://github.com/RV-crtl/Digital-Hearing-Aid-G1" target="_blank" rel="noopener noreferrer">Explore the repository <span>↗</span></a></div>
+    </section>
+  </main>
+  <footer class="footer wrap"><a href="#top" class="brand"><span class="brand-mark"><span></span></span><span>G1<span class="brand-slash">/</span><span class="brand-sub">LAB</span></span></a><p>A visual exploration of an engineering prototype. Not a certified hearing aid or clinical claim.</p><span>BUILT FOR CURIOSITY &nbsp; • &nbsp; 2026</span></footer>
+  <dialog id="schematicDialog" class="schematic-dialog" aria-label="Schematic viewer"><div class="dialog-top"><div><span class="micro-label">KICAD / SCHEMATIC</span><h3 id="dialogTitle">Schematic</h3></div><button id="dialogClose" aria-label="Close schematic" class="dialog-close">✕</button></div><div class="dialog-body" id="dialogBody"></div><div class="dialog-actions"><span id="dialogInfo"></span><a id="dialogSource" target="_blank" rel="noopener noreferrer">Open KiCad source ↗</a></div></dialog>
+</body></html>
