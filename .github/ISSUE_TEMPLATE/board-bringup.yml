@@ -1,0 +1,43 @@
+name: Custom PCB bring-up / hardware regression
+description: Repeatable issues for the 2S LiFePO4 custom board
+title: "[PCB] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Product demonstration: self-powered 2 x 26650 LiFePO4 in series, no Nucleo/ST-Link/PC. Do not post sensitive recordings or secrets.
+  - type: input
+    id: revision
+    attributes:
+      label: PCB revision / MCU marking / firmware SHA
+    validations:
+      required: true
+  - type: input
+    id: power
+    attributes:
+      label: Battery type and measured pack voltage
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Observable black-box reproduction steps
+      description: Expected vs observed sound/control response without debugger.
+    validations:
+      required: true
+  - type: textarea
+    id: peripherals
+    attributes:
+      label: Affected nets / DMA / tasks / interrupts
+    validations:
+      required: true
+  - type: textarea
+    id: safety
+    attributes:
+      label: Safety risks and current mitigation
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Measured evidence / instrument / date / acceptance threshold
