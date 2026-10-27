@@ -35,6 +35,8 @@ def name_for(path: Path) -> str:
     # KiCad names hierarchy exports like "root-Connectivity-Analog Frontend-Power.svg".
     # Classify by the FINAL sheet name. The old contains() approach incorrectly
     # classified every page as "Connectivity" because it appears in the parent path.
+    if path.stem == "260510-Digital_hearing_aid":
+        return "260510-Digital hearing aid"
     leaf = path.stem.split("-")[-1].strip()
     aliases = {"audioinput": "Audio", "stm32l476rg": "STM32",
                "controlconnectivityandpower": "Top-level overview"}
