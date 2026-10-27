@@ -24,3 +24,7 @@ It enumerates unresolved library path references, project/schematic presence and
 6. Fabricate only after manufacturer stack-up checks, Gerber review, DFM and real continuity/power-up tests.
 
 For the risk and peripheral porting checklist see [`CUSTOM_PCB_PORTING_CHECKLIST.md`](CUSTOM_PCB_PORTING_CHECKLIST.md).
+
+## G11 intended operating supply and standalone target
+
+The team specifies **two 26650 LiFePO4 3.25 V nominal cells in series** (6.50 V nominal). This value is the **battery pack**, not the MCU supply rail: trace the actual cell balancing/protection, current limiting, low-voltage cutoff, buck/LDO conversion and acoustic output stages before operating. The final demonstrator is the custom PCB alone: it must not depend on a Nucleo, debug dongle, PC or serial console. The team reports physical hardware operational, but a specific firmware SHA/PCB revision/end-to-end black-box test record is not attached here. See [G11 custom-PCB bring-up plan](../Documentation/G11_STANDALONE_CUSTOM_PCB_RELEASE_PLAN.md).
