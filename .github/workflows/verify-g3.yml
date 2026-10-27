@@ -70,6 +70,8 @@ jobs:
           /tmp/dha-sanitize/guardian
           /tmp/dha-sanitize/ui
           /tmp/dha-sanitize/protocol
+          gcc $CFLAGS Tests/test_adaptive_preferences.c Core/Src/adaptive_preferences.c -o /tmp/dha-sanitize/preferences
+          /tmp/dha-sanitize/preferences
           /tmp/dha-sanitize/pcm
   windows-bundle-smoke:
     name: One-command Windows evidence runner (source mode only)
