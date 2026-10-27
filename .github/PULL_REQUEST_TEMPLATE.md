@@ -19,3 +19,11 @@
 ## Updated requirement rows / documentation
 
 Do not claim medical certification, safety SPL compliance, real TinyML training, functional battery charging or custom-board support without measured evidence.
+
+## G11 standalone PCB changes
+- [ ] Final 2S LiFePO4 protection, fuse/current limit and regulator behavior verified on assembled board
+- [ ] Real PCB pin assignments compared with actual KiCad/MCU pad map (not just Nucleo)
+- [ ] Mic DFSDM capture only described as working if exercised on final hardware
+- [ ] Adaptive learning changes include feedback-event and acoustic guardrail evidence
+- [ ] A3 system diagram and black-box whole-system requirements/testplan updated
+- [ ] Public Pages CAD asset and contributors' rights checked before publishing
