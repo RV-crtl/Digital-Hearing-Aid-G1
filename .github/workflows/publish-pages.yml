@@ -55,6 +55,8 @@ jobs:
           print('Native KiCad SVG views:',len(data['schematics']))
           print('CAD model present:',Path('docs/assets/g1-assembly.glb').exists())
           assert data['view_only'] is True
+          names=[item['name'] for item in data['schematics']]
+          assert len(names)>=12 and len(names)==len(set(names)), 'KiCad SVG plots incomplete or duplicated'
           PY
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v4
