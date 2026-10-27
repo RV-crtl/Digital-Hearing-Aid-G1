@@ -65,11 +65,11 @@
         <aside class="device-controls">
           <span class="micro-label">CAD / CONTROLS</span>
           <h3>Explore the <em>assembly.</em></h3>
-          <p class="control-desc">Interactive model prepared from the supplied 3MF assembly. The full-resolution GLB loads when the companion asset is installed; otherwise a clearly labelled conceptual fallback appears.</p>
+          <p class="control-desc">Interactive model prepared from the supplied 3MF assembly. Explore the real assembly by opening your 3MF or GLB locally. Your model stays in your browser. An optional approved GLB can also be hosted with the site.</p>
           <div class="control-group"><span class="control-title">Camera preset</span><div class="segmented" role="group" aria-label="Camera view"><button class="view-btn active" data-view="iso">ISO</button><button class="view-btn" data-view="top">TOP</button><button class="view-btn" data-view="side">SIDE</button></div></div>
           <div class="control-group"><label class="control-title" for="explode">Assembly separation <span id="explodeValue">0%</span></label><input id="explode" type="range" min="0" max="100" value="0" aria-label="Assembly separation"></div>
           <div class="control-switches"><label class="switch-row"><span>Auto rotation</span><input id="rotateToggle" type="checkbox" checked><span class="switch"></span></label><label class="switch-row"><span>Wireframe</span><input id="wireframeToggle" type="checkbox"><span class="switch"></span></label><label class="switch-row"><span>Housing visible</span><input id="housingToggle" type="checkbox" checked><span class="switch"></span></label></div>
-          <button id="resetModel" class="button button-line">Reset view <span>↺</span></button><button id="loadLocalModel" class="button button-line" type="button" style="margin-top:9px">Open local CAD (.glb) <span>↗</span></button><input id="localModel" type="file" accept=".glb,model/gltf-binary" class="visually-hidden" aria-label="Choose GLB assembly model">
+          <button id="resetModel" class="button button-line">Reset view <span>↺</span></button><button id="loadLocalModel" class="button button-line" type="button" style="margin-top:9px">Open your 3D CAD (.3mf / .glb) <span>↗</span></button><input id="localModel" type="file" accept=".3mf,.glb,model/gltf-binary,model/3mf" class="visually-hidden" aria-label="Choose 3MF or GLB assembly model">
           <div class="model-caption">Provided assembly: <strong>3MF → GLB</strong><br><span id="modelMode">Checking for model asset</span></div>
         </aside>
       </div>
