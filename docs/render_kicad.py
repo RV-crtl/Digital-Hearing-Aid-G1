@@ -52,7 +52,7 @@ def normalize_embedded_images(path: Path) -> None:
     # screenshots. Normalise to make SVG render in both browsers and SVG tools.
     original = path.read_text(encoding="utf-8")
     def clean(match: re.Match[str]) -> str:
-        payload = re.sub(r"\\s+", "", match.group(2))
+        payload = re.sub(r"\s+", "", match.group(2))
         return match.group(1) + payload + "=" * (-len(payload) % 4)
     fixed = re.sub(r"(data:image/(?:png|jpeg);base64,)([A-Za-z0-9+/=\\s]+)",
                    clean, original)
