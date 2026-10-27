@@ -34,6 +34,12 @@ if(atlas){
   <div class="atlas-topbar"><div class="atlas-source" role="group" aria-label="Input to trace"><button data-path="bluetooth" class="active">◉ Bluetooth</button><button data-path="telecoil">◎ Telecoil</button><button data-path="microphone">◌ Microphone design</button></div><span>◉ source-integrated &nbsp; ◌ design-only</span></div>
   <div class="atlas-caption">AUDIO DATA PLANE <span>SAI / DMA / FreeRTOS · TARGET 48 kHz</span></div>
   <div class="atlas-path" id="atlasPath" role="group" aria-label="Interactive signal path"></div>
+  <div class="atlas-memory" aria-label="Memory and timing details from firmware source">
+   <div><span>SAI RX CIRCULAR DMA</span><strong>2,048 <small>bytes / input</small></strong><p>512 × 32-bit words · two halves</p></div>
+   <div><span>RX HALF / AUDIO QUANTUM</span><strong>1,024 <small>bytes</small></strong><p>256 words · 128 stereo frames · 2.667 ms @48 kHz</p></div>
+   <div><span>CAPTURE RING / SOURCE</span><strong>8,192 <small>bytes</small></strong><p>8 snapshots × 1,024 bytes · BT and TC independent</p></div>
+   <div><span>OUTPUT MONO FIFO</span><strong>8,192 <small>bytes</small></strong><p>4,096 samples × 16-bit · asynchronous elasticity</p></div>
+  </div>
   <div class="atlas-support"><div class="atlas-support-col"><div class="atlas-caption">CONTROL PLANE <span>SMALL MESSAGES, NOT AUDIO SAMPLES</span></div><div class="atlas-minigrid" id="atlasControl"></div></div><div class="atlas-support-col"><div class="atlas-caption">POWER / REGULATION <span>STANDALONE CUSTOM PCB</span></div><div class="atlas-minigrid" id="atlasPower"></div></div></div>
   <div class="atlas-inspector" aria-live="polite"><div><span class="micro-label" id="atlasType">SELECT A BLOCK</span><h3 id="atlasTitle">Select any block to inspect.</h3><p id="atlasExplain">Each node is linked to the original G1 source or KiCad file.</p></div><a id="atlasCode" href="${ROOT}Core/Src/demo_app.c" target="_blank" rel="noopener noreferrer">Inspect actual source ↗</a></div>
  </div>
