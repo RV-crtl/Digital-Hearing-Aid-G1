@@ -33,7 +33,7 @@ def check() -> list[str]:
     atlas = (SITE / "system-lab.js").read_text(encoding="utf-8")
     if not all(key in atlas for key in ("atlasFlowSteps", "atlasTasks", "atlasLearnButton")):
         errors.append("G11 full system interactive atlas controls absent")
-    for name in ("Core/Inc/adaptive_preferences.h", "Core/Src/adaptive_preferences.c", "Tests/test_adaptive_preferences.c"):
+    for name in ("Core/Inc/adaptive_preferences.h", "Core/Src/adaptive_preferences.c", "Tests/test_adaptive_preferences.c", "Core/Inc/scene_features.h", "Core/Src/scene_features.c", "Tests/test_scene_features.c"):
         if not (ROOT / name).is_file(): errors.append("Missing adaptive learner source: " + name)
     for part in SECTIONS:
         if f'id="{part}"' not in html:
