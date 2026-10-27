@@ -29,7 +29,7 @@ const routes={
 };
 const atlas=document.getElementById("atlasMount");
 if(atlas){
- atlas.innerHTML=`<div class="atlas-intro"><div><span class="micro-label">INTERACTIVE SYSTEM DIGITAL TWIN · ARCHITECTURE, NOT A LIVE DEVICE</span><h2>Every signal. <em>Every owner.</em></h2><p>One map for the final custom PCB: choose an input and follow the sample from physical interface through DMA, scheduler, DSP and output. Inspect the control plane, power chain and adaptive learning separately.</p></div><span class="atlas-stamp">SOURCE-TRACED / 2026</span></div>
+ atlas.innerHTML=`<div class="atlas-intro"><div><span class="micro-label">INTERACTIVE SYSTEM DIGITAL TWIN · ARCHITECTURE, NOT A LIVE DEVICE</span><h2>Every signal. <em>Every owner.</em></h2><p>One map for the final custom PCB: choose an input and follow the sample from physical interface through DMA, scheduler, DSP and output. Inspect the control plane, power chain and adaptive learning separately.</p></div><a class="atlas-stamp" href="./print-architecture.html" target="_blank" rel="noopener noreferrer">PRINT A3 SYSTEM DIAGRAM ↗</a></div>
  <div class="atlas-root">
   <div class="atlas-topbar"><div class="atlas-source" role="group" aria-label="Input to trace"><button data-path="bluetooth" class="active">◉ Bluetooth</button><button data-path="telecoil">◎ Telecoil</button><button data-path="microphone">◌ Microphone design</button></div><span>◉ source-integrated &nbsp; ◌ design-only</span></div>
   <div class="atlas-caption">AUDIO DATA PLANE <span>SAI / DMA / FreeRTOS · TARGET 48 kHz</span></div>
