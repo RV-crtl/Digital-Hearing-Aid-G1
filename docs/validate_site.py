@@ -8,9 +8,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SITE = ROOT / "docs"
-REQUIRED = ["index.html", "styles.css", "app.js", "viewer.js", "favicon.svg",
+REQUIRED = ["index.html", "styles.css", "app.js", "viewer.js", "system-atlas.js", "system-atlas.css", "favicon.svg",
             "render_kicad.py", "validate_site.py"]
-SECTIONS = ["device", "signal", "schematics", "firmware", "verification"]
+SECTIONS = ["device", "signal", "atlas", "schematics", "firmware", "verification"]
 SCHEMATICS = ["Connectivity", "Audio", "Telecoil_Buffer_Circuits",
               "Analog_Frontend", "Amplifier", "Output", "Power",
               "Processor", "STM32", "User Interface", "Active_Bandpass_Filter",
@@ -44,6 +44,10 @@ def check() -> list[str]:
         errors.append("Interactive page components missing")
     if not all(name in js for name in SCHEMATICS):
         errors.append("Schematic navigation omits an original KiCad sheet")
+    if "system-atlas.js" not in html or "id=\"atlasMount\"" not in html:
+        errors.append("Missing interactive one-page system atlas")
+    if not (ROOT / "Core/Src/preference_learner.c").is_file():
+        errors.append("Adaptive preference model source missing")
     for name in CODE:
         if not (ROOT / name).is_file() or name not in html:
             errors.append(f"Code explorer references missing firmware source: {name}")
