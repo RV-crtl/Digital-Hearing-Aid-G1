@@ -40,7 +40,7 @@ def check():
         candidate = ROOT / rel
         if not candidate.is_file():
             continue
-        includes = re.findall(r'^\\s*#\\s*include\\s*[<"]([^>"]+)[>"]',
+        includes = re.findall(r'^\s*#\s*include\s*[<"]([^>"]+)[>"]',
                               candidate.read_text(), flags=re.MULTILINE)
         if "FreeRTOS.h" not in includes:
             bad.append(f"{rel}: FreeRTOS.h missing")
