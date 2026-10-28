@@ -109,5 +109,12 @@ $groupCheck=Join-Path $Root "CHECK_GROUP.py"
 if ($py) { & py -3 $groupCheck }
 else { & python $groupCheck }
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+# Reject broken FreeRTOS include ordering after restoring recovery copies.
+# A syntactically incorrect queue.h-before-FreeRTOS.h source previously yielded
+# hundreds of misleading "storage class specified for parameter" errors.
+Write-Host "Checking FreeRTOS header order in live and recovery sources..." -ForegroundColor Cyan
+if ($py) { & py -3 (Join-Path $Root "Tools\\g1_preflight.py") }
+else { & python (Join-Path $Root "Tools\\g1_preflight.py") }
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 Write-Host ""; Write-Host "FINAL PREPARE PASS" -ForegroundColor Green
 Write-Host "If you need CubeMX Generate Code: GENERATE FIRST, then rerun PREPARE_PROJECT.bat, then Clean/Build/Flash."
