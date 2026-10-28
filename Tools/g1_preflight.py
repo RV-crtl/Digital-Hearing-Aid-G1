@@ -33,6 +33,23 @@ def check():
     if cp.exists() and re.search(r"(?:-D)?DHA_ENABLE_RTOS_STRESS\s*=\s*1",cp.read_text()):
         bad.append("CubeIDE build enables RTOS stress in normal configuration")
     app=ROOT/"Core/Src/demo_app.c"
+    # Regression 2026-10-28: queue.h includes task.h/list.h and REQUIRES
+    # FreeRTOS.h first. One reversed include caused 829 cascade errors.
+    # Check both live and golden recovery copies: PREPARE overwrites live source.
+    for rel in ("Core/Src/demo_app.c", "Recovery/Core/Src/demo_app.c"):
+        candidate = ROOT / rel
+        if not candidate.is_file():
+            continue
+        includes = re.findall(r'^\\s*#\\s*include\\s*[<"]([^>"]+)[>"]',
+                              candidate.read_text(), flags=re.MULTILINE)
+        if "FreeRTOS.h" not in includes:
+            bad.append(f"{rel}: FreeRTOS.h missing")
+            continue
+        first = includes.index("FreeRTOS.h")
+        for kernel_api in ("queue.h", "task.h", "semphr.h", "timers.h",
+                           "event_groups.h", "stream_buffer.h"):
+            if kernel_api in includes and includes.index(kernel_api) < first:
+                bad.append(f"{rel}: FreeRTOS.h must precede {kernel_api}")
     if app.exists():
         source=app.read_text()
         for token in ('xTaskCreate(StartAudioTask, "AudioTask"',
