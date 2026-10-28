@@ -17,9 +17,11 @@
 #include "group_guardian.h"
 #include "group_ui.h"
 #include "dha_build_mode.h"
-#include "queue.h"
+/* FreeRTOS.h defines kernel types and port macros consumed by queue.h/task.h.
+ * Include it first: reversing this order causes a cascade of parser errors. */
 #include "FreeRTOS.h"
 #include "task.h"
+#include "queue.h"
 
 #include <stdbool.h>
 #include <stddef.h>
