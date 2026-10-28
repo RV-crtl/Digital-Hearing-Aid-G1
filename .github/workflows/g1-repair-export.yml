@@ -1,0 +1,35 @@
+name: G1 repaired STM32CubeIDE project ZIP
+on:
+  push:
+    branches: [fix/g1-freertos-header-build-20261028]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Check source and restored recovery C are identical and FreeRTOS API headers ordered correctly
+        run: |
+          python3 Tools/g1_preflight.py
+          python3 CHECK_PROJECT.py
+          python3 CHECK_GROUP.py
+      - name: Export all tracked G1 project files with hidden CubeIDE metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p output
+          git archive --format=zip --prefix=G1_CubeIDE_Fixed_20261028/ HEAD > output/G1_CubeIDE_Fixed_20261028.zip
+          unzip -t output/G1_CubeIDE_Fixed_20261028.zip | tail -1
+          unzip -l output/G1_CubeIDE_Fixed_20261028.zip | grep -E '/[.]project$|/[.]cproject$|/Core/Src/demo_app.c$|/Recovery/Core/Src/demo_app.c$'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: G1-CubeIDE-Fixed-20261028
+          path: output/G1_CubeIDE_Fixed_20261028.zip
+          if-no-files-found: error
+          retention-days: 14
