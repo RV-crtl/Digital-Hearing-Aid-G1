@@ -28,7 +28,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Validate site links and source files
         run: python3 docs/validate_site.py
       - name: Compile Python publication tools without runtime dependencies
@@ -50,7 +50,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Install KiCad exporter
         run: |
           sudo apt-get update -qq
@@ -78,7 +78,7 @@ jobs:
           assert all((Path("docs")/item["path"]).is_file() for item in manifest["schematics"])
           PY
       - name: Archive actual native schematic previews
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: g1-kicad-schematic-svg-preview
           path: docs/plots/
