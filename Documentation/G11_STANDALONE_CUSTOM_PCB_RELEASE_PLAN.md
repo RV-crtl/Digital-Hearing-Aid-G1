@@ -1,3 +1,5 @@
+> **Historical G11 plan.** References to unintegrated microphone and unverified physical controls below refer to the older checked-in Nucleo-based firmware, **not** the separate R17–R20 operator-tested PCB builds. See [current status](R20_HARDWARE_STATUS.md).
+
 # G11 · Standalone custom-PCB demonstration and systems integration
 
 ## Contract / target configuration

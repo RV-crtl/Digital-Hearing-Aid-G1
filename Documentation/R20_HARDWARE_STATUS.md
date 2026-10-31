@@ -1,28 +1,32 @@
-# R20 hardware baseline and repository integration
+# Custom-PCB firmware status — 31 October 2026
 
-**Date:** 31 October 2026 · **Target:** STM32CubeIDE 1.19.0 · **MCU:** STM32L476RG
+## Baseline separation (important)
 
-## Board results reported by the developer
+The repository's root STM32CubeIDE 1.19.0 project is the older R34/G11 Nucleo-based demonstration plus portable R20 controls merged later. **It is not the full user-tested R20 custom-PCB image.** Do not replace its audio/DMA source piecemeal or represent green portable CI as a physical board release. The separately distributed R20 ZIP is the candidate for controlled whole-project integration; the repository needs an independent clean ARM build and original-hardware tests before promoting it.
 
-The separate **G1 Product R20 Battery Standalone** project was reported to work for the most part. In the R17–R20 development series, microphone capture, speaker output, Bluetooth playback, physical rotary encoder, and the MPR121 touch controls were independently reported working. Telecoil playback and true battery-only/without-ST-LINK cold startup were reported problematic and remain **unverified**.
+## Hardware observations supplied by the operator
 
-These observations relate to the separately built R20 firmware, **not automatically to this Git SHA**.
+| Function | Reported behaviour in R17–R20 series | Repo main-branch validation |
+|---|---|---|
+| PDM microphone / DFSDM | Working on prototype | Full runtime **not** incorporated |
+| Speaker / SAI DMA | Working on prototype | Older Nucleo/SAI baseline only |
+| Bluetooth pairing and audio | Working on prototype; right-channel downmix corrected during R16 | Portable tests, not full PCB proof |
+| Rotary encoder | Working on prototype | Portable decoder tests pass |
+| MPR121 capacitive touch | Working after R17 GPIO-I2C fallback | Control mapping tested; on-board I2C not verified from repo HEAD |
+| Telecoil | Not yet demonstrated as working | **Unverified** |
+| Battery-only start with ST-LINK physically absent | Reported intermittent failure / incomplete acceptance | **Unverified**; power/NRST/BOOT0 must be checked independently |
 
-## Changes staged in this repository
+## Physical control mapping from Anna's individual demonstration
 
-- Import the hardware-neutral R20 source-selection, mute, volume, command, and E8–E11 touch policy into Core/Inc/g1_user_controls.h and Core/Src/g1_user_controls.c.
-- Bring the reusable configurable quadrature-decoder detent threshold to group_encoder.
-- Fix the R20 serial command parser so VOLUME 100 followed by CRLF is accepted.
-- Add an executable host regression and GitHub Actions job.
+- E8 — Bluetooth source; E9 — telecoil source; E10 — mute toggle; E11 — microphone source.
+- MPR121 proximity bit 12 is presence detection and **not** an E12 button. E0–E7 are inactive in the R20 custom-PCB control profile.
+- Rotary encoder controls volume. Mic is the default source at boot in the R20 image.
 
-**Important integration boundary:** The checked-in legacy demo_app.c is still the old source-integrated baseline. The full R20 board driver (g1_product_board), interrupt/DMA ownership, CubeMX .ioc, boot fallback, and Bluetooth/telecoil source switching have **not been transplanted by this patch**. Do not claim this commit is a flashable reproduction of the R20 hardware build. Keep the separately tested R20 ZIP until a complete CubeIDE 1.19.0 GCC build and a custom-board cold-boot test have been performed on the consolidated repository.
+## Build and safety gates
 
-## Next release gates
+1. Check MCU model, original PCB pin map, clocks, NVIC, DMA ownership, CubeMX regeneration and reproducible CubeIDE 1.19.0 build; record genuine `.elf`, `.map` and build log.
+2. Black-box test battery boot with all ST-LINK leads disconnected, audio on a safe fixture (not in-ear), and touch/encoder changes while powered only from the protected 2S LiFePO4 supply. Verify 3.3 V VDD/VDDA, NRST and BOOT0 if the board depends on ST-LINK.
+3. Validate telecoil with an actual induction-loop stimulus; evidence needs changing SAI2A/DMA counters, nonzero signal samples and correctly routed speaker output.
+4. Confirm documented release permissions, attribution and safety/quality controls before claiming a finished or open-source medical product.
 
-1. Promote the complete R20 hardware driver, its matching headers, and the exact CubeIDE project metadata together; preserve third-party middleware licences and existing website/assessment/PCB material.
-2. Re-run full ARM GCC compile and **final executable link**, not only syntax/relocatable checks; flash and validate against the same Git SHA.
-3. Confirm power-off → battery power-up with no ST-LINK or UART adapter, operating touch/encoder, mic, Bluetooth, mute and audio output.
-4. Independently verify telecoil signal, clock/DMA capture, routing and final speaker output.
-5. Measure safe gain/output levels, supply stability and resetting under load before any user-worn demonstration.
-
-Host tests establish only deterministic C policy behaviour; they do not prove bootloader, battery hardware, audio safety, or connected-device operation.
+See Issues #27, #5, #2, #11 for unresolved evidence and power/release prerequisites. This document records observed progress, not clinical, manufacturing or acoustic-safety certification.

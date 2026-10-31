@@ -53,7 +53,8 @@ jobs:
           from pathlib import Path
           data=json.loads(Path('docs/plots/manifest.json').read_text())
           print('Native KiCad SVG views:',len(data['schematics']))
-          print('CAD model present:',Path('docs/assets/g1-assembly.glb').exists())
+          print('Authentic 3MF CAD present:',Path('docs/assets/g1-assembly.3mf').exists())
+          assert Path('docs/assets/g1-assembly.3mf').is_file(), 'Source CAD asset missing'
           assert data['view_only'] is True
           names=[item['name'] for item in data['schematics']]
           assert len(names)>=12 and len(names)==len(set(names)), 'KiCad SVG plots incomplete or duplicated'

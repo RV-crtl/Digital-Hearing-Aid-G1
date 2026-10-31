@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 import sys
+from zipfile import ZipFile, BadZipFile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -43,7 +44,7 @@ def check() -> list[str]:
     for target in re.findall(r'(?:src|href)="(\./[^"]+)"', html):
         if not (SITE / target[2:]).is_file():
             errors.append(f"Unresolved local web asset: {target}")
-    if not all(token in viewer for token in ["GLTFLoader", "ThreeMFLoader", "OrbitControls", "g1-assembly.glb", "placeholderAssembly"]):
+    if not all(token in viewer for token in ["GLTFLoader", "ThreeMFLoader", "OrbitControls", "g1-assembly.3mf", "placeholderAssembly"]):
         errors.append("3D viewer lacks true-CAD loading or fallback")
     if not all(token in html for token in ['id="schematicDialog"', 'id="codePreview"', 'id="modelViewport"']):
         errors.append("Interactive page components missing")
@@ -54,12 +55,16 @@ def check() -> list[str]:
             errors.append(f"Code explorer references missing firmware source: {name}")
     if "/Digital-Hearing-Aid-G1/assets" in html or 'href="/' in html or 'src="/' in html:
         errors.append("Absolute static paths break GitHub project Pages")
-    if (SITE / "assets" / "g1-assembly.glb").is_file():
-        model = SITE / "assets" / "g1-assembly.glb"
-        if model.read_bytes()[:4] != b"glTF":
-            errors.append("3D model exists but is not a binary GLB")
+    model = SITE / "assets" / "g1-assembly.3mf"
+    if not model.is_file():
+        errors.append("Authentic hosted 3MF CAD asset is missing")
     else:
-        print("NOTICE: full CAD GLB not yet committed; interactive illustrative fallback is enabled")
+        try:
+            with ZipFile(model) as archive:
+                if "3D/3dmodel.model" not in archive.namelist():
+                    errors.append("Hosted 3MF has no 3D/3dmodel.model payload")
+        except (BadZipFile, OSError):
+            errors.append("Hosted 3MF is not a valid ZIP-based 3MF file")
     return errors
 
 

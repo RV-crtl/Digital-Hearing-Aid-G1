@@ -1,5 +1,5 @@
-/* G1 WebGL assembly explorer. Loads the supplied CAD-derived GLB when installed.
-   The alternate scene is a marked, illustrative reconstruction—not a measured CAD model. */
+/* G1 WebGL assembly explorer. Loads the authentic supplied 3MF CAD assembly.
+   Any conceptual geometry is not used as the hosted model. */
 import * as THREE from "three";
 import {OrbitControls} from "three/addons/controls/OrbitControls.js";
 import {GLTFLoader} from "three/addons/loaders/GLTFLoader.js";
@@ -112,7 +112,7 @@ export function bootViewer({reducedMotion=false}={}){
     for(const child of assembly.children){startPos.set(child,child.position.clone());}
     scene.add(assembly);
     updateExplode();
-    status.textContent=isCAD?"Real supplied CAD assembly · drag to inspect":"Concept illustration · awaiting optional full CAD GLB";
+    status.textContent=isCAD?"Authentic supplied CAD assembly · drag to inspect":"CAD model unavailable";
     mode.textContent=isCAD?"CAD-derived model loaded • interact freely":"Conceptual fallback — not the uploaded CAD geometry";
     resetCamera();
   }
@@ -192,12 +192,12 @@ export function bootViewer({reducedMotion=false}={}){
   // G11: never substitute a fictional device for the actual supplied CAD.
   // Until the approved GLB is hosted, show an empty stage with an explicit
   // local-load invitation. Native 3MF input is handled without upload.
-  status.textContent="Real model required · load your 3MF or the hosted approved GLB";
-  mode.textContent="No fictional preview — load the actual CAD assembly";
-  new GLTFLoader().load("./assets/g1-assembly.glb",
-    gltf=>{setAssembly(gltf.scene,true);setWireframe();showHousing();},
+  status.textContent="Loading the original supplied G1 CAD assembly…";
+  mode.textContent="Authentic supplied 3MF — automatic hosted preview";
+  new ThreeMFLoader().load("./assets/g1-assembly.3mf",
+    model=>{setAssembly(model,true);setWireframe();showHousing();},
     undefined,
-    ()=>{status.textContent="Choose Open your 3D CAD to view the authentic assembly";});
+    ()=>{status.textContent="Hosted original 3MF could not load; choose Open your 3D CAD to view your local copy";});
 
   function resize(){
     const width=Math.max(1,wrap.clientWidth),height=Math.max(1,wrap.clientHeight);
