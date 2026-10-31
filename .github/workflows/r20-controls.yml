@@ -1,0 +1,35 @@
+name: R20 portable physical-controls tests
+on:
+  push:
+    paths:
+      - "Core/Inc/g1_user_controls.h"
+      - "Core/Src/g1_user_controls.c"
+      - "Core/Inc/group_encoder.h"
+      - "Core/Src/group_encoder.c"
+      - "Validation/host/r20_controls_test.c"
+      - ".github/workflows/r20-controls.yml"
+  pull_request:
+    paths:
+      - "Core/Inc/g1_user_controls.h"
+      - "Core/Src/g1_user_controls.c"
+      - "Core/Inc/group_encoder.h"
+      - "Core/Src/group_encoder.c"
+      - "Validation/host/r20_controls_test.c"
+      - ".github/workflows/r20-controls.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  host-control-regression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile and run R20 control policy tests
+        run: |
+          gcc -std=c11 -O2 -Wall -Wextra -Werror \
+            -I Core/Inc \
+            Core/Src/g1_user_controls.c \
+            Core/Src/group_encoder.c \
+            Validation/host/r20_controls_test.c \
+            -o /tmp/g1_r20_controls
+          /tmp/g1_r20_controls
