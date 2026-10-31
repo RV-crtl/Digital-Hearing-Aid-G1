@@ -194,10 +194,14 @@ export function bootViewer({reducedMotion=false}={}){
   // local-load invitation. Native 3MF input is handled without upload.
   status.textContent="Loading the original supplied G1 CAD assembly…";
   mode.textContent="Authentic supplied 3MF — automatic hosted preview";
-  new ThreeMFLoader().load("./assets/g1-assembly.3mf",
-    model=>{setAssembly(model,true);setWireframe();showHousing();},
-    undefined,
-    ()=>{status.textContent="Hosted original 3MF could not load; choose Open your 3D CAD to view your local copy";});
+  // Prefer the build-generated, CAD-derived GLB for faster rendering on Pages.
+  // In source previews where no GLB is generated, load the exact source 3MF.
+  const loadedModel = model=>{setAssembly(model,true);setWireframe();showHousing();};
+  const loadSource3MF = ()=>new ThreeMFLoader().load("./assets/g1-assembly.3mf",
+    loadedModel, undefined,
+    ()=>{status.textContent="Original CAD failed to load; choose Open your 3D CAD for a local preview";});
+  new GLTFLoader().load("./assets/g1-assembly.glb",
+    gltf=>loadedModel(gltf.scene), undefined, loadSource3MF);
 
   function resize(){
     const width=Math.max(1,wrap.clientWidth),height=Math.max(1,wrap.clientHeight);

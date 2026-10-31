@@ -25,6 +25,19 @@ jobs:
           python-version: '3.12'
       - name: Validate website routes and actual repository references
         run: python docs/validate_site.py
+      - name: Build optimized glTF from original 3MF for GitHub Pages
+        run: |
+          python -m pip install --disable-pip-version-check numpy==2.3.5 trimesh==4.11.1 lxml==6.1.1
+          python Tools/convert_3mf_to_glb.py docs/assets/g1-assembly.3mf docs/assets/g1-assembly.glb
+          python - <<'PY'
+          from pathlib import Path
+          original=Path('docs/assets/g1-assembly.3mf')
+          published=Path('docs/assets/g1-assembly.glb')
+          assert original.is_file(), 'Original 3MF must remain intact'
+          assert published.stat().st_size > 1000000, 'Conversion unexpectedly small'
+          assert published.open('rb').read(4) == b'glTF', 'Not a valid binary GLB'
+          PY
+          python docs/validate_site.py
       - name: Check JavaScript module syntax
         run: |
           node --input-type=module --check < docs/app.js
