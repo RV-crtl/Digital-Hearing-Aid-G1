@@ -7,7 +7,7 @@ jobs:
   package:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Block unauthorised public export of coursework/group/IP assets
         env:
           REPOSITORY_PRIVATE: ${{ github.event.repository.private }}
@@ -22,7 +22,7 @@ jobs:
         run: |
           mkdir -p output
           git archive --format=zip --prefix=Digital-Hearing-Aid/ HEAD > output/Digital-Hearing-Aid-CubeIDE-${GITHUB_SHA:0:8}.zip
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: cubeide-import-source
           path: output/*.zip

@@ -21,8 +21,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
       - name: Check coverage, corruption tests and evidence claims
@@ -39,7 +39,7 @@ jobs:
         run: |
           test -s Assessment/generated/SYSTEM_REQUIREMENTS_AND_BLACK_BOX_TEST_PLAN_DRAFT.pdf
           test -s Assessment/generated/PRINT_A3_SYSTEM_SOFTWARE_HARDWARE_INTERFACES.pdf
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: draft-assessment-pdfs-${{ github.sha }}
           path: Assessment/generated/*.pdf
