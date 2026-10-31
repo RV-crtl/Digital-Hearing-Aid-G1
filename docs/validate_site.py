@@ -55,6 +55,9 @@ def check() -> list[str]:
             errors.append(f"Code explorer references missing firmware source: {name}")
     if "/Digital-Hearing-Aid-G1/assets" in html or 'href="/' in html or 'src="/' in html:
         errors.append("Absolute static paths break GitHub project Pages")
+    optimized = SITE / "assets" / "g1-assembly.glb"
+    if optimized.is_file() and optimized.open("rb").read(4) != b"glTF":
+        errors.append("Generated GLB exists but has invalid glTF magic")
     model = SITE / "assets" / "g1-assembly.3mf"
     if not model.is_file():
         errors.append("Authentic hosted 3MF CAD asset is missing")

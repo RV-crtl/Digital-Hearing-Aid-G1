@@ -18,7 +18,7 @@ The dedicated `G1 Visual Lab — website integrity` workflow runs for site-relat
 
 ## The authentic hosted 3D assembly
 
-The repository contains the actual original **3MF** CAD archive at `docs/assets/g1-assembly.3mf`. Previous revisions accidentally named the same ZIP-format bytes `.glb`; this is now fixed. The site directly loads the original geometry using Three.js `ThreeMFLoader` and does **not** substitute fictional electronics. Large assemblies can take longer to open on mobile or lower-memory devices.
+The repository contains the actual original **3MF** CAD archive at `docs/assets/g1-assembly.3mf`. Previous revisions accidentally named the same ZIP-format bytes `.glb`; this is now fixed. The Pages build converts that original file into a genuine, optimized GLB using the checked-in converter; the viewer loads the generated GLB first and falls back to the unmodified original 3MF for source previews. It does **not** substitute fictional electronics. Large assemblies can still require desktop-class memory and GPU resources.
 
 The **Open your 3D CAD** control also allows local `.3mf` or genuine `.glb` files without uploading them. Optional offline conversion: `python Tools/convert_3mf_to_glb.py docs/assets/g1-assembly.3mf /path/to/output.glb` (requires `trimesh`, `numpy`, `lxml`). Convert and verify a true `glTF` header before changing the public viewer path.
 
@@ -49,4 +49,4 @@ Site code is solely a user interface; never use the interactive signal-map as a 
 
 The [system atlas](index.html#architecture) is a single-page, keyboard-accessible diagram of Bluetooth, telecoil, and proposed PDM microphone routes, including serial words, circular RX DMA, completed-half snapshots, task notifications, AudioTask ownership, PCM FIFO, SAI2B TX DMA and output electronics. It explains 2 × 26650 LiFePO4 3.25 V nominal cells **in series**, uses no NUCLEO as part of the final operating system, and shows the RTOS hierarchy with clickable production C sources. The contextual preference demo is a **browser simulator**, with portable algorithm source in `Core/Src/adaptive_preferences.c`, not a field-ready learned device.
 
-For the rubric and bench acceptance, see [standalone custom-PCB release plan](../Documentation/G11_STANDALONE_CUSTOM_PCB_RELEASE_PLAN.md). The authentic original 3MF is now loaded automatically from `docs/assets/g1-assembly.3mf`; source-licensing review and physical-board acceptance remain separate requirements.
+For the rubric and bench acceptance, see [standalone custom-PCB release plan](../Documentation/G11_STANDALONE_CUSTOM_PCB_RELEASE_PLAN.md). The original `docs/assets/g1-assembly.3mf` is retained and loaded when a generated GLB is unavailable; the manually triggered Pages workflow generates the real GLB before deployment. Source-licensing review and physical-board acceptance remain separate requirements.
