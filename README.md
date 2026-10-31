@@ -12,6 +12,10 @@
 
 ![Digital Hearing Aid system overview](Assets/system-overview.svg)
 
+## R20 integration status
+
+The team has separately demonstrated microphone, speaker, Bluetooth, MPR121 touch and rotary-encoder functions in the R17–R20 custom-PCB firmware series. **This repository's legacy CubeIDE application is not yet equivalent to the separate R20 hardware build**; telecoil operation and battery-only cold-start remain open acceptance items. The R20 physical-control policy and quadrature driver are being integrated with a deterministic host regression; see [R20 integration and evidence status](Documentation/R20_HARDWARE_STATUS.md). Do not equate a green host test with a successfully flashed custom-PCB binary.
+
 ## G11: standalone target and interactive systems atlas
 
 **Demonstration target:** the physical custom PCB, untethered, powered by **2 × 26650 LiFePO4 cells connected in series (3.25 V nominal per cell, 6.50 V nominal pack)**. PC/ST-LINK and NUCLEO are **not** part of operating mode. The team reports working hardware; its precise board revision and final integrated image still need reproducible on-board tests for this Git SHA. Never route 6.5 V directly to the MCU supply pins: verify actual regulator/protection/balance circuit and safe operating range.
