@@ -16,13 +16,19 @@
 
 The team has separately demonstrated microphone, speaker, Bluetooth, MPR121 touch and rotary-encoder functions in the R17–R20 custom-PCB firmware series. **This repository's legacy CubeIDE application is not yet equivalent to the separate R20 hardware build**; telecoil operation and battery-only cold-start remain open acceptance items. The R20 physical-control policy and quadrature driver are being integrated with a deterministic host regression; see [R20 integration and evidence status](Documentation/R20_HARDWARE_STATUS.md). Do not equate a green host test with a successfully flashed custom-PCB binary.
 
+## October 2026: repository source vs. hardware-tested integration
+
+**Two different code baselines must not be confused.** The main-branch CubeIDE sources currently remain the earlier **R34/G11 Nucleo-oriented source baseline**, augmented with portable R20 physical-control policies; they are **not** the full R20 custom-PCB firmware. The separately supplied R17–R20 STM32CubeIDE 1.19.0 packages are the experimental custom-PCB series. Based on the operator's latest tests, microphone input, speaker output, Bluetooth playback, rotary encoder and Anna-derived MPR121 touch worked in that series; telecoil and reliable untethered battery-only startup still need acceptance tests, and there have been iterative compiler/link fixes. None of this establishes a verified ARM build or physical test for the current repository HEAD.
+
+See [current firmware/PCB status](Documentation/R20_HARDWARE_STATUS.md) and [R20 integration issue](https://github.com/RV-crtl/Digital-Hearing-Aid-G1/issues/27). **Do not flash the main-branch legacy firmware assuming it is R20.** The existing hardware schematics, assessment work and Nucleo demonstrations are retained as source/history, not as substitutes for the proven PCB package.
+
 ## G11: standalone target and interactive systems atlas
 
 **Demonstration target:** the physical custom PCB, untethered, powered by **2 × 26650 LiFePO4 cells connected in series (3.25 V nominal per cell, 6.50 V nominal pack)**. PC/ST-LINK and NUCLEO are **not** part of operating mode. The team reports working hardware; its precise board revision and final integrated image still need reproducible on-board tests for this Git SHA. Never route 6.5 V directly to the MCU supply pins: verify actual regulator/protection/balance circuit and safe operating range.
 
 The [visual systems atlas](https://rv-crtl.github.io/Digital-Hearing-Aid-G1/#architecture) explains the complete signal/data/control and power flow, DMA buffer hand-offs, RTOS task priorities, microphone PDM/DFSDM path, Bluetooth/telecoil and optional learning. The [G11 custom-PCB assessment plan](Documentation/G11_STANDALONE_CUSTOM_PCB_RELEASE_PLAN.md) maps these items directly to the external black-box demonstration rubric.
 
-**Implemented vs research:** the microphone's PCB clock/data nets exist but its DFSDM firmware integration is not established; `Core/Src/adaptive_preferences.c` now implements a portable, bounded user-feedback preference algorithm with deterministic host tests, but it is not yet physically wired into MCU capture, control state or nonvolatile memory. The website's learning demo is a simulator, not a claim of deployed hardware AI.
+**Implemented vs research:** the *checked-in legacy baseline* does not include the separate PCB-series microphone implementation; `Core/Src/adaptive_preferences.c` now implements a portable, bounded user-feedback preference algorithm with deterministic host tests, but it is not yet physically wired into MCU capture, control state or nonvolatile memory. The website's learning demo is a simulator, not a claim of deployed hardware AI.
 
 ## Choose your route
 

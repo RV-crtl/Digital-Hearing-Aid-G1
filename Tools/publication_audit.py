@@ -12,6 +12,7 @@ import re
 import subprocess
 import sys
 from pathlib import Path
+from zipfile import ZipFile, BadZipFile
 
 ROOT = Path(__file__).resolve().parents[1]
 BLOCKED_PREFIXES = ("Debug/", "Release/", "RESULTS_R26/", "Validation/results/",
@@ -61,7 +62,20 @@ def audit(root: Path) -> dict:
             errors.append(f"Tracked path unavailable: {rel}")
             continue
         if file.stat().st_size > MAX_SCAN_BYTES:
-            skipped.append(rel)
+            # The original supplied 3MF CAD may exceed the text scanner limit.
+            # Validate its container and always require manual rights/content review.
+            # Other large tracked files still FAIL rather than silently escaping audit.
+            if rel == "docs/assets/g1-assembly.3mf":
+                try:
+                    with ZipFile(file) as archive:
+                        if "3D/3dmodel.model" not in archive.namelist():
+                            errors.append(f"Malformed original CAD asset: {rel}")
+                        else:
+                            manual.append(rel)
+                except (BadZipFile, OSError):
+                    errors.append(f"Invalid original CAD archive: {rel}")
+            else:
+                skipped.append(rel)
             continue
         if file.suffix.lower() in ALWAYS_MANUAL_REVIEW or rel.startswith("References/"):
             manual.append(rel)

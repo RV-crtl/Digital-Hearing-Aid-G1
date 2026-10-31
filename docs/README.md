@@ -16,17 +16,13 @@ The site lives entirely in this `docs/` directory. It documents the current soft
 
 The dedicated `G1 Visual Lab — website integrity` workflow runs for site-related pull requests and checks routes, repository references, JS/Python syntax and the publication boundary. It **does not deploy a preview to a public URL**.
 
-## Include the actual supplied assembly
+## The authentic hosted 3D assembly
 
-The Three.js viewer looks for `docs/assets/g1-assembly.glb`. If the file is absent, it shows an explicitly labelled **conceptual** hardware fallback rather than pretending to show the source CAD.
+The repository contains the actual original **3MF** CAD archive at `docs/assets/g1-assembly.3mf`. Previous revisions accidentally named the same ZIP-format bytes `.glb`; this is now fixed. The site directly loads the original geometry using Three.js `ThreeMFLoader` and does **not** substitute fictional electronics. Large assemblies can take longer to open on mobile or lower-memory devices.
 
-To install the real CAD-derived assembly:
+The **Open your 3D CAD** control also allows local `.3mf` or genuine `.glb` files without uploading them. Optional offline conversion: `python Tools/convert_3mf_to_glb.py docs/assets/g1-assembly.3mf /path/to/output.glb` (requires `trimesh`, `numpy`, `lxml`). Convert and verify a true `glTF` header before changing the public viewer path.
 
-1. Convert your authorised `.3mf` with `python Tools/convert_3mf_to_glb.py "your-model.3mf" "docs/assets/g1-assembly.glb"`, after installing `trimesh numpy lxml`. Alternatively use the already converted GLB supplied separately in the conversation.
-2. Upload that 3D file to **exactly** `docs/assets/g1-assembly.glb` in this G1 repository using GitHub's **Add file → Upload files**; create the `docs/assets` folder if necessary. The supplied mesh is several megabytes and should be treated as a genuine public design disclosure; upload only if team/rightsholder clearance is established.
-3. To inspect the GLB privately before pushing it, click **Open your 3D CAD (.3mf / .glb)** inside the website's 3D panel. The original 3MF can now load directly in your browser, without conversion or upload; GLB also works. The file is not uploaded. To make it visible to everyone, commit the file and run the Pages publishing workflow again. Once installed, the viewer reports **“CAD-derived model loaded”** and renders the detailed assembly instead of the conceptual fallback.
-
-The companion conversion utility groups the original 3MF into Shell, PCB, Copper, Electronics, Components and Contacts, retaining triangular geometry and 3MF group colours where supplied. It reduces draw calls by merging objects into coherent rendering layers; it does **not** claim CAD-to-GLB produces a parametrically editable STEP model.
+The source model already exists in this public repository, but public availability does **not** establish ownership, redistribution permissions, medical compliance or acoustic safety. Rights-holder clearance remains necessary before claiming an approved release. See [publication gate](../Documentation/PUBLICATION_GATE.md).
 
 ## Schematic viewer provenance
 
@@ -53,4 +49,4 @@ Site code is solely a user interface; never use the interactive signal-map as a 
 
 The [system atlas](index.html#architecture) is a single-page, keyboard-accessible diagram of Bluetooth, telecoil, and proposed PDM microphone routes, including serial words, circular RX DMA, completed-half snapshots, task notifications, AudioTask ownership, PCM FIFO, SAI2B TX DMA and output electronics. It explains 2 × 26650 LiFePO4 3.25 V nominal cells **in series**, uses no NUCLEO as part of the final operating system, and shows the RTOS hierarchy with clickable production C sources. The contextual preference demo is a **browser simulator**, with portable algorithm source in `Core/Src/adaptive_preferences.c`, not a field-ready learned device.
 
-For the rubric and bench acceptance, see [standalone custom-PCB release plan](../Documentation/G11_STANDALONE_CUSTOM_PCB_RELEASE_PLAN.md). The authentic 3MF can be opened privately; no synthetic model is shown by default. An owner-approved `g1-assembly.glb` in `docs/assets` is still needed to show the genuine model automatically to every public visitor.
+For the rubric and bench acceptance, see [standalone custom-PCB release plan](../Documentation/G11_STANDALONE_CUSTOM_PCB_RELEASE_PLAN.md). The authentic original 3MF is now loaded automatically from `docs/assets/g1-assembly.3mf`; source-licensing review and physical-board acceptance remain separate requirements.

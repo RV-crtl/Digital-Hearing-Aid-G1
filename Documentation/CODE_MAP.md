@@ -1,5 +1,7 @@
 # Code map — where is everything?
 
+> **Source scope:** This map covers the older Nucleo-oriented main-branch application. The user-tested R17–R20 custom-PCB firmware exists as separately distributed CubeIDE packages and is not fully integrated here; see [current status](R20_HARDWARE_STATUS.md).
+
 > **Actual compiled target:** `Core/`, not `References/` or `Recovery/`.  `References/` preserves group submissions; `Recovery/` is a restore mirror used by `PREPARE_PROJECT.bat`. Do not separately compile copies from those directories.
 
 ## Entry points & ownership

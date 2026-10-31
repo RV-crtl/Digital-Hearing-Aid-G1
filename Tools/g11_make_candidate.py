@@ -18,7 +18,7 @@ from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
 PREFIXES=("Core/","Drivers/","Validation/","Tools/","docs/","Documentation/","Hardware/")
 SINGLES={".project",".cproject","261013-Individual_Demonstration_Connectivity.ioc","README.md","CHANGELOG.md","PREPARE_PROJECT.ps1","PREPARE_PROJECT.bat","G1_BUILD_ARM.ps1","G1_RUN_ALL.ps1","CHECK_PROJECT.py","CHECK_GROUP.py"}
-SKIP=("Validation/results/","Documentation/Reference/","Hardware/Original_KiCad/","docs/plots/","docs/assets/g1-assembly.glb")
+SKIP=("Validation/results/","Documentation/Reference/","Hardware/Original_KiCad/","docs/plots/","docs/assets/g1-assembly.3mf")
 SKIP_SUFFIX=(".pyc",".elf",".hex",".bin",".zip",".pdf")
 MAX_SIZE=8*1024*1024
 
