@@ -42,18 +42,18 @@ class PlanAuditTests(unittest.TestCase):
 
     def test_valid_baseline(self):
         result = validate(self.root)
-        self.assertGreaterEqual(result["requirements"], 22)
+        self.assertEqual(result["requirements"], 9)
         self.assertEqual(result["coverage"], "two-way exact")
 
     def test_missing_inverse_mapping_is_rejected(self):
-        self.edit_csv(lambda rows: next(r for r in rows if r["Requirement Number"] == "FUN-08")
-                      .update({"Test Cases": "TC02,TC03,TC04"}))
+        self.edit_csv(lambda rows: next(r for r in rows if r["Requirement Number"] == "G1-01")
+                      .update({"Test Cases": "T2,T3,T4"}))
         with self.assertRaisesRegex(ValidationError, "mapping mismatch"):
             validate(self.root)
 
     def test_ghost_test_is_rejected(self):
-        self.edit_csv(lambda rows: next(r for r in rows if r["Requirement Number"] == "FUN-08")
-                      .update({"Test Cases": "TC01,TC02,TC03,TC04,TC99"}))
+        self.edit_csv(lambda rows: next(r for r in rows if r["Requirement Number"] == "G1-01")
+                      .update({"Test Cases": "T1,T7,T99"}))
         with self.assertRaisesRegex(ValidationError, "unknown test ID"):
             validate(self.root)
 
