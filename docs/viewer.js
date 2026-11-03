@@ -6,72 +6,6 @@ import {GLTFLoader} from "three/addons/loaders/GLTFLoader.js";
 import {ThreeMFLoader} from "three/addons/loaders/3MFLoader.js";
 
 const $=id=>document.getElementById(id);
-const colors={board:0x285e51,shell:0x354d5b,chip:0x26313f,copper:0xe5bf60,wire:0x88dfcc};
-const MATERIALS={
-  board:new THREE.MeshStandardMaterial({color:colors.board,metalness:.22,roughness:.59}),
-  shell:new THREE.MeshPhysicalMaterial({color:colors.shell,metalness:.23,roughness:.33,transparent:true,opacity:.79,clearcoat:.45,side:THREE.DoubleSide,depthWrite:false}),
-  chip:new THREE.MeshStandardMaterial({color:colors.chip,metalness:.2,roughness:.44}),
-  copper:new THREE.MeshStandardMaterial({color:colors.copper,metalness:.73,roughness:.24,side:THREE.DoubleSide}),
-  silkscreen:new THREE.MeshStandardMaterial({color:0xb1ead5,metalness:0,roughness:.85}),
-  pin:new THREE.MeshStandardMaterial({color:0xbbc7d3,metalness:.75,roughness:.31})
-};
-function box(w,h,d,mat,x,y,z){
-  const mesh=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);
-  mesh.position.set(x,y,z);return mesh;
-}
-function roundedPlate(w,h,depth,radius,mat){
-  const x=-w/2,y=-h/2;
-  const sh=new THREE.Shape();
-  sh.moveTo(x+radius,y);sh.lineTo(x+w-radius,y);sh.quadraticCurveTo(x+w,y,x+w,y+radius);
-  sh.lineTo(x+w,y+h-radius);sh.quadraticCurveTo(x+w,y+h,x+w-radius,y+h);
-  sh.lineTo(x+radius,y+h);sh.quadraticCurveTo(x,y+h,x,y+h-radius);
-  sh.lineTo(x,y+radius);sh.quadraticCurveTo(x,y,x+radius,y);
-  const mesh=new THREE.Mesh(new THREE.ExtrudeGeometry(sh,{depth,steps:1,bevelEnabled:true,bevelThickness:.8,bevelSize:.8,bevelSegments:3,curveSegments:8}),mat);
-  return mesh;
-}
-function addTrace(group,points,z){
-  const curve=new THREE.CatmullRomCurve3(points.map(p=>new THREE.Vector3(p[0],p[1],z)),false,"centripetal");
-  const mesh=new THREE.Mesh(new THREE.TubeGeometry(curve,Math.max(8,points.length*4),.18,5,false),MATERIALS.copper);
-  group.add(mesh);
-}
-function placeholderAssembly(){
-  const root=new THREE.Group();root.name="ConceptualG1";
-  const shell=new THREE.Group();shell.name="Shell";
-  const board=new THREE.Group();board.name="PCB";
-  const electronic=new THREE.Group();electronic.name="Components";
-  const copper=new THREE.Group();copper.name="Copper";
-  const contacts=new THREE.Group();contacts.name="Contacts";
-  const base=roundedPlate(100,78,4,12,MATERIALS.shell);base.position.z=-13;shell.add(base);
-  const rim=roundedPlate(100,78,5,12,new THREE.MeshPhysicalMaterial({color:0x587d88,transparent:true,opacity:.16,roughness:.25,side:THREE.DoubleSide,depthWrite:false}));rim.position.z=8;shell.add(rim);
-  const pcb=roundedPlate(96,72,1.6,5,MATERIALS.board);pcb.position.z=-4;board.add(pcb);
-  for(let i=0;i<4;i++)for(let j=0;j<2;j++)board.add(box(10,1.2,.2,MATERIALS.silkscreen,-31+i*21,31-j*62,-1.7));
-  const chips=[[0,0,21,17,4],[-31,-14,14,12,4],[26,16,18,12,3],[31,-19,10,8,3],[-12,23,11,9,3]];
-  chips.forEach(([x,y,w,h,z],i)=>{
-    electronic.add(box(w,h,z,MATERIALS.chip,x,y,-1.2+z/2));
-    const n= Math.floor(w/2.5);
-    for(let pin=0;pin<n;pin++){
-      const px=x-w/2+1.8+pin*2.5;
-      contacts.add(box(1.2,3,.45,MATERIALS.pin,px,y-h/2-1.5,-.9));
-      contacts.add(box(1.2,3,.45,MATERIALS.pin,px,y+h/2+1.5,-.9));
-    }
-  });
-  for(let i=0;i<38;i++){
-    const sx=Math.sin(i*14.15)*38,sy=Math.cos(i*6.73)*27;
-    const ex=sx*.55+Math.cos(i*1.67)*16,ey=sy*.6;
-    addTrace(copper,[[sx,sy],[sx,ey],[ex,ey]],-1.88);
-  }
-  for(let i=0;i<3;i++)electronic.add(box(24,7,5,MATERIALS.chip,-28+i*26,-28,-.8));
-  electronic.add(box(14,12,12,MATERIALS.pin,36,28,4.5));
-  for(let i=0;i<4;i++){
-    const sx=i%2?-44:44,sy=i<2?-33:33;
-    contacts.add(new THREE.Mesh(new THREE.CylinderGeometry(2.3,2.3,1.5,18),MATERIALS.pin));
-    contacts.children[contacts.children.length-1].rotation.x=Math.PI/2;
-    contacts.children[contacts.children.length-1].position.set(sx,sy,-.2);
-  }
-  root.add(shell,board,copper,electronic,contacts);
-  return root;
-}
-
 export function bootViewer({reducedMotion=false}={}){
   const wrap=$("modelViewport");
   const renderer=new THREE.WebGLRenderer({antialias:true,alpha:true,powerPreference:"high-performance"});
@@ -95,25 +29,86 @@ export function bootViewer({reducedMotion=false}={}){
   controls.enableDamping=true;controls.dampingFactor=.07;controls.minDistance=50;controls.maxDistance=440;
   controls.maxPolarAngle=Math.PI;controls.target.set(0,0,0);
   let assembly=null,loadedCAD=false,manualInput=false;
+  let meshes=[],selected=null,pointerStart=null;
+  const selectedMats=[];
+  const raycaster=new THREE.Raycaster(),pointer=new THREE.Vector2();
+  const search=$("cadSearch"),parts=$("cadParts"),stats=$("cadStats");
   const startPos=new WeakMap();
   let currentView="iso";
   const presets={iso:[142,-168,142],top:[0,-4,230],side:[213,-18,56]};
   let transitioning=false;
+  let fitDistance=220;
   const targetCamera=new THREE.Vector3(...presets.iso);
   const status=$("modelStatus"),mode=$("modelMode");
+  function clearSelection(){
+    for(const {material,emissive} of selectedMats){if(material.emissive)material.emissive.setHex(emissive);}
+    selectedMats.length=0;selected=null;
+  }
+  function selectPart(obj){
+    clearSelection();selected=obj||null;
+    if(!selected)return;
+    for(const mat of (Array.isArray(selected.material)?selected.material:[selected.material])){
+      if(mat?.emissive){selectedMats.push({material:mat,emissive:mat.emissive.getHex()});mat.emissive.setHex(0x17684e);}
+    }
+    $("modelStatus").textContent="Selected "+(selected.name||"unnamed mesh")+" · click elsewhere or Show full assembly";
+    renderParts();
+  }
+  function renderParts(){
+    if(!parts||!stats)return;
+    const query=(search?.value||"").trim().toLowerCase();
+    const matches=query?meshes.filter(obj=>(obj.name||"unnamed").toLowerCase().includes(query)):meshes;
+    let faces=0;for(const o of meshes){if(o.geometry?.index)faces+=Math.floor(o.geometry.index.count/3);else if(o.geometry?.attributes?.position)faces+=Math.floor(o.geometry.attributes.position.count/3);}
+    stats.textContent=meshes.length.toLocaleString()+" render meshes · "+faces.toLocaleString()+" triangles · "+matches.length+" matches";
+    parts.replaceChildren();
+    for(const obj of matches.slice(0,48)){
+      const button=document.createElement("button");button.type="button";
+      button.textContent=obj.name||"unnamed mesh";
+      button.setAttribute("aria-pressed",String(obj===selected));
+      button.addEventListener("click",()=>selectPart(obj));
+      parts.appendChild(button);
+    }
+    if(matches.length>48){const more=document.createElement("span");more.textContent="+"+(matches.length-48)+" more · refine search";parts.append(more);}
+  }
+  function fitCamera(){
+    if(!assembly)return;
+    const b=new THREE.Box3().setFromObject(assembly),size=b.getSize(new THREE.Vector3());
+    const maxDimension=Math.max(size.x,size.y,size.z,60);
+    const fovRadians=camera.fov*Math.PI/180;
+    fitDistance=Math.max(160, maxDimension/(2*Math.tan(fovRadians/2))*1.4);
+    controls.maxDistance=Math.max(1800,fitDistance*5);
+    controls.minDistance=Math.max(3,maxDimension*.006);
+    camera.far=Math.max(8000,fitDistance*8);camera.updateProjectionMatrix();
+    presets.iso=[fitDistance*.75,-fitDistance*.80,fitDistance*.70];
+    presets.top=[0,-fitDistance*.01,fitDistance*1.2];
+    presets.side=[fitDistance*1.2,-fitDistance*.05,fitDistance*.20];
+  }
+  function disposeAssembly(old){
+    if(!old)return;
+    const geo=new Set(),mat=new Set();
+    old.traverse(obj=>{if(obj.isMesh){if(obj.geometry)geo.add(obj.geometry);for(const m of (Array.isArray(obj.material)?obj.material:[obj.material]))if(m)mat.add(m);}});
+    for(const g of geo)g.dispose();for(const m of mat)m.dispose();
+  }
   function setAssembly(next,isCAD){
-    if(assembly)scene.remove(assembly);
+    clearSelection();
+    if(assembly){scene.remove(assembly);disposeAssembly(assembly);}
     assembly=next;loadedCAD=isCAD;
     const bnd=new THREE.Box3().setFromObject(assembly);
     const center=bnd.getCenter(new THREE.Vector3());
     assembly.position.sub(center);
     assembly.rotation.set(-.08,0,-.12);
-    assembly.traverse(obj=>{if(obj.isMesh){obj.castShadow=false;obj.receiveShadow=false;obj.material=obj.material.clone();}});
+    meshes=[];
+    assembly.traverse(obj=>{
+      if(obj.isMesh){
+        obj.castShadow=false;obj.receiveShadow=false;
+        obj.material=Array.isArray(obj.material)?obj.material.map(mat=>mat.clone()):obj.material.clone();
+        meshes.push(obj);
+      }
+    });
     for(const child of assembly.children){startPos.set(child,child.position.clone());}
     scene.add(assembly);
-    updateExplode();
+    fitCamera();renderParts();updateExplode();
     status.textContent=isCAD?"Authentic supplied CAD assembly · drag to inspect":"CAD model unavailable";
-    mode.textContent=isCAD?"CAD-derived model loaded • interact freely":"Conceptual fallback — not the uploaded CAD geometry";
+    mode.textContent=isCAD?"Source CAD loaded · object inspector active":"No source geometry loaded";
     resetCamera();
   }
   function updateExplode(){
@@ -154,7 +149,23 @@ export function bootViewer({reducedMotion=false}={}){
     $$(".view-btn").forEach(b=>b.classList.toggle("active",b.dataset.view===view));
   }
   $$(".view-btn").forEach(b=>b.addEventListener("click",()=>setView(b.dataset.view)));
-  $("resetModel").addEventListener("click",resetCamera);
+  $("resetModel").addEventListener("click",()=>{fitCamera();resetCamera();});
+  search?.addEventListener("input",renderParts);
+  $("cadShowAll")?.addEventListener("click",()=>{
+    clearSelection();if(search)search.value="";
+    for(const obj of meshes)obj.visible=true;renderParts();
+    status.textContent="Full CAD assembly visible";resetCamera();
+  });
+  wrap.addEventListener("pointerdown",e=>{pointerStart={x:e.clientX,y:e.clientY};});
+  wrap.addEventListener("pointerup",e=>{
+    if(!assembly||!pointerStart||Math.hypot(e.clientX-pointerStart.x,e.clientY-pointerStart.y)>5)return;
+    pointerStart=null;
+    const rect=renderer.domElement.getBoundingClientRect();
+    pointer.set(((e.clientX-rect.left)/rect.width)*2-1,-((e.clientY-rect.top)/rect.height)*2+1);
+    raycaster.setFromCamera(pointer,camera);
+    const hit=raycaster.intersectObjects(meshes.filter(o=>o.visible),false)[0];
+    if(hit?.object)selectPart(hit.object);
+  });
   $("loadLocalModel").addEventListener("click",()=>$("localModel").click());
   $("localModel").addEventListener("change",async event=>{
     const file=event.target.files&&event.target.files[0];
@@ -169,7 +180,7 @@ export function bootViewer({reducedMotion=false}={}){
       const loaded=assembly=>{
         setAssembly(assembly,true);
         mode.textContent="Local CAD loaded • never uploaded to a server";
-        status.textContent="Local "+file.name+" · drag or explode to explore";
+        status.textContent="Local "+file.name+" · real CAD · "+meshes.length+" render meshes";
       };
       if(extension.endsWith(".3mf")){
         const loader=new ThreeMFLoader();
@@ -189,11 +200,9 @@ export function bootViewer({reducedMotion=false}={}){
   $("housingToggle").addEventListener("change",showHousing);
   controls.addEventListener("start",()=>{manualInput=true;transitioning=false;});
   controls.addEventListener("end",()=>{manualInput=false;});
-  // G11: never substitute a fictional device for the actual supplied CAD.
-  // Until the approved GLB is hosted, show an empty stage with an explicit
-  // local-load invitation. Native 3MF input is handled without upload.
+  // Only original, owner-supplied CAD. No synthetic model is rendered.
   status.textContent="Loading the original supplied G1 CAD assembly…";
-  mode.textContent="Authentic supplied 3MF — automatic hosted preview";
+  mode.textContent="Hosted earlier CAD revision · use local upload for latest";
   // Prefer the build-generated, CAD-derived GLB for faster rendering on Pages.
   // In source previews where no GLB is generated, load the exact source 3MF.
   const loadedModel = model=>{setAssembly(model,true);setWireframe();showHousing();};
