@@ -165,3 +165,7 @@ Read [hardware constraints](Hardware/README.md), [board-porting checklist](Hardw
 | [Blank physical test run record](Documentation/BLACK_BOX_RESULTS_TEMPLATE.md) | External observations, instrument data and sign-off |
 
 **Important:** The original matrix still contains unintegrated features (mic, feedback, wear/power) and unmeasured limits. All tests are intentionally **NOT_RUN/BLOCKED until physically confirmed**. A green GitHub CI check does not satisfy black-box hardware validation. The draft plan must be reconciled and revised by the group before the **single combined requirements + test-plan PDF** is submitted to Moodle.
+
+## R26 selective audio/ML source update
+
+The latest R26 ambient AGC, scene-clustering source and adaptive telecoil cleanup have been selectively imported with host sanitizer tests and CubeMX recovery mirrors. The original R26 signed-PCM shift undefined behaviour has been repaired. **The current root Nucleo CubeIDE project is not the full R26 custom-board application.** Read [R26 integration status](Documentation/R26_DSP_INTEGRATION.md) before attempting to build or flash.

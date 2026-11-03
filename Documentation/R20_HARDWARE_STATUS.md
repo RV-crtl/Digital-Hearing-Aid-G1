@@ -30,3 +30,7 @@ The repository's root STM32CubeIDE 1.19.0 project is the older R34/G11 Nucleo-ba
 4. Confirm documented release permissions, attribution and safety/quality controls before claiming a finished or open-source medical product.
 
 See Issues #27, #5, #2, #11 for unresolved evidence and power/release prerequisites. This document records observed progress, not clinical, manufacturing or acoustic-safety certification.
+
+## R26 progress noted — 3 November 2026
+
+The user confirmed R24 operates without Nucleo after resolving the external connection issue. R26 is a new DSP/ML candidate that has passed portable source tests but not new physical PCB acceptance. Only portable R26 DSP modules and the telecoil processor have been imported into this older root project. See [R26 selective integration status](R26_DSP_INTEGRATION.md).
