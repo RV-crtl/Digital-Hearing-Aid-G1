@@ -36,7 +36,7 @@ jobs:
         run: python docs/validate_site.py
       - name: Build optimized glTF from original 3MF for GitHub Pages
         run: |
-          python -m pip install --disable-pip-version-check numpy==2.3.5 trimesh==4.11.1 lxml==6.1.1
+          python -m pip install --disable-pip-version-check numpy==2.3.5 trimesh==4.11.1 lxml==6.1.1 networkx==3.4.2
           python Tools/convert_3mf_to_glb.py docs/assets/g1-assembly.3mf docs/assets/g1-assembly.glb
           python - <<'PY'
           from pathlib import Path

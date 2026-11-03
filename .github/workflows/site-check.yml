@@ -102,7 +102,7 @@ jobs:
           PY
       - name: Build complete visual-site preview including real CAD and A3 architecture
         run: |
-          python3 -m pip install --disable-pip-version-check numpy==2.3.5 trimesh==4.11.1 lxml==6.1.1
+          python3 -m pip install --disable-pip-version-check numpy==2.3.5 trimesh==4.11.1 lxml==6.1.1 networkx==3.4.2
           python3 Tools/convert_3mf_to_glb.py docs/assets/g1-assembly.3mf docs/assets/g1-assembly.glb
           sudo apt-get install -y --no-install-recommends graphviz
           dot -Tsvg Documentation/g1-system-2026.dot -o docs/plots/g1-system-2026.svg

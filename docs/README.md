@@ -74,3 +74,5 @@ The KiCad schematic/PCB SVG layers, the full A3 Graphviz SVG and the 3MF-derived
 GitHub Pages publishing is requested automatically on commits to `main` that change site material, and can also be run manually. If Pages is not yet configured for this repository, GitHub **Settings → Pages → Build and deployment → GitHub Actions** must be selected by an administrator. Build/CI success is not evidence that the public Pages URL is live.
 
 The latest user-uploaded all-bodies 3MF has not been committed; the current default source 3MF is an earlier revision. Until updated, the page offers **Open your 3D CAD** for safe local viewing. [See the validated importer](../Tools/import_latest_3mf.py).
+
+**Dependency note:** the native Trimesh 3MF loader requires `networkx`; both Pages and full-preview CI pin this explicitly. A source-only lint run never exercises this loader, which is why the full-build smoke test is mandatory.

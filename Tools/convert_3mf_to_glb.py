@@ -2,7 +2,7 @@
 """Convert a 3MF assembly with 3MF color groups into a low-draw-call GLB.
 
 This is an offline developer utility, not run on the browser or CI. It does
-not modify the source 3MF. Requires: pip install trimesh numpy lxml.
+not modify the source 3MF. Requires: pip install trimesh numpy lxml networkx.
 Usage: python Tools/convert_3mf_to_glb.py assembly.3mf docs/assets/g1-assembly.glb
 """
 from __future__ import annotations
