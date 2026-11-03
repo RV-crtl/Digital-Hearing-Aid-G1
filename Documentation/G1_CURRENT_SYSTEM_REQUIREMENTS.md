@@ -2,6 +2,20 @@
 
 **As of 03 November 2026.** Canonical current-system interpretation for the custom PCB. Prior G-series Nucleo requirements under `Documentation/` are historical rather than claims about the flashed product.
 
+## Current whole-system requirement identifiers
+
+| ID | Requirement | Current black-box evidence case |
+| --- | --- | --- |
+| G1-01 | Independent untethered startup | T1, T7 |
+| G1-02 | Microphone environmental listening and output | T2 |
+| G1-03 | Bluetooth audio source | T3 |
+| G1-04 | LOW16 telecoil with idle-noise handling | T4 |
+| G1-05 | Reliable touch and rotary operation | T2, T5 |
+| G1-06 | Bounded adaptive gain without uncontrolled distortion | T2, T4 |
+| G1-07 | Robustness to unexpected input and source loss | T5, T7 |
+| G1-08 | Repeatable adaptive and interference-rejection behaviour | T6 |
+| G1-09 | Stable operation without spontaneous reboot or mute | T7 |
+
 ## System-level scope
 
 | Requirement | R24 operator report | R26 evidence | Unresolved gate |

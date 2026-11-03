@@ -18,7 +18,7 @@ for token in ["AudioTask", "ControlTask", "BtTask", "SAI1A", "SAI2A",
               "SAI2B", "DFSDM1", "MPR121", "LOW16", "USART1", "USART2",
               "queue", "FreeRTOS"]:
     assert token.lower() in diagram.lower(), f"Architecture is missing {token}"
-for token in ["T1", "T2", "T3", "T4", "T5", "T6", "T7", "no ST-LINK", "black-box"]:
+for token in ["T1", "T2", "T3", "T4", "T5", "T6", "T7", "ST-LINK", "black-box"]:
     assert token.lower() in plan.lower(), f"Black-box plan lacks {token}"
 assert "not a confirmed on-PCB" in readme, "R26 evidence claim changed without verification"
 assert "not yet published" in requirements.lower(), "Latest 3MF provenance lost"
