@@ -10,4 +10,4 @@ This build gate is **source-level**. Before relying on it, check the actual ELF 
 
 **Do not perform unit tests on the MCU during the demonstration.** Source-based unit tests under `Tests/` are host-only. Dynamic runtime health counters are permitted as engineering diagnostics; they do not substitute for the rubric's observed external behaviour.
 
-**Exact acceptance prior to viva:** manually check normal product loop responsiveness to physical B1 gestures and Bluetooth/telecoil transitions with ST-Link and UART detached; perform real power and acoustic measurements; note firmware SHA in evidence register. G5 PC13 interactions do not migrate automatically to the custom PCB.
+**Exact acceptance prior to viva:** manually check normal product loop responsiveness to physical E8–E11 MPR121 touch controls and rotary encoder response and Bluetooth/telecoil transitions with ST-Link and UART detached; perform real power and acoustic measurements; note firmware SHA in evidence register. G5 PC13 interactions do not migrate automatically to the custom PCB.
