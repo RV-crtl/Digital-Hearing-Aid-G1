@@ -127,3 +127,7 @@
 #g1DemoMessage{color:#afcbd6;font-size:.78rem}
 @media(max-width:780px){.g1-demo-meta,.g1-demo-cases{grid-template-columns:1fr}.g1-demo-heading{flex-direction:column}}
 @media print{.g1-demo-cases{grid-template-columns:1fr}.g1-case{break-inside:avoid}.g1-system-figure{break-inside:avoid}}
+
+/* CAD source-detail affordance: never pretend generic STEP bodies are labelled housing */
+#loadSourceModel{border-color:#66d5bf7a;background:rgba(26,74,73,.26)}
+#housingToggle:disabled{opacity:.42;cursor:not-allowed}
