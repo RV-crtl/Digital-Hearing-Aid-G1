@@ -57,7 +57,7 @@ jobs:
           fi
 
   kicad-plot-smoke:
-    name: Original KiCad schematic SVG export (no ERC/DRC)
+    name: Original KiCad schematic and PCB SVG export (no ERC/DRC)
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -87,6 +87,17 @@ jobs:
           if len(names)!=len(set(names)):
               raise SystemExit("Duplicated schematic sheet names must be deduplicated before publishing.")
           assert all((Path("docs")/item["path"]).is_file() for item in manifest["schematics"])
+          PY
+      - name: Export original front/back and copper PCB views
+        run: |
+          python3 docs/render_pcb.py
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          data=json.loads(Path('docs/plots/pcb/manifest.json').read_text())
+          assert data['view_only'] is True and len(data['views'])==4
+          assert all((Path('docs')/v['path']).is_file() for v in data['views'])
+          print("PASS: original KiCad PCB front/back/copper native vector views")
           PY
       - name: Archive actual native schematic previews
         uses: actions/upload-artifact@v4
