@@ -1,5 +1,15 @@
 # Changelog
 
+## 03 November 2026 — current-system documentation, authentic CAD tools and site refresh
+
+- Established R24 operator evidence vs R26 candidate status and preserved the older root project as historical source until full CubeIDE promotion.
+- Rewrote current system-level requirements, printable A3 architecture and 19–20 min untethered black-box assessment plan.
+- Removed dead fictional CAD geometry from the public viewer; added searchable real mesh names and full multi-body camera fitting.
+- Added original KiCad PCB layer export and pan/zoom browser views, without changing the schematic/PCB.
+- Added a validated latest-3MF import workflow with explicit provenance and public-release permission.
+- Added a reproducible host-only production-C R26 DSP benchmark; real STM32 CPU/SRAM and acoustic headroom remain open.
+- Archived the old G11 test plan, keeping its legacy CI traceability separate from the current product acceptance plan.
+
 ## G11 — standalone custom-PCB system atlas and contextual learning prototype (28 October 2026)
 
 - Added immersive whole-system website section: power, SAI RX/TX DMA, PCM/bit ownership, FreeRTOS tasks, microphone path, and clickable source-code links.

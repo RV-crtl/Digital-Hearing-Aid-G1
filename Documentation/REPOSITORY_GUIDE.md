@@ -1,31 +1,28 @@
-# Repository navigation — find what you need in two clicks
+# G1 contributor and repository guide
 
-| Role | First document | Where to make changes | What to run |
-| --- | --- | --- | --- |
-| New group member | [Code map](CODE_MAP.md) | [Core application](../Core/Src/) | `bash Validation/run_host_validation.sh` |
-| Audio/DSP developer | [Verification ladder](VALIDATION_LADDER.md) | [`audio_dynamics.c`](../Core/Src/audio_dynamics.c), [`group_features.c`](../Core/Src/group_features.c) | C vectors + MATLAB |
-| Connectivity developer | [Architecture](ARCHITECTURE.md) | [`connectivity_controller.c`](../Core/Src/connectivity_controller.c) | FSM scenarios |
-| RTOS developer | [Code map](CODE_MAP.md) | [`demo_app.c`](../Core/Src/demo_app.c), [`rtos_bootstrap.c`](../Core/Src/rtos_bootstrap.c) | Host guards + board profiler |
-| PCB/power developer | [KiCad guide](../Hardware/README.md) | [Original KiCad design](../Hardware/Original_KiCad/) | dependency audit, KiCad ERC/DRC, bench |
-| Group-demo presenter | [Standalone showcase](STANDALONE_SHOWCASE.md) | physical prototype + status evidence | demo rehearsal |
-| Maintainer/reviewer | [Contribution guide](../CONTRIBUTING.md) | Pull requests, [requirements matrix](REQUIREMENTS_EVIDENCE.csv) | all CI + on-board signoff |
+**Start with the [README](../README.md)**, not old Nucleo firmware screenshots. This is the 03 November 2026 custom-PCB project, with a separately tested R24 baseline and an R26 DSP/ML candidate.
 
-## STM32CubeIDE first import
+| Task | Read | Verify |
+| --- | --- | --- |
+| Understand the physical system | [A3 architecture](PRINTABLE_SYSTEM_DIAGRAM.md) and [current requirements](G1_CURRENT_SYSTEM_REQUIREMENTS.md) | Actual board, original KiCad files and correct peripheral ownership |
+| Navigate the code | [Code map](CODE_MAP.md) and [R26 performance](R26_OPTIMISATION_NOTES.md) | Do not treat `Core/` legacy root as the full custom-board R26 image |
+| Find source designs | [Original KiCad](../Hardware/Original_KiCad), [CAD guide](CAD_ASSEMBLY_AND_VIEWERS.md) | Retain source; exported views are not ERC/DRC |
+| Test the whole system | [Black-box plan](BLACK_BOX_TEST_PLAN.md) | Run untethered, on safe output fixture, record real results |
+| Work on the website | [Site README](../docs/README.md) and `docs/` | `python docs/validate_site.py`, `python docs/test_render_pcb.py` |
+| Update the latest full-body 3MF | `Tools/import_latest_3mf.py` and [CAD provenance](CAD_ASSEMBLY_AND_VIEWERS.md) | Inspect/owner-authorize/commit manually; Pages GLB regeneration |
+| Work on DSP | `Core/Src/g1_ambient_dsp.c`, `g1_scene_ml.c`, `tc_cleanup.c` | R26 sanitizer tests and host-only benchmark, then target tests |
+| Make any changes to CubeMX | `PREPARE_PROJECT.ps1`, `Recovery/` | Regenerate, restore recovery mirror, clean native GCC build |
 
-1. Clone/download the branch in a path without spaces if possible.
-2. Use **File → Import → General → Existing Projects into Workspace** at the repository root. Keep *Copy projects into workspace* unchecked.
-3. Read the detailed [build procedure](GROUP_G1_IMPORT_AND_BUILD.md). If CubeMX code generation is necessary, do it **before** running `PREPARE_PROJECT.bat` with CubeIDE closed.
-4. Reopen IDE, refresh, clean and build. **Full ARM build and hardware flash need confirmation**; passing host CI does not imply an ELF was compiled on GitHub.
-5. Initial target is **NUCLEO-L476RG**, not the custom PCB. Consult [custom-board porting gate](../Hardware/CUSTOM_PCB_PORTING_CHECKLIST.md) before flashing any custom board.
+## Source of truth
 
-## GitHub conventions
+- **Original schematics/layout** live in `Hardware/Original_KiCad/`. They have **not changed** with newer 3MF models.
+- **Hosted website CAD** is an earlier design revision until the new 1,713-object 3MF is explicitly imported and committed.
+- **R24 custom-PCB** is the last hardware version the operator reported fully working untethered after a wiring correction.
+- **R26** is a later, source-tested candidate with advanced audio and online unsupervised clustering; physical acoustic/CPU evidence is pending.
+- **Older Nucleo G5/G11 source files** stay as auditable history, not the product operating configuration.
 
-- `main`: G10 visual lab baseline; G11 custom-PCB architecture and learning additions staged for review; **hardware/ARM validation still pending**. Original G1 is archived under `archive/g1-baseline-before-g4-20261017` for rollback.
-- `Core/`: the application that the IDE compiles; `Recovery/`: copies restored after CubeMX; `References/`: original contributors' work, not linked into the current application.
-- `Validation/results/`: generated and ignored, not immutable proof. CI artifacts are attached to the specific commit.
-- Firmware changes must include portable regressions; board-affecting changes must identify pin/peripheral impact and bring-up checks.
-- Do not present unimplemented TinyML, PDM microphone, USB-C battery charging, custom-PCB control, or calibrated audio safety as finished features.
+There is no certified electroacoustic safety result or blanket public-use licence. Consult [publication gate](PUBLICATION_GATE.md).
 
-## Current target distinction
+## Contribution quality gates
 
-**Final demonstrator:** self-powered custom PCB, two 26650 LiFePO4 series cells (3.25 V nominal each), no Nucleo/PC. **Existing integrated source:** STM32 Nucleo firmware baseline until PCB-specific peripheral mapping, control hardware, microphone DFSDM driver and measured output safety are verified. Use [G11 integration/black-box guide](G11_STANDALONE_CUSTOM_PCB_RELEASE_PLAN.md) and the [interactive full-system atlas](https://rv-crtl.github.io/Digital-Hearing-Aid-G1/#architecture).
+Run `python3 Validation/run_host_validation.py`, `python3 docs/validate_site.py` and the DSP tests if touched. Capture native ARM CubeIDE build results before lab deployment. Keep changes scoped: never simultaneously rewrite clock, DMA ownership, audio routing and adaptive gain in an untested flash image. Prefer small testable commits and evidence at the same Git SHA.
