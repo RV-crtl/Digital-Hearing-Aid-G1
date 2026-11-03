@@ -3,6 +3,15 @@ name: Publish G1 Interactive Lab (GitHub Pages)
 # Manual first deployment: configure Settings > Pages > Source > GitHub Actions.
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/**'
+      - 'Documentation/g1-system-2026.dot'
+      - 'Hardware/Original_KiCad/**'
+      - 'Assessment/test_cases.json'
+      - 'Tools/convert_3mf_to_glb.py'
+      - '.github/workflows/publish-pages.yml'
 
 permissions:
   contents: read
@@ -43,6 +52,7 @@ jobs:
           node --input-type=module --check < docs/app.js
           node --input-type=module --check < docs/viewer.js
           node --input-type=module --check < docs/pcb-explorer.js
+          node --check docs/demo-lab.js
       - name: Install KiCad SVG exporter for visualisation
         run: |
           sudo apt-get update -qq
@@ -64,6 +74,7 @@ jobs:
           sudo apt-get install -y --no-install-recommends graphviz
           dot -Tsvg Documentation/g1-system-2026.dot -o docs/plots/g1-system-2026.svg
           test -s docs/plots/g1-system-2026.svg
+          python docs/validate_site.py --built
       - name: Confirm only curated site folder is published
         run: |
           test -s docs/index.html
@@ -87,6 +98,12 @@ jobs:
           names=[item['name'] for item in data['schematics']]
           assert len(names)>=12 and len(names)==len(set(names)), 'KiCad SVG plots incomplete or duplicated'
           PY
+      - name: Provide complete downloadable site preview regardless of Pages settings
+        uses: actions/upload-artifact@v4
+        with:
+          name: g1-full-website-preview
+          path: docs/
+          retention-days: 30
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v4
         with:
