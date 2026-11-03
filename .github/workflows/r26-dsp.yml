@@ -9,6 +9,7 @@ on:
       - "Core/Inc/g1_scene_ml.h"
       - "Core/Inc/tc_cleanup.h"
       - "Tests/test_r26_dsp.c"
+      - "Validation/c/benchmark_r26_dsp.c"
       - ".github/workflows/r26-dsp.yml"
   pull_request:
     paths:
@@ -37,6 +38,11 @@ jobs:
              Core/Src/g1_ambient_dsp.c Core/Src/g1_scene_ml.c Core/Src/tc_cleanup.c \
              -lm -o /tmp/r26_dsp_test
           ASAN_OPTIONS=detect_leaks=0 /tmp/r26_dsp_test
+      - name: Measure host-only R26 DSP throughput and state progression
+        run: |
+          set -eu
+          cc -std=c11 -O2 -Wall -Wextra -Werror -I Core/Inc              Validation/c/benchmark_r26_dsp.c              Core/Src/g1_ambient_dsp.c Core/Src/g1_scene_ml.c Core/Src/tc_cleanup.c              -lm -o /tmp/g1_r26_host_bench
+          /tmp/g1_r26_host_bench
       - name: Verify CubeMX recovery mirrors are identical
         run: |
           set -eu

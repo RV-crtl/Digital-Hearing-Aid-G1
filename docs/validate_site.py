@@ -10,13 +10,13 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 SITE = ROOT / "docs"
 REQUIRED = ["index.html", "styles.css", "app.js", "viewer.js", "favicon.svg",
-            "render_kicad.py", "validate_site.py", "system-lab.js"]
-SECTIONS = ["architecture", "device", "signal", "schematics", "firmware", "verification"]
+            "render_kicad.py", "render_pcb.py", "pcb-explorer.js", "validate_site.py", "system-lab.js"]
+SECTIONS = ["architecture", "device", "signal", "schematics", "firmware", "demonstration", "verification"]
 SCHEMATICS = ["Connectivity", "Audio", "Telecoil_Buffer_Circuits",
               "Analog_Frontend", "Amplifier", "Output", "Power",
               "Processor", "STM32", "User Interface", "Active_Bandpass_Filter",
               "Mid-Supply_Buffer", "CCP"]
-CODE = ["Core/Src/demo_app.c", "Core/Src/group_features.c",
+CODE = ["Core/Src/demo_app.c", "Core/Src/g1_ambient_dsp.c", "Core/Src/g1_scene_ml.c", "Core/Src/tc_cleanup.c", "Core/Src/group_features.c",
         "Core/Src/connectivity_controller.c", "Core/Src/group_ui.c",
         "Core/Src/pcm_transport.c", "Core/Src/scene_features.c", "Core/Src/adaptive_preferences.c"]
 
@@ -44,8 +44,8 @@ def check() -> list[str]:
     for target in re.findall(r'(?:src|href)="(\./[^"]+)"', html):
         if not (SITE / target[2:]).is_file():
             errors.append(f"Unresolved local web asset: {target}")
-    if not all(token in viewer for token in ["GLTFLoader", "ThreeMFLoader", "OrbitControls", "g1-assembly.3mf", "placeholderAssembly"]):
-        errors.append("3D viewer lacks true-CAD loading or fallback")
+    if not all(token in viewer for token in ["GLTFLoader", "ThreeMFLoader", "OrbitControls", "g1-assembly.3mf", "cadSearch", "fitCamera"]):
+        errors.append("3D viewer lacks real-CAD loading, object search or multi-body fit")
     if not all(token in html for token in ['id="schematicDialog"', 'id="codePreview"', 'id="modelViewport"']):
         errors.append("Interactive page components missing")
     if not all(name in js for name in SCHEMATICS):
@@ -53,6 +53,10 @@ def check() -> list[str]:
     for name in CODE:
         if not (ROOT / name).is_file() or name not in html:
             errors.append(f"Code explorer references missing firmware source: {name}")
+    for token in ("pcbExplorer", "pcbPreview", "cadParts", "cadShowAll", "BLACK_BOX_TEST_PLAN.md", "G1_CURRENT_SYSTEM_REQUIREMENTS.md"):
+        if token not in html: errors.append("Missing G1 UI/traceability feature: " + token)
+    if "function placeholderAssembly()" in viewer:
+        errors.append("Fictional geometry remains in CAD viewer")
     if "/Digital-Hearing-Aid-G1/assets" in html or 'href="/' in html or 'src="/' in html:
         errors.append("Absolute static paths break GitHub project Pages")
     optimized = SITE / "assets" / "g1-assembly.glb"
@@ -77,4 +81,4 @@ if __name__ == "__main__":
         print("FAIL:", issue)
     if problems:
         sys.exit(1)
-    print("PASS: website navigation, source paths, SVG-gallery hooks and 3D viewer fallbacks.")
+    print("PASS: site routes, current PCB architecture, real-CAD inspector, KiCad PCB controls and source links.")

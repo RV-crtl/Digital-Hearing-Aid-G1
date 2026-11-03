@@ -1,0 +1,53 @@
+// G1 custom PCB / R24-R26 candidate · architecture, not hardware validation.
+// Run: dot -Tsvg Documentation/g1-system-2026.dot -o docs/plots/g1-system-2026.svg
+digraph G1 {
+  graph [rankdir=LR, bgcolor="#ffffff", pad="0.2", nodesep="0.42", ranksep="0.88",
+    fontname="Helvetica", fontsize=19, label="G1  |  Standalone STM32L476RG hearing prototype\nCustom PCB signal, control and RTOS ownership · 03 Nov 2026", labelloc=t,
+    outputorder=edgesfirst, overlap=false, splines=polyline];
+  node [shape=box, style="rounded,filled", color="#aec2d3", fillcolor="#eef5fa",
+    fontname="Helvetica", fontsize=11, margin="0.14,0.11"];
+  edge [color="#286aa2", penwidth=1.8, arrowsize=0.7, fontname="Helvetica", fontsize=9];
+  subgraph cluster_inputs {
+    label="Physical interfaces"; style="rounded,filled"; fillcolor="#edf7ff"; color="#cadfee";
+    mic [label="PDM microphone\nPC2 clock · PB14 data"];
+    bt [label="Bluetooth receiver\nUSART1 module control"];
+    coil [label="Telecoil / loop\nanalogue conditioning"];
+    pcm [label="PCM1808 ADC\n24-bit I²S frame"];
+    touch [label="MPR121 I²C1 PB6/PB7\nE8 BT · E9 TC · E10 mute · E11 MIC"];
+    encoder [label="Encoder PA0 / PA1\n~5% volume per detent"];
+  }
+  subgraph cluster_mcu {
+    label="Custom PCB · STM32L476RG · FreeRTOS"; style="rounded,filled"; fillcolor="#f3fbf5"; color="#cfe3d4";
+    dfsdm [label="DFSDM1 + DMA\nPDM → PCM"];
+    sai1 [label="SAI1A RX + DMA\nBluetooth LOW24"];
+    sai2 [label="SAI2A RX + DMA\nTelecoil LOW16"];
+    irq [label="DMA half/full ISR\nbounded snapshot + notification", fillcolor="#def4eb"];
+    control [label="ControlTask · P6\ntouch / encoder / source / mute", fillcolor="#dceafc"];
+    queue [label="Bounded event queue"];
+    bttask [label="BtTask · P5\nBluetooth supervision"];
+    audio [label="AudioTask · P7\nsource / AGC / TC filter\n3-cluster online context", fillcolor="#d5f0df"];
+    fifo [label="Bounded PCM output FIFO\nunderrun / rate guard"];
+    saiout [label="SAI2B TX DMA"];
+    bg [label="Background · P2\nnoncritical maintenance"];
+  }
+  subgraph cluster_output {
+    label="Output and power"; style="rounded,filled"; fillcolor="#fff9eb"; color="#ead8ad";
+    amp [label="Digital amplifier"];
+    transducer [label="Output transducer"];
+    power [label="Protected, regulated supply\nUSB-C measured · 2S battery intended"];
+  }
+  mic -> dfsdm -> irq;
+  bt -> sai1 -> irq;
+  coil -> pcm -> sai2 -> irq;
+  irq -> audio [label="RTOS notify"];
+  touch -> control [style=dashed,color="#ad5684"];
+  encoder -> control [style=dashed,color="#ad5684"];
+  control -> queue [style=dashed,color="#ad5684"];
+  queue -> audio [style=dashed,color="#ad5684"];
+  bt -> bttask [style=dashed,color="#ad5684"];
+  bttask -> audio [style=dashed,color="#ad5684"];
+  bg -> audio [style=dashed,color="#ad5684",constraint=false];
+  audio -> fifo -> saiout -> amp -> transducer;
+  power -> amp [style=dotted,color="#ae8b42",constraint=false];
+  power -> audio [style=dotted,color="#ae8b42",constraint=false];
+}

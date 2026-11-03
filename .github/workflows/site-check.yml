@@ -4,6 +4,10 @@ on:
   pull_request:
     paths:
       - 'docs/**'
+      - 'Documentation/BLACK_BOX_TEST_PLAN.md'
+      - 'Documentation/PRINTABLE_SYSTEM_DIAGRAM.md'
+      - 'Documentation/G1_CURRENT_SYSTEM_REQUIREMENTS.md'
+      - 'README.md'
       - 'Tools/convert_3mf_to_glb.py'
       - '.github/workflows/publish-pages.yml'
       - '.github/workflows/site-check.yml'
@@ -29,14 +33,21 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
+      - name: Validate CAD source structure without copying or altering it
+        run: python3 Tools/import_latest_3mf.py docs/assets/g1-assembly.3mf --inspect
       - name: Validate site links and source files
         run: python3 docs/validate_site.py
+      - name: Validate current system documentation and read-only PCB renderer
+        run: |
+          python3 docs/test_render_pcb.py
+          python3 Tools/check_current_docs.py
       - name: Compile Python publication tools without runtime dependencies
-        run: python3 -m py_compile docs/render_kicad.py docs/validate_site.py Tools/convert_3mf_to_glb.py
+        run: python3 -m py_compile docs/render_kicad.py docs/render_pcb.py docs/validate_site.py Tools/convert_3mf_to_glb.py
       - name: Validate JavaScript module syntax without CDN access
         run: |
           node --input-type=module --check < docs/app.js
           node --input-type=module --check < docs/viewer.js
+          node --input-type=module --check < docs/pcb-explorer.js
       - name: Confirm publication folder has no environment secrets
         run: |
           test -s docs/index.html
@@ -46,7 +57,7 @@ jobs:
           fi
 
   kicad-plot-smoke:
-    name: Original KiCad schematic SVG export (no ERC/DRC)
+    name: Original KiCad schematic and PCB SVG export (no ERC/DRC)
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -76,6 +87,17 @@ jobs:
           if len(names)!=len(set(names)):
               raise SystemExit("Duplicated schematic sheet names must be deduplicated before publishing.")
           assert all((Path("docs")/item["path"]).is_file() for item in manifest["schematics"])
+          PY
+      - name: Export original front/back and copper PCB views
+        run: |
+          python3 docs/render_pcb.py
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          data=json.loads(Path('docs/plots/pcb/manifest.json').read_text())
+          assert data['view_only'] is True and len(data['views'])==4
+          assert all((Path('docs')/v['path']).is_file() for v in data['views'])
+          print("PASS: original KiCad PCB front/back/copper native vector views")
           PY
       - name: Archive actual native schematic previews
         uses: actions/upload-artifact@v4

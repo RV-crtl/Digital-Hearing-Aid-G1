@@ -95,11 +95,16 @@ fetch("./plots/manifest.json",{cache:"no-store"}).then(r=>r.ok?r.json():null).th
 
 $$(".source-btn").forEach(button=>button.addEventListener("click",()=>{
   $$(".source-btn").forEach(x=>x.classList.toggle("active",x===button));
-  const coil=button.dataset.source==="telecoil";
-  $("#chainInputTitle").textContent=coil?"Telecoil induction":"Bluetooth audio";
-  $("#chainInputText").textContent=coil?"Inductive hearing-loop signals and telecoil detection.":"External Bluetooth audio input and link observations.";
-  $("#selectedInput").textContent=coil?"Telecoil":"Bluetooth";
-  $(".chain-node[data-node=input] .node-icon").textContent=coil?"◎":"◉";
+  const source=button.dataset.source;
+  const data={
+    bluetooth:["Bluetooth audio","Bluetooth receiver → PCM1808 / SAI1A LOW24 decode.","Bluetooth","◉"],
+    mic:["PDM microphone","Digital PDM mic → DFSDM1 DMA → mono PCM frames.","Microphone","♫"],
+    telecoil:["Telecoil induction","Coil + analogue front end → PCM1808 → SAI2A LOW16 decode and TC filtering.","Telecoil","◎"]
+  }[source]||["Unknown","Source unavailable","Unknown","?"];
+  $("#chainInputTitle").textContent=data[0];
+  $("#chainInputText").textContent=data[1];
+  $("#selectedInput").textContent=data[2];
+  $(".chain-node[data-node=input] .node-icon").textContent=data[3];
 }));
 
 const codePreview=$("#codePreview"), codeStatus=$("#codeStatus"), codeLink=$("#codeOnGithub");
@@ -144,7 +149,7 @@ $$(".file-tab").forEach(btn=>btn.addEventListener("click",()=>{
   $$(".file-tab").forEach(x=>x.classList.toggle("active",x===btn));
   loadCode(btn.dataset.file);
 }));
-loadCode("Core/Src/demo_app.c");
+loadCode("Core/Src/g1_ambient_dsp.c");
 const nav=$("#mobileNav");nav.addEventListener("click",()=>{
   const expanded=nav.getAttribute("aria-expanded")==="true";
   nav.setAttribute("aria-expanded",String(!expanded));
