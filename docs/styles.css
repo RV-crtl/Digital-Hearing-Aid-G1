@@ -93,3 +93,37 @@
 .demo-link span{font-size:.85rem;color:#a9c5ce}
 @media(max-width:850px){.demo-grid{grid-template-columns:1fr}.pcb-explorer-head{align-items:flex-start}}
 @media print{.pcb-explorer,.cad-inspector{break-inside:avoid}.pcb-frame{height:260px}}
+
+/* Evidence-first system diagram and real black-box runner. */
+.g1-system-figure{margin:1rem 0 1.6rem;background:rgba(10,27,42,.9);border:1px solid #7cbdbd44;border-radius:22px;padding:12px;overflow:hidden}
+.g1-system-figure img{width:100%;height:auto;display:block;border-radius:14px}
+.g1-system-figure figcaption{padding:.7rem 1rem .2rem;color:#aec5d1;font-size:.85rem;line-height:1.5}
+.g1-system-figure a{color:#8ff7d6;text-decoration:underline;text-underline-offset:3px}
+.g1-demo-lab{margin:1.7rem 0;background:linear-gradient(120deg,#0d2235,#112f37);border:1px solid #729fba66;border-radius:22px;padding:clamp(1rem,2.6vw,2rem)}
+.g1-demo-heading{display:flex;justify-content:space-between;gap:1rem;align-items:flex-start;flex-wrap:wrap}
+.g1-demo-heading h3{font-size:clamp(1.45rem,3vw,2.1rem);margin:.4rem 0 .6rem}
+.g1-demo-heading p{color:#c5d6df;max-width:700px;line-height:1.55}
+#g1DemoProgress{background:#123b42;padding:.6rem 1rem;color:#92edd4;border:1px solid #72cdb16e;border-radius:99px;white-space:nowrap;font-size:.85rem}
+.g1-demo-meta{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.8rem;margin:1.4rem 0}
+.g1-demo-meta label,.g1-case-note{display:flex;flex-direction:column;gap:.45rem;font-size:.85rem;color:#c6dbe5}
+.g1-demo-meta input,.g1-case-note textarea,.g1-case-controls select{background:#091b2e;border:1px solid #6993a477;color:#f0fcff;padding:.65rem .8rem;border-radius:10px;font:inherit;min-width:0}
+.g1-demo-meta input:focus-visible,.g1-case-note textarea:focus-visible,.g1-case-controls select:focus-visible{outline:2px solid #7edcc1;outline-offset:2px}
+.g1-demo-cases{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.8rem}
+.g1-case{background:#071927a3;border:1px solid #84abc044;border-radius:16px;padding:1rem;align-self:start;min-width:0}
+.g1-case[open]{border-color:#8ae7d385}
+.g1-case summary{display:flex;gap:.65rem;align-items:center;cursor:pointer;list-style:none}
+.g1-case summary::-webkit-details-marker{display:none}
+.g1-case .g1-test-id{font-weight:750;border:1px solid #7ca7b880;border-radius:8px;padding:.45rem .65rem;color:#a8ecd7}
+.g1-case summary strong{flex:1;font-size:.9rem;line-height:1.4;color:#f1faff}
+.g1-case summary small{color:#a6becb;white-space:nowrap}
+.g1-case-body{padding-top:.9rem}
+.g1-case-body p{line-height:1.55;color:#c5d5de;font-size:.84rem;margin:.55rem 0}
+.g1-case-body ol{padding-left:1.3rem;color:#d2dfe8;font-size:.84rem;line-height:1.6}
+.g1-case-body h4{font-size:.78rem;text-transform:uppercase;letter-spacing:.08em;margin:1rem 0 .5rem;color:#83d7c7}
+.g1-case-controls{display:flex;flex-wrap:wrap;gap:.7rem;align-items:center;margin:.9rem 0}
+.g1-case-controls label{font-size:.78rem;color:#becfda}
+.g1-case-note textarea{width:100%;resize:vertical;min-height:80px;line-height:1.5}
+.g1-demo-actions{display:flex;gap:.7rem;flex-wrap:wrap;align-items:center;margin-top:1rem}
+#g1DemoMessage{color:#afcbd6;font-size:.78rem}
+@media(max-width:780px){.g1-demo-meta,.g1-demo-cases{grid-template-columns:1fr}.g1-demo-heading{flex-direction:column}}
+@media print{.g1-demo-cases{grid-template-columns:1fr}.g1-case{break-inside:avoid}.g1-system-figure{break-inside:avoid}}

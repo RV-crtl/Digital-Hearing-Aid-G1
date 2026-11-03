@@ -18,6 +18,7 @@
   <script type="module" src="./app.js"></script>
   <script type="module" src="./system-lab.js"></script>
   <script type="module" src="./pcb-explorer.js"></script>
+  <script src="./demo-lab.js" defer></script>
   <link rel="icon" href="./favicon.svg" type="image/svg+xml">
 </head>
 <body>
@@ -112,7 +113,8 @@
     <section id="architecture" class="section wrap atlas-section" aria-labelledby="atlas-title">
       <div class="section-label">SYSTEM / FULL ELECTRICAL + SOFTWARE MAP</div>
       <button id="atlasPrint" type="button" class="button button-ghost atlas-print">Print architecture at A3 ↗</button>
-      <div class="section-heading"><div><h2 id="atlas-title">One system.<span> Every signal.</span></h2><p>Explore the standalone custom-PCB target, bus ownership, DMA buffers, RTOS tasks and proposed adaptation. Click a signal source, then select individual blocks.</p></div><span class="section-index">SYSTEM ATLAS</span></div>
+      <div class="section-heading"><div><h2 id="atlas-title">One system.<span> Every signal.</span></h2><p>Explore the custom-PCB audio paths, bus ownership, DMA buffers, RTOS tasks and R26 candidate processing. Click a signal source, then select individual blocks.</p></div><span class="section-index">SYSTEM ATLAS</span></div>
+      <figure class="g1-system-figure"><img loading="lazy" src="./assets/g1-system-current.svg" alt="G1 custom PCB source, capture DMA, AudioTask and physical controls" width="1400" height="748"><figcaption>Source-backed interface diagram — R24 operator-tested paths; R26 DSP remains an on-target candidate. <a href="./assets/g1-system-current.svg" target="_blank" rel="noopener noreferrer">Open A3-ready SVG</a></figcaption></figure>
       <div class="atlas-hero">
         <div><small>DEPLOYMENT TARGET</small><strong>Custom PCB only</strong><p>No Nucleo, ST-LINK, serial console or tethered PC in operating mode. A phone is optional only as a Bluetooth audio source.</p></div>
         <div><small>POWER SOURCE</small><strong>2 × 26650 LiFePO₄</strong><p>Two LiFePO₄ cells in series are the intended battery supply. Untethered R24 USB-C operation was reported; independent battery protection still needs testing.</p></div>
@@ -120,7 +122,7 @@
       </div>
       <div class="atlas-panel">
         <div class="atlas-head"><div><small>INTERACTIVE / DATA PLANE</small><h3 id="atlasFlowTitle">Bluetooth audio</h3></div><span id="atlasFlowState" class="atlas-pill">Firmware transport</span></div>
-        <div class="atlas-tabs" role="group" aria-label="Select physical input signal"><button type="button" data-atlas-source="bt" aria-pressed="true">Bluetooth / SAI</button><button type="button" data-atlas-source="tc" aria-pressed="false">Telecoil / SAI</button><button type="button" data-atlas-source="mic" aria-pressed="false">Microphone / PDM <small>integration target</small></button></div>
+        <div class="atlas-tabs" role="group" aria-label="Select physical input signal"><button type="button" data-atlas-source="bt" aria-pressed="true">Bluetooth / SAI</button><button type="button" data-atlas-source="tc" aria-pressed="false">Telecoil / SAI</button><button type="button" data-atlas-source="mic" aria-pressed="false">Microphone / PDM <small>R24 observed</small></button></div>
         <p id="atlasFlowDesc" class="atlas-copy"></p>
         <div id="atlasFlowSteps" class="atlas-flow" aria-label="Signal stages"></div>
         <p id="atlasInspect" class="atlas-inspect" aria-live="polite">Select any block to inspect buffer ownership, processing or physical interface.</p>
@@ -183,11 +185,17 @@
         <a class="demo-link" href="https://github.com/RV-crtl/Digital-Hearing-Aid-G1/blob/main/Documentation/PRINTABLE_SYSTEM_DIAGRAM.md"><strong>Updated system diagram</strong><span>Custom PCB · peripheral ownership · RTOS · DMA ↗</span></a>
         <a class="demo-link" href="https://github.com/RV-crtl/Digital-Hearing-Aid-G1/blob/main/Documentation/G1_CURRENT_SYSTEM_REQUIREMENTS.md"><strong>Requirements & evidence</strong><span>R24 observed functions versus R26 candidate ↗</span></a>
       </div>
+      <div id="g1DemoLab" class="g1-demo-lab" aria-labelledby="g1-demo-heading">
+        <div class="g1-demo-heading"><div><span class="micro-label">OPERATING MODE / 20 MINUTES</span><h3 id="g1-demo-heading">Run the seven real tests</h3><p>Same source as the assessment PDF. Record actual observations; no mocked measurements or automatic PASS claims.</p></div><strong id="g1DemoProgress" aria-live="polite">0 of 7 documented</strong></div>
+        <div class="g1-demo-meta"><label>Firmware Git SHA <input id="g1FirmwareSha" type="text" maxlength="40" spellcheck="false" placeholder="40-character SHA of flashed build" autocomplete="off"></label><label>PCB revision <input id="g1PcbRev" type="text" maxlength="80" placeholder="Board revision / serial" autocomplete="off"></label><label>Operator <input id="g1Operator" type="text" maxlength="80" placeholder="Tester" autocomplete="off"></label></div>
+        <div id="g1DemoCases" class="g1-demo-cases"><p>Loading the current source-backed test procedures…</p></div>
+        <div class="g1-demo-actions"><button id="g1DemoExport" type="button" class="button button-primary">Export local evidence JSON</button><button id="g1DemoReset" type="button" class="button button-line">Clear local results</button><span id="g1DemoMessage" role="status" aria-live="polite">Data stays in this browser; export is not assessor sign-off.</span></div>
+      </div>
       <p class="section-note">The root CubeIDE firmware remains an earlier group baseline plus ported DSP modules. It is not the complete separately packaged custom-PCB R26 application.</p>
     </section>
     <section id="verification" class="section wrap last-section">
-      <div class="section-label">05 / TESTING & OPEN WORK</div>
-      <div class="section-heading"><div><h2>Evidence over <span>assumptions.</span></h2><p>A transparent view of what the project checks automatically—and what still needs real-world verification.</p></div><span class="section-index">05 — 05</span></div>
+      <div class="section-label">06 / TESTING & OPEN WORK</div>
+      <div class="section-heading"><div><h2>Evidence over <span>assumptions.</span></h2><p>A transparent view of what the project checks automatically—and what still needs real-world verification.</p></div><span class="section-index">06 — 06</span></div>
       <div class="validation-grid">
         <article class="validation-card"><span class="validation-icon">✓</span><span class="validation-kicker">HOST-SIDE VERIFICATION</span><h3>Software quality gates</h3><p>GCC, Clang, sanitizers, portable C and source-integrity tests run in GitHub Actions. See the latest run for current status.</p><a href="https://github.com/RV-crtl/Digital-Hearing-Aid-G1/actions" target="_blank" rel="noopener noreferrer">Open CI checks ↗</a></article>
         <article class="validation-card"><span class="validation-icon neutral">↗</span><span class="validation-kicker">PHYSICAL ENGINEERING</span><h3>Hardware testing</h3><p>Real STM32 ARM build, bench playback, power integrity, acoustic output and custom PCB validation require separate measured evidence.</p><a href="https://github.com/RV-crtl/Digital-Hearing-Aid-G1/blob/main/Documentation/RELEASE_CHECKLIST.md" target="_blank" rel="noopener noreferrer">Release checklist ↗</a></article>

@@ -2,6 +2,10 @@
 
 **STM32L476RG · custom KiCad PCB · FreeRTOS · microphone / Bluetooth / induction-loop audio · physical controls**
 
+![Actual G1 signal architecture](Assets/system-overview.svg)
+
+The diagram above represents real interfaces and task ownership, not fictional mechanical CAD or hardware measurements.
+
 [![Engineering CI](https://github.com/RV-crtl/Digital-Hearing-Aid-G1/actions/workflows/verify-g3.yml/badge.svg)](https://github.com/RV-crtl/Digital-Hearing-Aid-G1/actions/workflows/verify-g3.yml) [![R26 DSP tests](https://github.com/RV-crtl/Digital-Hearing-Aid-G1/actions/workflows/r26-dsp.yml/badge.svg)](https://github.com/RV-crtl/Digital-Hearing-Aid-G1/actions)
 
 [**Explore the interactive website**](https://rv-crtl.github.io/Digital-Hearing-Aid-G1/) · [System architecture](Documentation/PRINTABLE_SYSTEM_DIAGRAM.md) · [Black-box demonstration plan](Documentation/BLACK_BOX_TEST_PLAN.md) · [Current evidence and requirements](Documentation/G1_CURRENT_SYSTEM_REQUIREMENTS.md) · [Hardware/KiCad](Hardware/README.md)
