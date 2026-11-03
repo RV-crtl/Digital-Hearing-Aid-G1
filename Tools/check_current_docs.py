@@ -3,6 +3,8 @@
 from __future__ import annotations
 import re
 from pathlib import Path
+import csv
+import json
 
 ROOT = Path(__file__).resolve().parents[1]
 diagram = (ROOT / "Documentation/PRINTABLE_SYSTEM_DIAGRAM.md").read_text()
@@ -23,7 +25,20 @@ for token in ["T1", "T2", "T3", "T4", "T5", "T6", "T7", "ST-LINK", "black-box"]:
 assert "not a confirmed on-PCB" in readme, "R26 evidence claim changed without verification"
 assert "not yet published" in requirements.lower(), "Latest 3MF provenance lost"
 assert "Nucleo B1" not in plan, "Don't demonstrate legacy Nucleo B1 as product UI"
-print("PASS: nine system requirements traced across seven black-box tests, current task ownership, R26/R24 provenance")
+with (ROOT/"Assessment/requirements.csv").open(newline="",encoding="utf-8") as f:
+    rows=list(csv.DictReader(f))
+cases=json.loads((ROOT/"Assessment/test_cases.json").read_text())
+assert len(rows)==9 and len(cases)==7
+by_test={x["id"]:x for x in cases}
+for row in rows:
+    ids={x.strip() for x in row["Test Cases"].split(",")}
+    actual={x["id"] for x in cases if row["Requirement Number"] in x["requirements"]}
+    assert ids==actual, "Assessment mapping inconsistent for "+row["Requirement Number"]
+    assert row["Requirement Number"] in requirements
+    assert ids=={x for x in ("T1","T2","T3","T4","T5","T6","T7") if
+                 x in next(line for line in requirements.splitlines() if line.startswith("| "+row["Requirement Number"]+" "))}, "Current requirements website/assessment mapping differs"
+assert json.loads((ROOT/"docs/data/g1-demo-tests.json").read_text())==cases, "Site demo tests are stale"
+print("PASS: 9 G1 requirements, 7 exact two-way test mappings, current hardware provenance and interactive website data")
 
 if __name__ == "__main__":
     raise SystemExit(0)

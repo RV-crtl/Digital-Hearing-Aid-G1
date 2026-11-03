@@ -23,7 +23,7 @@ class EvidenceAuditTests(unittest.TestCase):
     def test_empty_register_is_not_a_pass(self):
         result=audit(self.root)
         self.assertEqual(result["physical_evidence_gate"],"BLOCKED")
-        self.assertEqual(result["counts"]["NOT_RUN"],13)
+        self.assertEqual(result["counts"]["NOT_RUN"],7)
     def test_blank_fields_cannot_pass(self):
         self.alter(lambda rows:rows[0].update({"Result (PASS/FAIL/BLOCKED)":"PASS"}))
         result=audit(self.root)
@@ -40,6 +40,6 @@ class EvidenceAuditTests(unittest.TestCase):
     def test_missing_case_is_rejected(self):
         path=self.root/"EVIDENCE_REGISTER.csv"
         lines=path.read_text(encoding="utf-8").splitlines()
-        path.write_text("\n".join(line for line in lines if not line.startswith("TC13,"))+"\n",encoding="utf-8")
+        path.write_text("\n".join(line for line in lines if not line.startswith("T7,"))+"\n",encoding="utf-8")
         self.assertTrue(any("Missing evidence" in msg for msg in audit(self.root)["errors"]))
 if __name__=="__main__":unittest.main(verbosity=2)

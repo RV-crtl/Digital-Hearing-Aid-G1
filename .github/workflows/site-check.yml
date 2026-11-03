@@ -48,6 +48,7 @@ jobs:
           node --input-type=module --check < docs/app.js
           node --input-type=module --check < docs/viewer.js
           node --input-type=module --check < docs/pcb-explorer.js
+          node --check docs/demo-lab.js
       - name: Confirm publication folder has no environment secrets
         run: |
           test -s docs/index.html
@@ -99,6 +100,19 @@ jobs:
           assert all((Path('docs')/v['path']).is_file() for v in data['views'])
           print("PASS: original KiCad PCB front/back/copper native vector views")
           PY
+      - name: Build complete visual-site preview including real CAD and A3 architecture
+        run: |
+          python3 -m pip install --disable-pip-version-check numpy==2.3.5 trimesh==4.11.1 lxml==6.1.1 networkx==3.4.2
+          python3 Tools/convert_3mf_to_glb.py docs/assets/g1-assembly.3mf docs/assets/g1-assembly.glb
+          sudo apt-get install -y --no-install-recommends graphviz
+          dot -Tsvg Documentation/g1-system-2026.dot -o docs/plots/g1-system-2026.svg
+          python3 docs/validate_site.py --built
+      - name: Upload complete standalone website preview as an Action artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: g1-complete-site-preview
+          path: docs/
+          retention-days: 21
       - name: Archive actual native schematic previews
         uses: actions/upload-artifact@v4
         with:

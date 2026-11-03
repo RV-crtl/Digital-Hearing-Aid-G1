@@ -30,6 +30,9 @@ export function bootViewer({reducedMotion=false}={}){
   controls.maxPolarAngle=Math.PI;controls.target.set(0,0,0);
   let assembly=null,loadedCAD=false,manualInput=false;
   let meshes=[],selected=null,pointerStart=null;
+  let triangleCount=0;
+  let explodeNodes=[];
+  const explodeVectors=new WeakMap();
   const selectedMats=[];
   const raycaster=new THREE.Raycaster(),pointer=new THREE.Vector2();
   const search=$("cadSearch"),parts=$("cadParts"),stats=$("cadStats");
@@ -57,8 +60,7 @@ export function bootViewer({reducedMotion=false}={}){
     if(!parts||!stats)return;
     const query=(search?.value||"").trim().toLowerCase();
     const matches=query?meshes.filter(obj=>(obj.name||"unnamed").toLowerCase().includes(query)):meshes;
-    let faces=0;for(const o of meshes){if(o.geometry?.index)faces+=Math.floor(o.geometry.index.count/3);else if(o.geometry?.attributes?.position)faces+=Math.floor(o.geometry.attributes.position.count/3);}
-    stats.textContent=meshes.length.toLocaleString()+" render meshes · "+faces.toLocaleString()+" triangles · "+matches.length+" matches";
+    stats.textContent=meshes.length.toLocaleString()+" render meshes · "+triangleCount.toLocaleString()+" triangles · "+matches.length+" matches";
     parts.replaceChildren();
     for(const obj of matches.slice(0,48)){
       const button=document.createElement("button");button.type="button";
@@ -96,15 +98,32 @@ export function bootViewer({reducedMotion=false}={}){
     const center=bnd.getCenter(new THREE.Vector3());
     assembly.position.sub(center);
     assembly.rotation.set(-.08,0,-.12);
-    meshes=[];
+    meshes=[];triangleCount=0;
     assembly.traverse(obj=>{
       if(obj.isMesh){
         obj.castShadow=false;obj.receiveShadow=false;
         obj.material=Array.isArray(obj.material)?obj.material.map(mat=>mat.clone()):obj.material.clone();
         meshes.push(obj);
+        if(obj.geometry?.index)triangleCount+=Math.floor(obj.geometry.index.count/3);
+        else if(obj.geometry?.attributes?.position)triangleCount+=Math.floor(obj.geometry.attributes.position.count/3);
       }
     });
-    for(const child of assembly.children){startPos.set(child,child.position.clone());}
+    // Imported STEP-to-3MF objects often have generic names (Imported_1713),
+    // so exploding ONLY 'Shell', 'Copper' or 'Components' never moved them.
+    // Derive offsets from real geometry instead of guessing semantic labels.
+    explodeNodes=assembly.children.length>1?assembly.children:meshes;
+    const diag=bnd.getSize(new THREE.Vector3()).length();
+    const travel=Math.max(6,Math.min(52,diag*0.065));
+    explodeNodes.forEach((node,i)=>{
+      startPos.set(node,node.position.clone());
+      const box=new THREE.Box3().setFromObject(node);
+      let dir=box.getCenter(new THREE.Vector3());
+      if(!Number.isFinite(dir.x)||dir.lengthSq()<0.0001){
+        const theta=i*2.399963229728653;
+        dir=new THREE.Vector3(Math.cos(theta),Math.sin(theta),Math.sin(theta*.6));
+      }
+      explodeVectors.set(node,dir.normalize().multiplyScalar(travel));
+    });
     scene.add(assembly);
     fitCamera();renderParts();updateExplode();
     status.textContent=isCAD?"Authentic supplied CAD assembly · drag to inspect":"CAD model unavailable";
@@ -115,15 +134,12 @@ export function bootViewer({reducedMotion=false}={}){
     if(!assembly)return;
     const amount=Number($("explode").value)/100;
     $("explodeValue").textContent=Math.round(amount*100)+"%";
-    for(const node of assembly.children){
-      const base=startPos.get(node)||new THREE.Vector3();
-      const name=(node.name||"").toLowerCase();
-      let displacement=0;
-      if(name.includes("shell"))displacement=32;
-      else if(name.includes("component")||name.includes("electronic"))displacement=14;
-      else if(name.includes("contact"))displacement=23;
-      else if(name.includes("copper"))displacement=3;
-      node.position.copy(base);node.position.z+=amount*displacement;
+    // Geometry-based offsets remain deterministic for generic Imported_* CAD bodies.
+    // World geometry is never modified; only node transforms are changed.
+    for(const node of explodeNodes){
+      const base=startPos.get(node),offset=explodeVectors.get(node);
+      if(!base||!offset)continue;
+      node.position.copy(base).addScaledVector(offset,amount);
     }
   }
   function setWireframe(){
@@ -133,10 +149,11 @@ export function bootViewer({reducedMotion=false}={}){
   }
   function showHousing(){
     if(!assembly)return;
-    const visible=$("housingToggle").checked;
-    assembly.children.forEach(node=>{
-      if(node.name.toLowerCase().includes("shell"))node.visible=visible;
-    });
+    // Do not mislabel unnamed 3MF body groups as a validated housing.
+    const housing=assembly.children.filter(n=>/(shell|housing|case)/i.test(n.name||""));
+    $("housingToggle").disabled=housing.length===0;
+    for(const node of housing)node.visible=$("housingToggle").checked;
+    $("housingToggle").title=housing.length?"Toggle source-labelled housing":"Source body names do not identify housing; inspect CAD objects instead";
   }
   function resetCamera(){
     currentView="iso";targetCamera.set(...presets.iso);transitioning=true;
@@ -211,6 +228,11 @@ export function bootViewer({reducedMotion=false}={}){
     ()=>{status.textContent="Original CAD failed to load; choose Open your 3D CAD for a local preview";});
   new GLTFLoader().load("./assets/g1-assembly.glb",
     gltf=>loadedModel(gltf.scene), undefined, loadSource3MF);
+  $("loadSourceModel").addEventListener("click",()=>{
+    status.textContent="Loading all original hosted 3MF bodies (may take several seconds)…";
+    loadSource3MF();
+    mode.textContent="Full source geometry requested · previous revision";
+  });
 
   function resize(){
     const width=Math.max(1,wrap.clientWidth),height=Math.max(1,wrap.clientHeight);
