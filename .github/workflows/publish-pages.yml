@@ -42,6 +42,7 @@ jobs:
         run: |
           node --input-type=module --check < docs/app.js
           node --input-type=module --check < docs/viewer.js
+          node --input-type=module --check < docs/pcb-explorer.js
       - name: Install KiCad SVG exporter for visualisation
         run: |
           sudo apt-get update -qq
@@ -54,6 +55,8 @@ jobs:
         run: python3 docs/test_render_kicad.py
       - name: Export hierarchical KiCad original to zoomable SVGs
         run: python docs/render_kicad.py
+      - name: Render four read-only original PCB layer views
+        run: python docs/render_pcb.py
       - name: Confirm only curated site folder is published
         run: |
           test -s docs/index.html
@@ -61,6 +64,7 @@ jobs:
           test -s docs/app.js
           test -s docs/viewer.js
           test -s docs/plots/manifest.json
+          test -s docs/plots/pcb/manifest.json
           python - <<'PY'
           import json
           from pathlib import Path
@@ -68,6 +72,9 @@ jobs:
           print('Native KiCad SVG views:',len(data['schematics']))
           print('Authentic 3MF CAD present:',Path('docs/assets/g1-assembly.3mf').exists())
           assert Path('docs/assets/g1-assembly.3mf').is_file(), 'Source CAD asset missing'
+          pcb=json.loads(Path('docs/plots/pcb/manifest.json').read_text())
+          assert pcb['view_only'] is True and len(pcb['views'])==4
+          assert all((Path('docs')/v['path']).is_file() for v in pcb['views'])
           assert data['view_only'] is True
           names=[item['name'] for item in data['schematics']]
           assert len(names)>=12 and len(names)==len(set(names)), 'KiCad SVG plots incomplete or duplicated'

@@ -32,11 +32,12 @@ jobs:
       - name: Validate site links and source files
         run: python3 docs/validate_site.py
       - name: Compile Python publication tools without runtime dependencies
-        run: python3 -m py_compile docs/render_kicad.py docs/validate_site.py Tools/convert_3mf_to_glb.py
+        run: python3 -m py_compile docs/render_kicad.py docs/render_pcb.py docs/validate_site.py Tools/convert_3mf_to_glb.py
       - name: Validate JavaScript module syntax without CDN access
         run: |
           node --input-type=module --check < docs/app.js
           node --input-type=module --check < docs/viewer.js
+          node --input-type=module --check < docs/pcb-explorer.js
       - name: Confirm publication folder has no environment secrets
         run: |
           test -s docs/index.html
