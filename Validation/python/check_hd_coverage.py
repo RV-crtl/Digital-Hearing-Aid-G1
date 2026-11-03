@@ -11,7 +11,7 @@ root=pathlib.Path(__file__).resolve().parents[2]
 with (root/"Documentation/REQUIREMENTS_EVIDENCE.csv").open(newline="",encoding="utf8") as f:
     ids=[r["requirement_id"] for r in csv.DictReader(f)]
 coverage=(root/"Documentation/HD_REQUIREMENTS_COVERAGE.md").read_text(encoding="utf8")
-plan=(root/"Documentation/Legacy/G11_BLACK_BOX_TEST_PLAN.md").read_text(encoding="utf8")
+plan=(root/"Documentation/G11_BLACK_BOX_TEST_PLAN_ARCHIVED.md").read_text(encoding="utf8")
 mapping={}
 for line in coverage.splitlines():
     if not line.startswith("|"): continue

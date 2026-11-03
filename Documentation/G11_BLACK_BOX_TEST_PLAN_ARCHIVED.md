@@ -1,5 +1,5 @@
 > **ARCHIVED HISTORICAL G11 PLAN — NOT THE CURRENT PCB DEMONSTRATION.**
-> Preserved only so old rubric and test-ID traceability can be reproduced. The canonical plan is [G1 current black-box tests](../BLACK_BOX_TEST_PLAN.md).
+> Preserved only so old rubric and test-ID traceability can be reproduced. The canonical plan is [G1 current black-box tests](BLACK_BOX_TEST_PLAN.md).
 
 # BLACK BOX — System Demonstration Test Plan (target 20 minutes)
 
