@@ -1,16 +1,16 @@
-/* G11 interactive systems atlas. Illustrative timing/data quantities where hardware results are not measured. */
+/* G1 custom PCB/R26 candidate architecture. Never confuse live on-device ML with the UI demo. */
 "use strict";
 const $=id=>document.getElementById(id);
 const paths={
-  mic:{title:"PDM microphone · integration target",kind:"Planned path",detail:"Acoustic wave → PDM clock/data → DFSDM digital decimation → PCM block. The U13 pad map exposes DFSDM1_CKOUT and DATIN2. Capture driver, pin assignment and calibrated acoustic operation remain to be completed.",stages:["Microphone / PDM","DFSDM decimator","PCM DMA capture","AudioTask DSP","SAI2B DMA","Power amplifier","Output transducer"]},
+  mic:{title:"PDM microphone · R24/R26 custom PCB",kind:"Reported working · R26 candidate",detail:"PDM microphone PC2/PB14 → DFSDM1 decimation → DMA PCM blocks → AudioTask ambient AGC and limiter → SAI2B speaker. R24 operation was reported; R26 SPL and distant pickup remain to be measured.",stages:["PDM microphone","DFSDM1 + DMA","PCM capture ring","AudioTask ambient AGC","Bounded output FIFO","SAI2B TX DMA","Speaker"]},
   bt:{title:"Bluetooth audio · existing source path",kind:"Firmware transport",detail:"Bluetooth receiver → SAI1A serial audio → circular RX DMA → completed-half snapshot → AudioTask task notification → output mono FIFO → SAI2B TX DMA.",stages:["BT module / serial audio","SAI1A RX / 24-bit","Circular DMA","Ring snapshot / AudioTask","DSP + sample FIFO","SAI2B TX DMA","Output transducer"]},
-  tc:{title:"Telecoil · existing source path",kind:"Firmware transport",detail:"Inductive pickup and analogue conditioning → SAI2A source capture → circular DMA → sample conversion and FIFO → AudioTask → SAI2B DMA. Physical coupling must be measured separately.",stages:["Telecoil / amplifier","SAI2A RX / 24-bit","Circular DMA","Ring snapshot / AudioTask","DSP + sample FIFO","SAI2B TX DMA","Output transducer"]}
+  tc:{title:"Telecoil · LOW16 verified in R22–R24",kind:"Operator-confirmed PCM decode",detail:"Induction loop → telecoil front end → PCM1808 → SAI2A 24-bit frames decoded as signed LOW16 → adaptive TC cleanup / FIFO → SAI2B. FILTER ON reduced audible static; remaining hiss needs physical measurement.",stages:["Induction-loop input","PCM1808 / SAI2A","LOW16 decode + DMA","AudioTask TC cleanup","Gain + output FIFO","SAI2B TX DMA","Speaker"]}
 };
 const tasks=[
   {key:"irq",title:"Peripheral DMA ISR",priority:"ISR · ceiling-aware",detail:"DMA half/full callback publishes a completed snapshot and uses vTaskNotifyGiveFromISR only at a FreeRTOS-compatible interrupt priority. ISR must not run complex DSP.",code:"Core/Src/demo_app.c"},
   {key:"audio",title:"AudioTask",priority:"FreeRTOS priority 7",detail:"Receives ISR notifications, consumes completed PCM blocks, owns processing state and the group event queue; uses a bounded 5-ms wait when idle.",code:"Core/Src/demo_app.c"},
   {key:"bt",title:"BtTask",priority:"FreeRTOS priority 5",detail:"Services Bluetooth UART and control/profile requests off the real-time audio path.",code:"Core/Src/demo_app.c"},
-  {key:"control",title:"ControlTask / bootstrap",priority:"Control-loop context",detail:"Polls user input and diagnostic states; submits events to the AudioTask-owned queue. Nucleo B1 gesture wiring is not valid as a custom-PCB user interface.",code:"Core/Src/demo_app.c"},
+  {key:"control",title:"ControlTask / bootstrap",priority:"Control-loop context",detail:"Polls user input and diagnostic states; submits events to the AudioTask-owned queue. Custom PCB uses MPR121 I2C E8–E11 and PA0/PA1 encoder; legacy Nucleo B1 gestures are not product controls.",code:"Core/Src/demo_app.c"},
   {key:"guard",title:"DSP overload guardian",priority:"Within audio processing",detail:"Examines audio pipeline fault counters; bypasses optional DSP when necessary without claiming the underlying audio transfer is fail-safe.",code:"Core/Src/group_guardian.c"}
 ];
 const tabs=document.querySelectorAll("[data-atlas-source]");
@@ -27,7 +27,7 @@ renderFlow("bt");
 const gain=$("atlasLearningGain"),level=$("atlasLearningLevel"),action=$("atlasLearningAction"),indicator=$("atlasLearningResult");
 let weights=new Float32Array(3),counts=new Uint8Array(3);
 const levels=["quiet","moderate","loud"];
-function step(){const k=Number(level.value);$("atlasLearningScene").textContent=levels[k];$("atlasLearningGain").textContent=(weights[k]>=0?"+":"")+weights[k].toFixed(1)+" dB";indicator.textContent="Simulated preference offset in "+levels[k]+" scene; unsaved, not running on the board.";}
+function step(){const k=Number(level.value);$("atlasLearningScene").textContent=levels[k];$("atlasLearningGain").textContent=(weights[k]>=0?"+":"")+weights[k].toFixed(1)+" dB";indicator.textContent="Browser-only preference simulation in "+levels[k]+" scene; not live R26 telemetry.";}
 level?.addEventListener("input",step);
 $("atlasLearnButton")?.addEventListener("click",()=>{const k=Number(level.value),userAction=action.value==="up"?1:-1;counts[k]++;const rate=1/Math.sqrt(counts[k]);weights[k]=Math.max(-6,Math.min(3,weights[k]+userAction*0.8*rate));step();});
 $("atlasLearningReset")?.addEventListener("click",()=>{weights.fill(0);counts.fill(0);step();});

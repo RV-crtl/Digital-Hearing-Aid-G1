@@ -65,3 +65,31 @@
  .atlas-inspect,.atlas-pill{background:white!important;color:#141414!important}
  .atlas-hero small,.atlas-bits small,.atlas-head small,.atlas-task-priority{color:#19685b!important}
 }
+
+/* Custom-PCB engineering explorer: authentic CAD parts, board SVG and black-box evidence */
+.cad-inspector{margin-top:1.1rem;padding-top:1rem;border-top:1px solid #ffffff25}
+.cad-search{width:100%;margin:.5rem 0;padding:.65rem .8rem;border-radius:10px;border:1px solid #94b9c04d;background:#081725;color:#e8fbfd;font:inherit}
+.cad-stats{font-size:.78rem;color:#a5c9d3;margin:.4rem 0}
+.cad-parts{max-height:210px;overflow:auto;display:flex;flex-wrap:wrap;gap:.35rem}
+.cad-parts button{padding:.32rem .53rem;border:1px solid #75abc048;background:#102333;color:#c6e7ef;border-radius:7px;font-size:.72rem;cursor:pointer}
+.cad-parts button[aria-pressed="true"],.cad-parts button:hover{border-color:#80e9cb;background:#1b493d;color:#f0fffa}
+.cad-note{font-size:.75rem;color:#9eb7bd;line-height:1.45;margin-top:.65rem}
+.pcb-explorer{margin:1.1rem 0 2rem;border:1px solid #729cae45;border-radius:19px;background:linear-gradient(135deg,#11283a,#081321);padding:1rem}
+.pcb-explorer-head{display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap}
+.pcb-explorer-head h3{font-size:1.5rem;margin:.35rem 0}
+.pcb-explorer-head p{max-width:700px;color:#a9c0cd;font-size:.9rem}
+.pcb-toolbar{display:flex;gap:.45rem;flex-wrap:wrap;align-items:center;margin:1rem 0}
+.pcb-toolbar button{background:#132f42;color:#d6edf3;border:1px solid #89b9cc40;border-radius:9px;padding:.5rem .8rem;cursor:pointer;font:inherit;font-size:.81rem}
+.pcb-toolbar button:hover,.pcb-toolbar button[aria-pressed="true"]{border-color:#7de4c9;background:#20514b;color:#ecfff9}
+.pcb-spacer{flex:1}
+.pcb-frame{height:clamp(280px,46vw,550px);background:#fbfcfd;border-radius:12px;overflow:hidden;display:flex;align-items:center;justify-content:center;touch-action:none;cursor:grab}
+.pcb-frame:active{cursor:grabbing}
+.pcb-frame img{width:100%;height:100%;object-fit:contain;transform-origin:center;user-select:none;pointer-events:none}
+.pcb-footer{display:flex;justify-content:space-between;gap:.75rem;align-items:center;margin-top:.75rem;font-size:.8rem;color:#a8c1ca}
+.demo-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.8rem;margin:1.15rem 0}
+.demo-link{padding:1.2rem;border:1px solid #76aabb45;background:#122b3b;border-radius:16px;text-decoration:none;color:#f4fbfb;display:flex;flex-direction:column;gap:.65rem}
+.demo-link:hover{border-color:#7de4c9;transform:translateY(-2px)}
+.demo-link strong{font-size:1.1rem}
+.demo-link span{font-size:.85rem;color:#a9c5ce}
+@media(max-width:850px){.demo-grid{grid-template-columns:1fr}.pcb-explorer-head{align-items:flex-start}}
+@media print{.pcb-explorer,.cad-inspector{break-inside:avoid}.pcb-frame{height:260px}}
