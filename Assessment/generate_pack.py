@@ -167,10 +167,12 @@ def make_a3(out):
     arrow(c,255,top-55,313,top-72,'DFSDM')
     arrow(c,255,top-168,313,top-150,'DMA')
     arrow(c,255,top-281,313,top-222,'DMA')
-    arrow(c,255,top-396,313,top-384,'queue')
+    arrow(c,255,top-396,313,top-384,'touch')
+    arrow(c,462,top-336,462,top-273,'event')
     arrow(c,611,top-135,681,top-92,'PCM FIFO')
     arrow(c,900,top-98,941,top-98,'audible')
     arrow(c,900,top-267,941,top-267,'measure')
+    arrow(c,792,top-218,792,top-145,'power')
 
     c.setFillColor(NAVY);c.setFont(BOLD,11);c.drawString(37,141,'Data plane')
     c.setFont(FONT,10);c.drawString(130,141,'PDM / SAI RX DMA -> notification -> AudioTask -> FIFO -> SAI2B -> output')
