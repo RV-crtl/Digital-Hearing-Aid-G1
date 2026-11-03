@@ -4,6 +4,10 @@ on:
   pull_request:
     paths:
       - 'docs/**'
+      - 'Documentation/BLACK_BOX_TEST_PLAN.md'
+      - 'Documentation/PRINTABLE_SYSTEM_DIAGRAM.md'
+      - 'Documentation/G1_CURRENT_SYSTEM_REQUIREMENTS.md'
+      - 'README.md'
       - 'Tools/convert_3mf_to_glb.py'
       - '.github/workflows/publish-pages.yml'
       - '.github/workflows/site-check.yml'
@@ -31,6 +35,10 @@ jobs:
       - uses: actions/checkout@v4
       - name: Validate site links and source files
         run: python3 docs/validate_site.py
+      - name: Validate current system documentation and read-only PCB renderer
+        run: |
+          python3 docs/test_render_pcb.py
+          python3 Tools/check_current_docs.py
       - name: Compile Python publication tools without runtime dependencies
         run: python3 -m py_compile docs/render_kicad.py docs/render_pcb.py docs/validate_site.py Tools/convert_3mf_to_glb.py
       - name: Validate JavaScript module syntax without CDN access
