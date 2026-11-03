@@ -1,3 +1,5 @@
+> **Current source note:** Root CubeIDE remains the historical Nucleo-oriented firmware; the matched custom-PCB R26 image has not yet been promoted here. These commands cannot be used as proof that the physical G1 PCB was programmed or accepted. See [current requirements](../Documentation/G1_CURRENT_SYSTEM_REQUIREMENTS.md).
+
 # Operating firmware vs laboratory-stress firmware
 
 **Default for the system demonstration:** `DHA_ENABLE_RTOS_STRESS=0` in `Core/Inc/dha_build_mode.h` (and mirrored Recovery copy). The compiled operating image must create **AudioTask** and **BtTask** alongside existing **ControlTask** and FreeRTOS system tasks. It does **not** create Background, CPULoadB or HighLoad7 experimental workers. Even if UART is connected, stress commands `!RA`, `!RS`, `!RD`, `!RH` are rejected. Laboratory self-test command paths are not callable in operating mode.

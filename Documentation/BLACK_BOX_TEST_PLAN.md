@@ -19,7 +19,7 @@
 | G1-02 | Capture room audio and output audible signal | T2 | Both near and distant speech present on test fixture; record distance, level and noise |
 | G1-03 | Accept and reproduce Bluetooth audio | T3 | Pair/play/pause/restart, recover after phone disconnect |
 | G1-04 | Receive induction-loop/TC audio | T4 | 2 kHz signal audible with TC source; suppress idle hiss when stimulus stops |
-| G1-05 | Reliable local touch and rotary controls | T2–T5 | ≥5/5 intentional presses per electrode; volume monotonic per detent |
+| G1-05 | Reliable local touch and rotary controls | T2, T5 | ≥5/5 intentional presses per electrode; volume monotonic per detent |
 | G1-06 | Adapt audio level without uncontrolled distortion | T2, T4 | Bounded gain; compare quieter/louder stimuli without clipping by observation/instrument |
 | G1-07 | Respond robustly to unexpected source/control input | T5, T7 | Changes behave consistently without restart or reflash |
 | G1-08 | Demonstrate advanced adaptation / interference rejection | T6 | Repeatable input-dependent gain/noise behaviour; document limits of 3-cluster ML |

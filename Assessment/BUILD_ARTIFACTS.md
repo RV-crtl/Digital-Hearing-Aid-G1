@@ -2,7 +2,7 @@
 
 The workflow `.github/workflows/assessment-pack.yml` runs a coverage check, renders the source CSV/JSON into two printable PDFs, uploads the artifacts, and retains them for the configured period.
 
-After your hardware team revises the requirements and confirms the test plan:
+The current source contains **nine G1 requirements and seven black-box tests**. Once the team agrees to their proposed thresholds:
 
 1. Modify `Assessment/requirements.csv` and `Assessment/test_cases.json` in a reviewed PR. Confirm test coverage and 10–20-minute intended duration, no internal debugger/probing test steps.
 2. Open **Actions → Build HD demonstration evidence pack → Run workflow** and download `draft-assessment-pdfs`.
