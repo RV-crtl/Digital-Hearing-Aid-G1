@@ -33,6 +33,8 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
+      - name: Validate CAD source structure without copying or altering it
+        run: python3 Tools/import_latest_3mf.py docs/assets/g1-assembly.3mf --inspect
       - name: Validate site links and source files
         run: python3 docs/validate_site.py
       - name: Validate current system documentation and read-only PCB renderer
