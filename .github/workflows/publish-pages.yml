@@ -59,6 +59,11 @@ jobs:
         run: python docs/render_kicad.py
       - name: Render four read-only original PCB layer views
         run: python docs/render_pcb.py
+      - name: Build A3-printable vector system architecture
+        run: |
+          sudo apt-get install -y --no-install-recommends graphviz
+          dot -Tsvg Documentation/g1-system-2026.dot -o docs/plots/g1-system-2026.svg
+          test -s docs/plots/g1-system-2026.svg
       - name: Confirm only curated site folder is published
         run: |
           test -s docs/index.html
@@ -67,6 +72,7 @@ jobs:
           test -s docs/viewer.js
           test -s docs/plots/manifest.json
           test -s docs/plots/pcb/manifest.json
+          test -s docs/plots/g1-system-2026.svg
           python - <<'PY'
           import json
           from pathlib import Path

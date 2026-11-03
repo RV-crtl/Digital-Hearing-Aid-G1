@@ -33,4 +33,12 @@ $("atlasLearnButton")?.addEventListener("click",()=>{const k=Number(level.value)
 $("atlasLearningReset")?.addEventListener("click",()=>{weights.fill(0);counts.fill(0);step();});
 if(level)step();
 
-$("atlasPrint")?.addEventListener("click",()=>window.print());
+$("atlasPrint")?.addEventListener("click",()=>{
+  // On the hosted Pages release open the versioned A3 SVG; repository previews
+  // without generated plots use the printable Mermaid document instead.
+  const url="./plots/g1-system-2026.svg";
+  fetch(url,{method:"HEAD"}).then(r=>{
+    if(r.ok)window.open(url,"_blank","noopener,noreferrer");
+    else window.open("https://github.com/RV-crtl/Digital-Hearing-Aid-G1/blob/main/Documentation/PRINTABLE_SYSTEM_DIAGRAM.md","_blank","noopener,noreferrer");
+  }).catch(()=>window.print());
+});
