@@ -1,171 +1,55 @@
-# Digital Hearing Aid
+# G1 · Standalone adaptive hearing prototype
 
-### STM32L476RG · FreeRTOS · physical user controls · event-driven audio · reproducible validation
+**STM32L476RG · custom KiCad PCB · FreeRTOS · microphone / Bluetooth / induction-loop audio · physical controls**
 
-[![Portable host tests](https://github.com/RV-crtl/Digital-Hearing-Aid-G1/actions/workflows/verify-g3.yml/badge.svg?branch=main)](https://github.com/RV-crtl/Digital-Hearing-Aid-G1/actions/workflows/verify-g3.yml)
-![MCU](https://img.shields.io/badge/MCU-STM32L476RG-226699)
-![Platform](https://img.shields.io/badge/platform-NUCLEO--L476RG-0f766e)
-![Hardware](https://img.shields.io/badge/custom_PCB-not_validated-8b5e3c)
-![ML](https://img.shields.io/badge/trained_ML-not_integrated-64748b)
+[![Engineering CI](https://github.com/RV-crtl/Digital-Hearing-Aid-G1/actions/workflows/verify-g3.yml/badge.svg)](https://github.com/RV-crtl/Digital-Hearing-Aid-G1/actions/workflows/verify-g3.yml) [![R26 DSP tests](https://github.com/RV-crtl/Digital-Hearing-Aid-G1/actions/workflows/r26-dsp.yml/badge.svg)](https://github.com/RV-crtl/Digital-Hearing-Aid-G1/actions)
 
-> **Engineering prototype / team project.** The current STM32CubeIDE target is **custom PCB intended for standalone demonstration; NUCLEO-L476RG is the presently source-integrated firmware baseline**, with Bluetooth and telecoil PCM capture, DMA speaker output, a real FreeRTOS task structure, software source selection, optional DSP profiles, and a fault-pressure guardian, DMA-triggered AudioTask wake-ups, and a tested standalone one-button interface. The checked-in custom PCB is a **separate, unvalidated target**. This is not a certified hearing aid or validated acoustic safety device.
+[**Explore the interactive website**](https://rv-crtl.github.io/Digital-Hearing-Aid-G1/) · [System architecture](Documentation/PRINTABLE_SYSTEM_DIAGRAM.md) · [Black-box demonstration plan](Documentation/BLACK_BOX_TEST_PLAN.md) · [Current evidence and requirements](Documentation/G1_CURRENT_SYSTEM_REQUIREMENTS.md) · [Hardware/KiCad](Hardware/README.md)
 
-![Digital Hearing Aid system overview](Assets/system-overview.svg)
+> **Prototype, not a certified hearing aid.** This repository contains original PCB design, software source, testing infrastructure and student-team engineering work. The maximum acoustic output has not been independently calibrated for use on or in the ear. Public access is not a general reuse licence; see [publication and contributor rights](Documentation/PUBLICATION_GATE.md).
 
-## R20 integration status
+## The real prototype
 
-The team has separately demonstrated microphone, speaker, Bluetooth, MPR121 touch and rotary-encoder functions in the R17–R20 custom-PCB firmware series. **This repository's legacy CubeIDE application is not yet equivalent to the separate R20 hardware build**; telecoil operation and battery-only cold-start remain open acceptance items. The R20 physical-control policy and quadrature driver are being integrated with a deterministic host regression; see [R20 integration and evidence status](Documentation/R20_HARDWARE_STATUS.md). Do not equate a green host test with a successfully flashed custom-PCB binary.
+The physical target is a **standalone custom PCB**, not a Nucleo board. A ST-LINK is needed only for programming and optional engineering diagnosis, not for intended normal operation. The hardware incorporates an STM32L476RG, digital PDM microphone, MPR121 capacitive touch, rotary encoder, Bluetooth audio, a telecoil input with PCM1808 conversion, FreeRTOS and a speaker/audio-output chain. The bench-tested R24 firmware was reported to operate without Nucleo after a wiring issue was resolved.
 
-## October 2026: repository source vs. hardware-tested integration
+The team subsequently developed **R26** with higher-sensitivity ambient audio, telecoil idle-noise reduction, adaptive gain, and incremental acoustic feature clustering. **R26 firmware is a candidate, not a confirmed on-PCB acceptance result.**
 
-**Two different code baselines must not be confused.** The main-branch CubeIDE sources currently remain the earlier **R34/G11 Nucleo-oriented source baseline**, augmented with portable R20 physical-control policies; they are **not** the full R20 custom-PCB firmware. The separately supplied R17–R20 STM32CubeIDE 1.19.0 packages are the experimental custom-PCB series. Based on the operator's latest tests, microphone input, speaker output, Bluetooth playback, rotary encoder and Anna-derived MPR121 touch worked in that series; telecoil and reliable untethered battery-only startup still need acceptance tests, and there have been iterative compiler/link fixes. None of this establishes a verified ARM build or physical test for the current repository HEAD.
-
-See [current firmware/PCB status](Documentation/R20_HARDWARE_STATUS.md) and [R20 integration issue](https://github.com/RV-crtl/Digital-Hearing-Aid-G1/issues/27). **Do not flash the main-branch legacy firmware assuming it is R20.** The existing hardware schematics, assessment work and Nucleo demonstrations are retained as source/history, not as substitutes for the proven PCB package.
-
-## G11: standalone target and interactive systems atlas
-
-**Demonstration target:** the physical custom PCB, untethered, powered by **2 × 26650 LiFePO4 cells connected in series (3.25 V nominal per cell, 6.50 V nominal pack)**. PC/ST-LINK and NUCLEO are **not** part of operating mode. The team reports working hardware; its precise board revision and final integrated image still need reproducible on-board tests for this Git SHA. Never route 6.5 V directly to the MCU supply pins: verify actual regulator/protection/balance circuit and safe operating range.
-
-The [visual systems atlas](https://rv-crtl.github.io/Digital-Hearing-Aid-G1/#architecture) explains the complete signal/data/control and power flow, DMA buffer hand-offs, RTOS task priorities, microphone PDM/DFSDM path, Bluetooth/telecoil and optional learning. The [G11 custom-PCB assessment plan](Documentation/G11_STANDALONE_CUSTOM_PCB_RELEASE_PLAN.md) maps these items directly to the external black-box demonstration rubric.
-
-**Implemented vs research:** the *checked-in legacy baseline* does not include the separate PCB-series microphone implementation; `Core/Src/adaptive_preferences.c` now implements a portable, bounded user-feedback preference algorithm with deterministic host tests, but it is not yet physically wired into MCU capture, control state or nonvolatile memory. The website's learning demo is a simulator, not a claim of deployed hardware AI.
-
-## Choose your route
-
-| Get started | Engineering and evidence | Collaboration |
-| :--- | :--- | :--- |
-| **[Import into STM32CubeIDE](Documentation/GROUP_G1_IMPORT_AND_BUILD.md)** | **[Find a function in the code](Documentation/CODE_MAP.md)** | **[Contribution standards](CONTRIBUTING.md)** |
-| **[Standalone controls and LED guide](Documentation/G5_STANDALONE_USER_GUIDE.md)** · [Showcase plan](Documentation/STANDALONE_SHOWCASE.md) | [Run host/MATLAB verification](Validation/README.md) | [Open issues](https://github.com/RV-crtl/Digital-Hearing-Aid-G1/issues) |
-| [Architecture](Documentation/ARCHITECTURE.md) · [RTOS/CPU measurements](Documentation/G5_RTOS_AND_PERFORMANCE.md) | [Evidence and hardware gates](Documentation/VALIDATION_LADDER.md) | [Change history](CHANGELOG.md) |
-| [Hardware/PCB design](Hardware/README.md) | [Requirement-by-requirement matrix](Documentation/REQUIREMENTS_EVIDENCE.csv) | [Pull requests](https://github.com/RV-crtl/Digital-Hearing-Aid-G1/pulls) |
-
-**New contributor?** The [one-page repository guide](Documentation/REPOSITORY_GUIDE.md) explains the directory roles, build sequence, source ownership, and how to find the tested code.
-
-## Publication and hardware-release status
-
-**This repository is currently public; a project-wide open-source licence has not been confirmed.** Public visibility does not by itself grant reuse rights. G1 is a student/team **NUCLEO-L476RG engineering prototype**, not a finished commercial/clinical hearing aid. Green CI verifies host source checks only; it cannot establish acoustic safety, enclosure reliability, medical conformity, supply/battery protection or custom-PCB functionality.
-
-Before opening the repository to the public, clear contributor/institution rights and supplied third-party files. See the [public-source and device release gate](Documentation/PUBLICATION_GATE.md), [third-party provenance](Documentation/THIRD_PARTY_PROVENANCE.md), [security disclosure process](SECURITY.md) and [physical release checklist](Documentation/RELEASE_CHECKLIST.md).
-
-`python3 Tools/publication_audit.py --output Validation/results/publication_audit.json` checks the *tracked source tree* for certain accidental credentials, generated files and vendor notices; it **does not scan all git history** or grant publication permission. Raw source, hardware and assessment files remain subject to manual review. The repository must not be represented as medical or acoustic-safety validated.
-
-## No-laptop Nucleo demonstration — physical B1 controls
-
-| Nucleo B1 gesture | Product-facing action |
-| --- | --- |
-| **1 click** | Cycle listening profile: NEUTRAL → VOICE → MUSIC → WIND |
-| **2 clicks** | Toggle **automatic loudness heuristic** (not trained AI) |
-| **3 clicks** | Request real source FSM mode: AUTO → Bluetooth → telecoil |
-| **Hold 1.2 seconds** | Toggle optional group processing |
-| **Hold 4+ seconds** | Restore neutral profile and AUTO routing |
-
-**Nucleo LD2:** off = optional DSP disabled; steady = manual profile; one short blink per second = auto-level; rapid flash = overload guardian. B1/LD2 use PC13/PA5 on the Nucleo; **those signals are not connected as user controls on the supplied custom PCB**.
-
-The [full standalone guide](Documentation/G5_STANDALONE_USER_GUIDE.md) explains debounce, compatibility, shortcuts, and limitations. All gestures are queued through FreeRTOS and consumed by AudioTask rather than changing PCM state inside a GPIO interrupt.
-
-## What actually works, and what is still engineering work?
-
-| Subsystem | Current code | Evidence to date |
+| Function | Evidence currently available | Important qualification |
 | --- | --- | --- |
-| Bluetooth and telecoil digital capture and source FSM | Present | Portable FSM regression; original Nucleo playback needs final-assembly retest |
-| FreeRTOS / bounded control queue / DMA task notifications / runtime profiling | Present | Static ISR-priority/ownership checks; real RTOS latency requires physical verification |
-| SAI/DMA output and PCM routing | Present | Implementation exists; speaker and transducer must be retested |
-| HPF / compensation EQ / dynamics | Present | Production-C impulse vectors; independent Python mathematical verification; MATLAB script supplied |
-| G1 listening profiles, WIND filter and auto loudness *heuristic* | Present | Host C tests, including identity bypass and transitions; **not trained AI** |
-| Overload guardian | Present | Host regression verifies state policy; real DMA overload proof outstanding |
-| Nucleo B1 source/profile gestures and LD2 status | Integrated in G5 | Portable debounce/multiclick tests pass; on-board testing pending |
-| Physical rotary and PDM mic integration | Partial prototypes | Custom board hardware and firmware integration pending |
-| TinyML, USB audio, charging/balancing, production power and custom PCB firmware | **Not implemented / verified** | Requirements and hardware feasibility documented |
+| Microphone → speaker | Operator-confirmed in R24; R26 DSP host tests | Distant pickup, distortion, safe SPL and ambient balance need measurement |
+| Bluetooth → speaker | Operator-confirmed in R24 | Bluetooth module and source output remain subject to demonstration checks |
+| Telecoil → speaker | Operator-confirmed with **PCM LOW16** and **FILTER ON** | Residual analogue hiss/weak-signal behaviour needs listening and bench measurements |
+| MPR121 touch / encoder | Operator-confirmed, R21 control regression tests | Repeatability and user-response timing remain black-box criteria |
+| Untethered USB-C power | R24 operator-confirmed after resolving external wiring | Battery source/protection/charging cannot be inferred from this result |
+| Adaptive scene model | R26 portable C tests | **Three unsupervised clusters**, not a pretrained speech/car/pedestrian classifier |
+| FreeRTOS / DMA | Static contracts and host tests | Final CPU load, timing, interrupts, underruns and SRAM headroom need recorded board evidence |
 
-## Interactive visual website / GitHub Pages
+## Important: two firmware baselines
 
-**G1 / Inside the Signal** is a responsive engineering showcase in [`docs/`](docs/README.md). It includes a WebGL model viewer, functional Bluetooth/telecoil signal map, filterable KiCad schematic gallery with native SVG plotting during deployment, and a browser of the actual embedded C source.
+**Do not flash the root CubeIDE project assuming it is R26.** The root files currently include an earlier Nucleo-oriented group source baseline, augmented with portable R20–R26 DSP/control improvements. R26's complete custom-PCB project was distributed separately; a clean, native STM32CubeIDE 1.19.0 GCC build and intentional whole-project promotion are required before declaring it this repository's authoritative firmware. The runtime should not be assembled by casually combining half of one firmware revision with the other.
 
-**Launch instructions:** [GitHub Pages setup and CAD upload](docs/README.md). Expected public address **after activation**: https://rv-crtl.github.io/Digital-Hearing-Aid-G1/ . The website is a demonstration interface—not a live data feed, product certification, or independently validated custom-PCB design.
+See [firmware integration and source ownership](Documentation/G1_CURRENT_SYSTEM_REQUIREMENTS.md) and [integration issue #27](https://github.com/RV-crtl/Digital-Hearing-Aid-G1/issues/27).
 
-## Repository-wide folder integrity
+## Interactive engineering site
 
-G9 adds whole-repository Markdown link and Windows filename-collision checks, compilation of every HAL-independent application C module under GCC/Clang, validation of evidence ZIP contents against SHA-256, and strict local ARM report provenance/freshness checks. See [G9 repository audit](Documentation/G9_REPOSITORY_INTEGRITY_AUDIT.md). These automated checks do **not** resolve the externally missing KiCad libraries, build an ARM binary in GitHub CI or certify device safety.
+The [site](https://rv-crtl.github.io/Digital-Hearing-Aid-G1/) provides an interactive CAD explorer (3MF/GLB with local upload), source-linked **original KiCad schematics**, signal paths and task ownership, code references, and a demonstration checklist. All files under `Hardware/Original_KiCad/` remain unchanged.
 
-## One-command G1 quality gate
+The uploaded **November 2026 full multi-body assembly** contains 1,713 3MF mesh objects (460,021 triangles), including PCB, housing and separated structures. The *previous* 3MF stored at `docs/assets/g1-assembly.3mf` is an earlier revision. The newest upload can be opened through the site's **Open your 3D CAD** control without sending it to a server; its full binary is not yet tracked on GitHub. See [CAD provenance and viewing guide](Documentation/CAD_ASSEMBLY_AND_VIEWERS.md).
 
-On Windows, run **powershell -ExecutionPolicy Bypass -File .\G1_RUN_ALL.ps1** from the G1 repository root to audit code, requirements and evidence, exercise portable host tests, generate draft assessment PDFs and create a SHA-256-manifested ZIP. Append **-BuildArm** to additionally run G1_BUILD_ARM.ps1 (requires local STM32CubeIDE and vendor firmware). Read the [G7 one-command engineering guide](Documentation/G7_ONE_COMMAND_QUALITY_GATE.md) for dependency requirements and exactly what remains unverified. The operating firmware still requires a separate CubeIDE ARM build and physical tests.
+## Project navigation
 
-## Fast validation and performance smoke test
-
-From repository root on a computer with GCC/Clang, Python 3 and Bash:
-
-```bash
-bash Validation/run_host_validation.sh
-```
-
-This builds and executes **production-source C tests**, exports filter vectors, checks the math independently, tests the source-selection FSM, encoder, button gestures and overload guardian, audits KiCad dependencies, and writes a **host-only 128-frame DSP benchmark** to `Validation/results/profile_host_benchmark.csv`.
-
-For MATLAB, after running the host script:
-
-```matlab
-addpath('Validation/matlab');
-verify_audio_filters('Validation/results/audio_vectors.csv','Validation/results');
-```
-
-See the [validation ladder](Documentation/VALIDATION_LADDER.md) for exactly why **host CI does not prove successful ARM compilation, safe sound output, real PCB power behaviour, or medical performance**.
-
-## Repo layout
-
-```text
-Core/            Real application, MCU/SAI/DMA and FreeRTOS (compiled)
-Drivers/         STM32 HAL and CMSIS vendor dependencies
-Recovery/        Copies restored after STM32CubeMX generation
-Tests/           Portable C tests against production modules
-Validation/      C vectors, independent Python/MATLAB, host benchmarks
-Hardware/        Original supplied KiCad project and MCU pin map
-Documentation/   Architecture, code map, tutorials, requirements and gates
-References/      Group members' earlier prototypes (NOT compiled)
-Dashboard/       Optional laptop-based development tooling
-.github/         Automated checks and contribution/review workflows
-```
-
-**Keep the CubeIDE `.project`, `.cproject`, `.ioc` and prepare scripts at the repository root.** `Recovery/` is not a second build target. See [exact import/build instructions](Documentation/GROUP_G1_IMPORT_AND_BUILD.md) before opening the `.ioc`.
-
-## Software design and priorities
-
-- **AudioTask (priority 7):** exclusive owner of DSP and PCM audio control state. Queued user commands enter at safe task boundaries.
-- **ControlTask (priority 6):** controls/serial processing and diagnostic snapshots; should not block critical audio work.
-- **Bluetooth supervision (priority 5):** independent status handling.
-- **Background tests (priority 2):** development-only workloads. Deliberate priority-7 saturation is **not normal product operation**.
-- **Engineering goal:** use DMA and event/queue synchronization while measuring real worst-case timing—not merely adding more tasks.
-
-The [code map](Documentation/CODE_MAP.md) takes you directly to the implementation symbols and explains which code can be safely changed without touching the verified TIM2/TIM6 runtime profiler.
-
-## Hardware truth / release status
-
-The supplied routed KiCad design is included for inspection and migration. The board has unresolved third-party schematic/footprint-library paths, outstanding KiCad ERC/DRC, unverified user-control wiring, and incomplete evidence for battery charging/balancing. The STM32 custom-board pin mapping **differs from the Nucleo firmware**.
-
-Read [hardware constraints](Hardware/README.md), [board-porting checklist](Hardware/CUSTOM_PCB_PORTING_CHECKLIST.md) and [release gates](Documentation/RELEASE_CHECKLIST.md) before custom-board programming or a product-level performance claim.
-
----
-
-**Team engineering repository.** Please submit changes via a branch + pull request, preserve test evidence by commit, and keep the original individual PD5 repository separate. Every claimed hardware PASS requires recorded conditions and measured results.
-
----
-
-## 🎓 ZEIT4232 System Demonstration & Viva — HD readiness
-
-> The supplied final rubric requires **all revised whole-system requirements** to be convincingly demonstrated before any advanced/HD extension can count. The demonstration is **black-box and physically observable**, runs **without ST-LINK or serial debugging**, and must complete in **10–20 minutes** where feasible (30-minute hard limit).
-
-| Start here | Purpose |
+| Area | Start here |
 | --- | --- |
-| **[HD rubric crosswalk](Documentation/HD_RUBRIC_READINESS.md)** | Explicit minimum → meets → exceeds gates |
-| **[Black-box 20-minute test plan](Documentation/BLACK_BOX_TEST_PLAN.md)** | Technician-ready test procedures with prerequisites / expected results |
-| **[System-level requirements coverage](Documentation/HD_REQUIREMENTS_COVERAGE.md)** | Requirement IDs, observable tests and unresolved blockers |
-| **[A3 hardware/software diagram](Documentation/PRINTABLE_SYSTEM_DIAGRAM.md)** | Print **two** labelled copies |
-| **[Mechanical HD acceptance](Documentation/HD_MECHANICAL_ACCEPTANCE.md)** | Case, connectors, buttons, ergonomics, fit and finish |
-| **[Individual viva technical map](Documentation/VIVA_INTERFACE_MAP.md)** | Tasks, DMA, queue contracts, faults, code ownership and troubleshooting |
-| **[Release gate](Documentation/HD_RELEASE_GATE.md)** | Mandatory verification before calling this operating system ready |
-| [Blank physical test run record](Documentation/BLACK_BOX_RESULTS_TEMPLATE.md) | External observations, instrument data and sign-off |
+| Software / RTOS | [Core source](Core/Src) · [source ownership map](Documentation/CODE_MAP.md) |
+| DSP and adaptive learning | [Ambient DSP](Core/Src/g1_ambient_dsp.c) · [online clusters](Core/Src/g1_scene_ml.c) · [telecoil cleanup](Core/Src/tc_cleanup.c) |
+| Circuits / layout | [Original KiCad files](Hardware/Original_KiCad) · [hardware notes](Hardware/README.md) |
+| Firmware import | [CubeIDE procedure](Documentation/GROUP_G1_IMPORT_AND_BUILD.md) · [R26 integration gate](https://github.com/RV-crtl/Digital-Hearing-Aid-G1/issues/27) |
+| Demonstration | [System diagram](Documentation/PRINTABLE_SYSTEM_DIAGRAM.md) · [current requirements](Documentation/G1_CURRENT_SYSTEM_REQUIREMENTS.md) · [20-minute black-box test](Documentation/BLACK_BOX_TEST_PLAN.md) |
+| Validation / CI | [Host validation](Validation/README.md) · [Actions](https://github.com/RV-crtl/Digital-Hearing-Aid-G1/actions) |
+| Contributors / release | [CONTRIBUTING](CONTRIBUTING.md) · [SECURITY](SECURITY.md) · [publication gate](Documentation/PUBLICATION_GATE.md) |
 
-**Important:** The original matrix still contains unintegrated features (mic, feedback, wear/power) and unmeasured limits. All tests are intentionally **NOT_RUN/BLOCKED until physically confirmed**. A green GitHub CI check does not satisfy black-box hardware validation. The draft plan must be reconciled and revised by the group before the **single combined requirements + test-plan PDF** is submitted to Moodle.
+## Working practices
 
-## R26 selective audio/ML source update
+Run `python3 Validation/run_host_validation.py`, `python3 docs/validate_site.py` and the relevant portable C tests before submitting a PR. **Green source-level CI does not mean ARM firmware compiled, a device booted, or acoustic performance was measured.** The correct demonstration image must start from its intended regulated power supply with ST-LINK and diagnostics disconnected; no synthetic stress/demo tasks should be enabled for operating mode.
 
-The latest R26 ambient AGC, scene-clustering source and adaptive telecoil cleanup have been selectively imported with host sanitizer tests and CubeMX recovery mirrors. The original R26 signed-PCM shift undefined behaviour has been repaired. **The current root Nucleo CubeIDE project is not the full R26 custom-board application.** Read [R26 integration status](Documentation/R26_DSP_INTEGRATION.md) before attempting to build or flash.
+Earlier G2/G3/G5/G11 and R-series materials remain in `Documentation/` for traceability, but **the current requirements and black-box plan linked above supersede their historical demonstration descriptions.** Avoid presenting historical statements about an unintegrated mic, Nucleo B1, or simulated user controls as the current PCB's features.
