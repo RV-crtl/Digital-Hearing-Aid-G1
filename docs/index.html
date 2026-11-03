@@ -17,6 +17,7 @@
   </script>
   <script type="module" src="./app.js"></script>
   <script type="module" src="./system-lab.js"></script>
+  <script type="module" src="./pcb-explorer.js"></script>
   <link rel="icon" href="./favicon.svg" type="image/svg+xml">
 </head>
 <body>
@@ -25,7 +26,7 @@
   <header class="site-header">
     <a class="brand" href="#top" aria-label="G1 Home"><span class="brand-mark"><span></span></span><span>G1<span class="brand-slash">/</span><span class="brand-sub">LAB</span></span></a>
     <nav class="nav-links" aria-label="Main navigation">
-      <a href="#device">Device</a><a href="#architecture">System atlas</a><a href="#signal">Signal path</a><a href="#schematics">Schematics</a><a href="#firmware">Firmware</a><a href="#verification">Validation</a>
+      <a href="#device">Device</a><a href="#architecture">System atlas</a><a href="#signal">Signal path</a><a href="#schematics">Schematics</a><a href="#firmware">Firmware</a><a href="#demonstration">Test plan</a><a href="#verification">Validation</a>
     </nav>
     <a class="nav-github" href="https://github.com/RV-crtl/Digital-Hearing-Aid-G1" target="_blank" rel="noopener noreferrer"><span class="status-dot"></span> View repository <span aria-hidden="true">↗</span></a>
     <button id="mobileNav" class="mobile-nav" aria-label="Toggle navigation" aria-expanded="false">☰</button>
@@ -35,7 +36,7 @@
       <div class="hero-copy">
         <div class="eyebrow"><span class="pulse-dot"></span> DIGITAL AUDIO ENGINEERING <span class="separator">/</span> G1</div>
         <h1>Inside<br>the <em>signal.</em></h1>
-        <p class="hero-desc">A standalone STM32 custom-board audio system with Bluetooth, telecoil and planned microphone acquisition. Explore the real circuitry, FreeRTOS, DMA and control logic.</p>
+        <p class="hero-desc">A standalone custom-PCB audio system with operator-confirmed microphone, Bluetooth and LOW16 telecoil in R24. Explore original circuitry, FreeRTOS, R26 adaptive DSP and real device controls.</p>
         <div class="hero-cta"><a class="button button-primary" href="#device">Explore the device <span>↗</span></a><a class="button button-ghost" href="#schematics">View schematics <span>↘</span></a></div>
         <div class="hero-metadata"><span><b>01</b> Hardware</span><span><b>02</b> Embedded software</span><span><b>03</b> Verification</span></div>
       </div>
@@ -66,17 +67,25 @@
         <aside class="device-controls">
           <span class="micro-label">CAD / CONTROLS</span>
           <h3>Explore the <em>assembly.</em></h3>
-          <p class="control-desc">Interactive model prepared from the supplied 3MF assembly. Explore the real assembly by opening your 3MF or GLB locally. Your model stays in your browser. An optional approved GLB can also be hosted with the site.</p>
+          <p class="control-desc">Explore authentic assembly geometry. The hosted preview is an earlier 3MF; use Open your 3D CAD to load the newer 1,713-body assembly privately in your browser.</p>
           <div class="control-group"><span class="control-title">Camera preset</span><div class="segmented" role="group" aria-label="Camera view"><button class="view-btn active" data-view="iso">ISO</button><button class="view-btn" data-view="top">TOP</button><button class="view-btn" data-view="side">SIDE</button></div></div>
           <div class="control-group"><label class="control-title" for="explode">Assembly separation <span id="explodeValue">0%</span></label><input id="explode" type="range" min="0" max="100" value="0" aria-label="Assembly separation"></div>
           <div class="control-switches"><label class="switch-row"><span>Auto rotation</span><input id="rotateToggle" type="checkbox" checked><span class="switch"></span></label><label class="switch-row"><span>Wireframe</span><input id="wireframeToggle" type="checkbox"><span class="switch"></span></label><label class="switch-row"><span>Housing visible</span><input id="housingToggle" type="checkbox" checked><span class="switch"></span></label></div>
           <button id="resetModel" class="button button-line">Reset view <span>↺</span></button><button id="loadLocalModel" class="button button-line" type="button" style="margin-top:9px">Open your 3D CAD (.3mf / .glb) <span>↗</span></button><input id="localModel" type="file" accept=".3mf,.glb,model/gltf-binary,model/3mf" class="visually-hidden" aria-label="Choose 3MF or GLB assembly model">
-          <div class="model-caption">Provided assembly: <strong>Local 3MF / hosted GLB</strong><br><span id="modelMode">Checking for model asset</span></div>
+          <div class="model-caption">Source: <strong>Hosted earlier revision · latest local 3MF supported</strong><br><span id="modelMode">Checking model asset</span></div>
+          <div class="cad-inspector" aria-label="CAD object inspector">
+            <label for="cadSearch" class="control-title">Explore original CAD objects</label>
+            <input id="cadSearch" class="cad-search" type="search" placeholder="Filter mesh names" autocomplete="off">
+            <div id="cadStats" class="cad-stats" aria-live="polite">Waiting for geometry…</div>
+            <div id="cadParts" class="cad-parts" role="group" aria-label="Select a CAD body"></div>
+            <button id="cadShowAll" class="button button-line" type="button">Show full assembly</button>
+            <p class="cad-note">Part names are taken from the CAD source, not invented.</p>
+          </div>
         </aside>
       </div>
       <div class="spec-grid">
         <div class="spec-card"><span>PROCESSOR</span><strong>STM32L476RG</strong><small>Arm Cortex-M4 MCU</small></div>
-        <div class="spec-card"><span>AUDIO ROUTING</span><strong>Dual-source</strong><small>Bluetooth + telecoil</small></div>
+        <div class="spec-card"><span>AUDIO ROUTING</span><strong>Three sources</strong><small>Microphone · Bluetooth · telecoil</small></div>
         <div class="spec-card"><span>FIRMWARE</span><strong>FreeRTOS</strong><small>Event-driven task architecture</small></div>
         <div class="spec-card"><span>PCB DESIGN</span><strong>KiCad</strong><small>Original design · verification pending</small></div>
       </div>
@@ -85,7 +94,7 @@
     <section id="signal" class="section signal-section">
       <div class="wrap"><div class="section-label">02 / SIGNAL ARCHITECTURE</div><div class="section-heading"><div><h2>Follow the <span>sound.</span></h2><p>Switch the input source and trace how samples move through the embedded system.</p></div><span class="section-index">02 — 05</span></div>
         <div class="signal-app">
-          <div class="signal-top"><div class="source-switch" role="group" aria-label="Select signal input"><button data-source="bluetooth" class="source-btn active">◉ &nbsp; Bluetooth</button><button data-source="telecoil" class="source-btn">◎ &nbsp; Telecoil</button></div><div class="signal-indicator"><span class="status-dot"></span> INTERACTIVE SIGNAL MAP</div></div>
+          <div class="signal-top"><div class="source-switch" role="group" aria-label="Select signal input"><button data-source="bluetooth" class="source-btn active">◉ &nbsp; Bluetooth</button><button data-source="mic" class="source-btn">♫ &nbsp; Microphone</button><button data-source="telecoil" class="source-btn">◎ &nbsp; Telecoil</button></div><div class="signal-indicator"><span class="status-dot"></span> INTERACTIVE SIGNAL MAP</div></div>
           <div class="signal-chain" id="signalChain">
             <div class="chain-node" data-node="input"><span class="node-num">01 / RECEIVE</span><div class="node-icon">◉</div><h3 id="chainInputTitle">Bluetooth audio</h3><p id="chainInputText">External Bluetooth audio input and link observations.</p></div>
             <div class="chain-wire"><span></span><span class="travel-dot"></span></div>
@@ -106,7 +115,7 @@
       <div class="section-heading"><div><h2 id="atlas-title">One system.<span> Every signal.</span></h2><p>Explore the standalone custom-PCB target, bus ownership, DMA buffers, RTOS tasks and proposed adaptation. Click a signal source, then select individual blocks.</p></div><span class="section-index">SYSTEM ATLAS</span></div>
       <div class="atlas-hero">
         <div><small>DEPLOYMENT TARGET</small><strong>Custom PCB only</strong><p>No Nucleo, ST-LINK, serial console or tethered PC in operating mode. A phone is optional only as a Bluetooth audio source.</p></div>
-        <div><small>POWER SOURCE</small><strong>2 × 26650 LiFePO₄</strong><p>2 cells in series · nominal 6.5 V based on 3.25 V/cell. Regulated rails, protection, balance and cell-voltage operating limits require measured verification.</p></div>
+        <div><small>POWER SOURCE</small><strong>2 × 26650 LiFePO₄</strong><p>Two LiFePO₄ cells in series are the intended battery supply. Untethered R24 USB-C operation was reported; independent battery protection still needs testing.</p></div>
         <div><small>PROCESSOR</small><strong>STM32L476RG</strong><p>FreeRTOS priority scheduling · 24-bit SAI receive words · PCM processing · DMA-driven output.</p></div>
       </div>
       <div class="atlas-panel">
@@ -115,7 +124,7 @@
         <p id="atlasFlowDesc" class="atlas-copy"></p>
         <div id="atlasFlowSteps" class="atlas-flow" aria-label="Signal stages"></div>
         <p id="atlasInspect" class="atlas-inspect" aria-live="polite">Select any block to inspect buffer ownership, processing or physical interface.</p>
-        <div class="atlas-bits"><div><small>CAPTURE FORMAT</small><strong>24-bit SAI words</strong><p>RX circular DMA → completed-half snapshot; convert to signed PCM for processing.</p></div><div><small>REAL-TIME SYNCHRONIZATION</small><strong>ISR → task notification</strong><p>Notify AudioTask only after publishing a complete buffer. AudioTask services the control FSM periodically.</p></div><div><small>OUTPUT FORMAT</small><strong>16-bit PCM / SAI2B</strong><p>Mono FIFO → L/R slot mapping → SAI2B TX DMA → amplifier / transducer.</p></div></div>
+        <div class="atlas-bits"><div><small>CAPTURE FORMAT</small><strong>BT LOW24 · TC LOW16</strong><p>RX circular DMA → completed-half snapshot; source-specific signed PCM decoding.</p></div><div><small>REAL-TIME SYNCHRONIZATION</small><strong>ISR → task notification</strong><p>Notify AudioTask only after publishing a complete buffer. AudioTask services the control FSM periodically.</p></div><div><small>OUTPUT FORMAT</small><strong>16-bit PCM / SAI2B</strong><p>Mono FIFO → L/R slot mapping → SAI2B TX DMA → amplifier / transducer.</p></div></div>
       </div>
       <div class="atlas-panel">
         <div class="atlas-head"><div><small>INTERACTIVE / CONTROL PLANE</small><h3>RTOS task ownership &amp; priorities</h3></div><span class="atlas-pill">Production-source references</span></div>
@@ -123,16 +132,32 @@
         <div class="atlas-tasks" id="atlasTasks"></div><div class="atlas-inspect"><span id="atlasTaskInspect">Select any task to inspect its real-time contract.</span> <a id="atlasTaskSource" href="https://github.com/RV-crtl/Digital-Hearing-Aid-G1/blob/main/Core/Src/demo_app.c" target="_blank" rel="noopener noreferrer">Source ↗</a></div>
       </div>
       <div class="atlas-panel atlas-learning">
-        <div class="atlas-head"><div><small>INTERACTIVE / ADAPTATION RESEARCH</small><h3>Preference learning, without a cloud</h3></div><span class="atlas-pill">Simulator · not deployed firmware</span></div>
-        <p class="atlas-copy">Proposed on-device adaptation uses bounded contextual preferences: microphone/source statistics (level and frequency-band energy), current mode, history and user volume adjustments. Explicit changes would be stronger feedback than inferred intent. This demonstration stores nothing and <strong>does not claim that learning already runs on the PCB.</strong></p>
+        <div class="atlas-head"><div><small>INTERACTIVE / ADAPTATION RESEARCH</small><h3>Preference learning, without a cloud</h3></div><span class="atlas-pill">R26 candidate · browser simulation</span></div>
+        <p class="atlas-copy">R26 includes a three-cluster incremental scene learner and bounded user-feedback preferences. This browser control illustrates the concept; it is not live MCU telemetry. This demonstration stores nothing and <strong>does not claim that learning already runs on the PCB.</strong></p>
         <div class="atlas-learning-controls"><label for="atlasLearningLevel">Observed loudness scene <select id="atlasLearningLevel"><option value="0">Quiet</option><option value="1">Moderate</option><option value="2">Loud</option></select></label><label for="atlasLearningAction">User feedback <select id="atlasLearningAction"><option value="up">Volume up</option><option value="down">Volume down</option></select></label><button id="atlasLearnButton" type="button">Teach preference ↗</button><button type="button" id="atlasLearningReset">Reset</button></div>
         <div class="atlas-learning-output"><div><small>SCENE</small><strong id="atlasLearningScene">quiet</strong></div><div><small>LEARNED OFFSET</small><strong id="atlasLearningGain">+0.0 dB</strong></div><div><small>RULE</small><strong>–6 to +3 dB bounded</strong></div></div><p id="atlasLearningResult" class="atlas-inspect">Simulation only.</p>
-        <p class="atlas-copy">Production integration additionally requires user-input capture on the custom PCB, validated gain/output caps, a fault-safe fallback, robust nonvolatile updates, retention policy, signal-feature extraction, and real-world testing.</p>
+        <p class="atlas-copy">R26 still requires a complete native GCC build, on-board acceptance, verified output limits and recorded timing. Its unsupervised clusters are not labelled car or speech recognition.</p>
       </div>
     </section>
     <section id="schematics" class="section wrap">
       <div class="section-label">03 / HARDWARE DESIGN</div>
       <div class="section-heading"><div><h2>The circuitry, <span>unfolded.</span></h2><p>Explore the real KiCad design files. The gallery uses full-resolution SVG sheets when exported in the Pages build.</p></div><span class="section-index">03 — 05</span></div>
+      <section class="pcb-explorer" id="pcbExplorer" aria-labelledby="pcb-explorer-title">
+        <div class="pcb-explorer-head"><div><span class="micro-label">ORIGINAL KICAD PCB</span><h3 id="pcb-explorer-title">Board layer explorer</h3><p>Read-only vector views exported from the unchanged original KiCad PCB; select a side, zoom, and pan.</p></div>
+          <a href="https://github.com/RV-crtl/Digital-Hearing-Aid-G1/blob/main/Hardware/Original_KiCad/260510-Digital_hearing_aid.kicad_pcb" target="_blank" rel="noopener noreferrer" class="button button-ghost">Open original PCB ↗</a></div>
+        <div class="pcb-toolbar" role="group" aria-label="PCB layer selector">
+          <button data-pcb-layer="front" aria-pressed="true" type="button">Front</button>
+          <button data-pcb-layer="back" aria-pressed="false" type="button">Back</button>
+          <button data-pcb-layer="front-copper" aria-pressed="false" type="button">Front copper</button>
+          <button data-pcb-layer="back-copper" aria-pressed="false" type="button">Back copper</button>
+          <span class="pcb-spacer"></span>
+          <button data-pcb-action="out" type="button" aria-label="Zoom out">−</button>
+          <button data-pcb-action="in" type="button" aria-label="Zoom in">+</button>
+          <button data-pcb-action="reset" type="button">Fit</button>
+        </div>
+        <div id="pcbFrame" class="pcb-frame" role="img" aria-label="Original KiCad PCB vector artwork"><img id="pcbPreview" alt="Native PCB SVG preview" draggable="false"></div>
+        <div class="pcb-footer"><span id="pcbFeedback" role="status">Checking KiCad exports…</span><a id="pcbOpenPlot" target="_blank" rel="noopener noreferrer" hidden>Open full SVG ↗</a></div>
+      </section>
       <div class="schematics-toolbar"><div class="filter-tabs" role="group" aria-label="Filter schematics"><button class="filter-btn active" data-filter="all">All sheets</button><button class="filter-btn" data-filter="audio">Audio</button><button class="filter-btn" data-filter="control">Control</button><button class="filter-btn" data-filter="power">Power</button></div><div id="schematicCount" class="gallery-count">Original KiCad files</div></div>
       <div class="schematics-grid" id="schematicsGrid" aria-live="polite"></div>
       <p class="section-note"><span>ⓘ</span> These are prototype design documents. Visualisation does not establish KiCad ERC/DRC, fabrication readiness, or electrical safety.</p>
@@ -146,6 +171,17 @@
       </div></div>
     </section>
 
+    <section id="demonstration" class="section wrap">
+      <div class="section-label">05 / SYSTEM DEMONSTRATION</div>
+      <div class="section-heading"><div><h2>Prove the <span>whole system.</span></h2>
+      <p>A repeatable 19–20-minute black-box test: standalone startup, ambient mic, Bluetooth, telecoil, controls, adaptive response and recovery. No ST-LINK, Nucleo or serial monitor is needed.</p></div></div>
+      <div class="demo-grid">
+        <a class="demo-link" href="https://github.com/RV-crtl/Digital-Hearing-Aid-G1/blob/main/Documentation/BLACK_BOX_TEST_PLAN.md"><strong>Black-box test plan</strong><span>Seven external-observation tests; no invented results ↗</span></a>
+        <a class="demo-link" href="https://github.com/RV-crtl/Digital-Hearing-Aid-G1/blob/main/Documentation/PRINTABLE_SYSTEM_DIAGRAM.md"><strong>Updated system diagram</strong><span>Custom PCB · peripheral ownership · RTOS · DMA ↗</span></a>
+        <a class="demo-link" href="https://github.com/RV-crtl/Digital-Hearing-Aid-G1/blob/main/Documentation/G1_CURRENT_SYSTEM_REQUIREMENTS.md"><strong>Requirements & evidence</strong><span>R24 observed functions versus R26 candidate ↗</span></a>
+      </div>
+      <p class="section-note">The root CubeIDE firmware remains an earlier group baseline plus ported DSP modules. It is not the complete separately packaged custom-PCB R26 application.</p>
+    </section>
     <section id="verification" class="section wrap last-section">
       <div class="section-label">05 / TESTING & OPEN WORK</div>
       <div class="section-heading"><div><h2>Evidence over <span>assumptions.</span></h2><p>A transparent view of what the project checks automatically—and what still needs real-world verification.</p></div><span class="section-index">05 — 05</span></div>
