@@ -16,7 +16,7 @@ SCHEMATICS = ["Connectivity", "Audio", "Telecoil_Buffer_Circuits",
               "Analog_Frontend", "Amplifier", "Output", "Power",
               "Processor", "STM32", "User Interface", "Active_Bandpass_Filter",
               "Mid-Supply_Buffer", "CCP"]
-CODE = ["Core/Src/demo_app.c", "Core/Src/group_features.c",
+CODE = ["Core/Src/demo_app.c", "Core/Src/g1_ambient_dsp.c", "Core/Src/g1_scene_ml.c", "Core/Src/tc_cleanup.c", "Core/Src/group_features.c",
         "Core/Src/connectivity_controller.c", "Core/Src/group_ui.c",
         "Core/Src/pcm_transport.c", "Core/Src/scene_features.c", "Core/Src/adaptive_preferences.c"]
 

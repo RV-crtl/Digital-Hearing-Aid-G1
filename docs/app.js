@@ -149,7 +149,7 @@ $$(".file-tab").forEach(btn=>btn.addEventListener("click",()=>{
   $$(".file-tab").forEach(x=>x.classList.toggle("active",x===btn));
   loadCode(btn.dataset.file);
 }));
-loadCode("Core/Src/demo_app.c");
+loadCode("Core/Src/g1_ambient_dsp.c");
 const nav=$("#mobileNav");nav.addEventListener("click",()=>{
   const expanded=nav.getAttribute("aria-expanded")==="true";
   nav.setAttribute("aria-expanded",String(!expanded));
