@@ -37,8 +37,8 @@ def validate(root: Path) -> dict:
         rows = list(reader)
     tests = json.loads((root / "test_cases.json").read_text(encoding="utf-8"))
     require(isinstance(tests, list), "test_cases.json must contain an array")
-    require(len(rows) == 9 and len(tests) == 7,
-            "Current G1 requires exactly nine system requirements and seven demonstrations")
+    require(len(rows) == 9,
+            "Current G1 requires exactly nine system requirements")
 
     ids = [r["Requirement Number"].strip() for r in rows]
     tids = [t.get("id") for t in tests if isinstance(t, dict)]
@@ -46,6 +46,7 @@ def validate(root: Path) -> dict:
     require(len(tids) == len(tests) and all(isinstance(x, str) and x for x in tids)
             and len(tids) == len(set(tids)), "Malformed or duplicate test ID")
     require(all(re.fullmatch(r"T[1-7]", t) for t in tids), "Test ID must match T1..T7")
+    require(len(tests) == 7, "Current G1 requires exactly seven demonstrations")
     by_test = {t["id"]: t for t in tests}
     by_req = set(ids)
 
