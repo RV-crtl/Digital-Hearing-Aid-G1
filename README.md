@@ -16,6 +16,8 @@ The diagram above represents real interfaces and task ownership, not fictional m
 
 **[Read the R26 boot-to-speaker function walkthrough](Documentation/FIRMWARE_EXECUTION_GUIDE_R26.md)** — chronological annotated code excerpts, physical hardware paths, per-source DSP functions, peripheral drivers, source routing, FreeRTOS tasks, speaker FIFO, diagnostics, and exact `Core/Src/` locations.
 
+To download a **firmware-only ZIP from GitHub**, open [Actions → Export clean STM32CubeIDE project](../../actions/workflows/cubeide-clean-export.yml), choose **Run workflow**, and download the `STM32CubeIDE-clean-project` artifact from the completed run. Alternatively run `Tools/Export-CubeIDE.ps1 -OutputPath dist` in PowerShell from the repository checkout. These exports reflect the **repository revision being built**, not the separate QR261104.8 ZIP until the source-sync issue below is resolved.
+
 For a source checkout, use **File → Import → Existing Projects into Workspace** and select the repository root containing `.project` and `.cproject`; do not import a historical reference firmware as a second project. The active application entry point is **`Core/Src/main.c`**, and the development configuration is described by the root `.ioc`. Commit history retains deleted recovery/prototype files if historical investigation is needed.
 
 **Release synchronization:** the QR261104.8 clean firmware archive distributed separately contains newer telecoil modules than the current repository revision. This repository should not be represented as the exact QR261104.8 release until its source and `.ioc` are synchronized and a native CubeIDE build passes. The guide describes QR261104.8 and marks differences where relevant.
