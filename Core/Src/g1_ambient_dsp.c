@@ -4,9 +4,9 @@
 #include <string.h>
 
 #define G1_AMBIENT_GAIN_ONE_Q12 4096U
-#define G1_AMBIENT_GAIN_MAX_Q12 81920U   /* <= 20x, increased from R24 8x */
+#define G1_AMBIENT_GAIN_MAX_Q12 262144U  /* <= 64x; quiet-input digital gain, not microphone SNR */
 #define G1_AMBIENT_PEAK_LIMIT 26000      /* preserves headroom before output DAC */
-#define G1_AMBIENT_TARGET_RMS 4300U
+#define G1_AMBIENT_TARGET_RMS 5500U
 #define G1_AMBIENT_MAX_FRAMES 256U
 
 static uint32_t integer_sqrt(uint32_t n){
@@ -44,9 +44,11 @@ void G1Ambient_Process(G1AmbientDsp *st,const int16_t *in,int16_t *out,size_t n)
   int32_t prev=0;
   for(size_t i=0;i<n;i++){
     int32_t raw=in[i];
+    /* Avoid shifting negative signed values (undefined behaviour) and
+     * rounding a tiny negative DC estimate to -1 (audible ghost sample). */
     int32_t delta=(raw*256)-st->dc_lp_q8;
-    st->dc_lp_q8+=delta>>7;
-    int32_t x=raw-(st->dc_lp_q8>>8);
+    st->dc_lp_q8+=delta/128;
+    int32_t x=raw-(st->dc_lp_q8/256);
     if(x>32767)x=32767;
     if(x< -32768)x=-32768;
     filtered[i]=(int16_t)x;
@@ -74,7 +76,10 @@ void G1Ambient_Process(G1AmbientDsp *st,const int16_t *in,int16_t *out,size_t n)
   }
   if(st->ambient_floor_rms<8U)st->ambient_floor_rms=8U;
   uint32_t desired=G1_AMBIENT_GAIN_ONE_Q12;
-  if(rms>=6U){
+  /* R26.1: the old rms>=6 fallback disabled AGC just where distant
+   * microphone samples need it most. Silence is held at unity gain, but
+   * a nonzero weak waveform gets the same bounded gain law as speech. */
+  if(rms>0U && peak>0U){
     uint64_t proposed=(uint64_t)G1_AMBIENT_TARGET_RMS*4096U/rms;
     if(proposed>G1_AMBIENT_GAIN_MAX_Q12)proposed=G1_AMBIENT_GAIN_MAX_Q12;
     if(proposed<2048U)proposed=2048U;
@@ -84,10 +89,10 @@ void G1Ambient_Process(G1AmbientDsp *st,const int16_t *in,int16_t *out,size_t n)
       if(desired>safe)desired=safe;
     }
   }
-  /* Reduce gain quickly in response to close loud sounds; raise it gradually
-   * so distant speech is more audible without abrupt pumping. */
+  /* Fast reduction for nearby loud sounds; ~40 ms gradual gain rise for
+   * faint audio. The peak guard limits actual in-block PCM headroom. */
   if(desired<st->gain_q12)st->gain_q12=(3U*st->gain_q12+desired)/4U;
-  else st->gain_q12=(31U*st->gain_q12+desired)/32U;
+  else st->gain_q12=(15U*st->gain_q12+desired)/16U;
   uint64_t out_energy=0U;
   for(size_t i=0;i<n;i++){
     int64_t x=((int64_t)filtered[i]*st->gain_q12)/4096;

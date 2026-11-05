@@ -8,7 +8,8 @@ extern "C" {
 /*
  * Experimental bounded contextual preference learner. No dynamic allocation,
  * no autonomous high-gain excursions and no peripheral/storage dependencies.
- * NOT connected to a custom PCB in the present operating firmware.
+ * R26: connected to the PCB UI. AudioTask supplies acoustic context and
+ * ControlTask receives explicit encoder feedback; learning lives in RAM only.
  *
  * Context: coarse ambient amplitude (quiet/moderate/loud) and spectral
  * centroid bucket (low/mid/high). Each bucket has one learned gain offset.

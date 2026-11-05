@@ -95,6 +95,19 @@ LoopFillZerobss:
   cmp r2, r4
   bcc FillZerobss
 
+/* R26.7: clear the application-managed FreeRTOS heap in SRAM2 before any
+ * static constructors or tasks. No DMA buffers are placed in SRAM2. */
+  ldr r2, =_sram2_heap_start
+  ldr r4, =_sram2_heap_end
+  movs r3, #0
+  b .Lsram2_zero_test
+.Lsram2_zero_loop:
+  str r3, [r2]
+  adds r2, r2, #4
+.Lsram2_zero_test:
+  cmp r2, r4
+  bcc .Lsram2_zero_loop
+
 /* Call static constructors */
     bl __libc_init_array
 /* Call the application's entry point.*/

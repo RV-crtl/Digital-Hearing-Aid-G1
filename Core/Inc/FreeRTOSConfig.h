@@ -21,7 +21,12 @@ extern uint32_t SystemCoreClock;
 #define configTICK_RATE_HZ                       ((TickType_t)1000)
 #define configMAX_PRIORITIES                     (56)
 #define configMINIMAL_STACK_SIZE                 ((uint16_t)128)
-#define configTOTAL_HEAP_SIZE                    ((size_t)32768)
+/* R26.7: FreeRTOS heap_4's 24 KiB buffer lives in CPU-accessible SRAM2.
+ * All SAI / DFSDM / speaker DMA buffers stay in DMA-accessible SRAM1.
+ * Do NOT change to 0: doing so recreates the RAM1 .bss overflow.
+ */
+#define configTOTAL_HEAP_SIZE                    ((size_t)24576)
+#define configAPPLICATION_ALLOCATED_HEAP         1
 #define configMAX_TASK_NAME_LEN                  (16)
 #define configUSE_TRACE_FACILITY                 1
 /* Real context-switch profiling.  Both hooks execute inside FreeRTOS tasks.c

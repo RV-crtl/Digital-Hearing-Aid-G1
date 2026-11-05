@@ -3,6 +3,7 @@
 #include "demo_app.h"
 #include "sai.h"
 #include "usart.h"
+#include "g1_product_board.h"
 
 extern TIM_HandleTypeDef htim6;
 
@@ -17,6 +18,13 @@ void DebugMon_Handler(void) { }
  * SysTick handler and calls xPortSysTickHandler once FreeRTOS is running.
  * The FreeRTOS Cortex-M4F port supplies SVC_Handler and PendSV_Handler. */
 
+/* DMA1_CH4: g1_product_board.c; DMA1_CH7: speaker_output.c.
+ * Never add CubeMX-generated copies here. */
+void EXTI0_IRQHandler(void) {HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_0);}
+void EXTI1_IRQHandler(void) {HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_1);}
+void HAL_GPIO_EXTI_Callback(uint16_t pin) {
+  if(pin==GPIO_PIN_0 || pin==GPIO_PIN_1)G1_EncoderEdgeIRQ();
+}
 void USART1_IRQHandler(void) { HAL_UART_IRQHandler(&huart1); }
 void USART2_IRQHandler(void) { HAL_UART_IRQHandler(&huart2); }
 void DMA1_Channel6_IRQHandler(void) { HAL_DMA_IRQHandler(&hdma_sai2_a); }

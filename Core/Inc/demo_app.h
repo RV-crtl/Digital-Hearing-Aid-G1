@@ -9,7 +9,7 @@ extern "C" {
 #endif
 
 #define DEMO_MAGIC                0x44484152UL /* 'DHAR' */
-#define DEMO_FW_VERSION           0x00041800UL
+#define DEMO_FW_VERSION           0x26110402UL
 #define DEMO_AUDIO_RATE_HZ        48000U
 #define DEMO_SAI_KERNEL_HZ        24571428U
 #define DEMO_DMA_WORDS            512U
@@ -20,15 +20,16 @@ extern "C" {
 #define DEMO_OUTPUT_QUEUE_DEPTH    16U
 #define DEMO_PLOT_SAMPLES          256U
 #define DEMO_PLOT_RATE_HZ          12000U
-#define DEMO_RAW_CAPTURE_FRAMES     4096U
+#define DEMO_RAW_CAPTURE_FRAMES     1024U
 #define DEMO_RAW_CAPTURE_WORDS      (DEMO_RAW_CAPTURE_FRAMES * 2U)
-#define DEMO_LISTEN_CAPTURE_SAMPLES 16384U /* 341.3 ms of pre-DSP mono at 48 kHz in SRAM2 */
+#define DEMO_LISTEN_CAPTURE_SAMPLES 4096U /* 85.3 ms of pre-DSP mono at 48 kHz in partitioned SRAM2 */
 
 /* requested_source_mode */
 #define DEMO_MODE_AUTO            0U
 #define DEMO_MODE_BT_ONLY         1U
 #define DEMO_MODE_TC_ONLY         2U
 #define DEMO_MODE_OFF             3U
+#define DEMO_MODE_MIC_ONLY        4U  /* DFSDM PDM microphone; standalone PCB */
 
 /* bt_link_mode */
 #define DEMO_BTLINK_AUTO          0U
@@ -67,7 +68,7 @@ typedef struct {
   volatile uint32_t pcm_decode_mode; /* 0=low24, 1=upper16, 2=middle16, 3=low16 */
   volatile uint32_t direct_source;   /* 0=off, 1=BT/SAI1A, 2=TC/SAI2A */
   volatile uint32_t direct_channel;  /* 0=mix, 1=left, 2=right */
-  volatile uint32_t test_tone_step; /* 0=off, 1=1k, 2=2k, 3=3k */
+  volatile uint32_t test_tone_step; /* 0=off, 1=1k, 2=2k, 3=3k, 4=chirp (bounded bench output) */
   volatile uint32_t apply_bt_profile_request;
   volatile uint32_t bt_query_request;
   volatile uint32_t reset_diagnostics_request;

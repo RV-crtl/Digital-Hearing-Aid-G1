@@ -5,7 +5,7 @@ FUN-03,Noise reduction,Prototype Design 2,Core/Src/tc_cleanup.c,Documentation/RE
 FUN-04,Feedback suppression,Prototype Design 2,unimplemented,Documentation/RELEASE_CHECKLIST.md,not-implemented,pending-hardware,Design and measure stable feedback cancellation
 FUN-05,Bluetooth audio,Prototype Design 2,Core/Src/demo_app.c,Documentation/STANDALONE_SHOWCASE.md,implemented,pending-retest,Check actual module transport and recovered PCM
 FUN-06,Telecoil audio,Prototype Design 2,Core/Src/demo_app.c,Documentation/STANDALONE_SHOWCASE.md,implemented,pending-retest,Physical inductive reception validation
-FUN-07,Microphone capture,Prototype Design 2,References/GroupMemberPrototypes,Hardware/CUSTOM_PCB_PORTING_CHECKLIST.md,not-integrated,pending-hardware,Port DFSDM and sample synchronisation
+FUN-07,Microphone capture,Prototype Design 2,Core/Src/g1_product_board.c,Hardware/CUSTOM_PCB_PORTING_CHECKLIST.md,implemented,pending-hardware,Measure real DFSDM DMA capture and microphone SNR on custom PCB
 FUN-08,Bone conduction audio output,Prototype Design 2,Core/Src/speaker_output.c,Documentation/STANDALONE_SHOWCASE.md,implemented,pending-retest,Transducer output and calibrated level measurements
 PER-01,Audio latency below 50 ms,Prototype Design 2,Core/Src/demo_app.c,Documentation/RELEASE_CHECKLIST.md,pending-evidence,pending-hardware,Oscilloscope input-output latency across all sources
 PER-02,THD below 3 percent,Prototype Design 2,Core/Src/audio_dynamics.c,Validation/matlab/verify_audio_filters.m,pending-evidence,pending-hardware,Measure output THD with calibrated sine

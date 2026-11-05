@@ -25,13 +25,15 @@ int main(void){
   for(int i=0;i<FRAMES;i++) in[i]=(i%2)?-200:200;
   TcCleanup_Block(&tc,in,out,FRAMES);
  }
- assert(tc.gate_gain<0.15f);
+ /* Fixed speech-band filter must not gate or pump with programme activity. */
+ assert(tc.gate_gain==1.0f);
  for(int b=0;b<180;b++){
   for(int i=0;i<FRAMES;i++)in[i]=(int16_t)(800.0*sin(6.283185307179586*(2000.0/48000.0)*(i+b*FRAMES)));
   TcCleanup_Block(&tc,in,out,FRAMES);
  }
- assert(tc.active_blocks>0 && tc.last_output_rms>tc.last_input_rms);
- for(int i=0;i<FRAMES;i++)assert(abs(out[i])<=27000);
- puts("R26 bounded ambient AGC, online clustering, TC noise-control tests PASS");
+ /* 2-kHz signal survives while the LPF is not an adaptive noise amplifier. */
+ assert(tc.active_blocks>0 && tc.last_output_rms>0U && tc.last_output_rms<=tc.last_input_rms+10U);
+ for(int i=0;i<FRAMES;i++)assert(abs(out[i])<=28000);
+ puts("R26 bounded ambient AGC, online clustering, fixed TC speech-band tests PASS");
  return 0;
 }

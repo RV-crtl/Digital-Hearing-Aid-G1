@@ -43,10 +43,13 @@ jobs:
           set -eu
           cc -std=c11 -O2 -Wall -Wextra -Werror -I Core/Inc              Validation/c/benchmark_r26_dsp.c              Core/Src/g1_ambient_dsp.c Core/Src/g1_scene_ml.c Core/Src/tc_cleanup.c              -lm -o /tmp/g1_r26_host_bench
           /tmp/g1_r26_host_bench
-      - name: Verify CubeMX recovery mirrors are identical
+      - name: Verify one active CubeIDE project, not mirrored recovery sources
         run: |
           set -eu
-          for part in "Inc/g1_ambient_dsp.h" "Inc/g1_scene_ml.h" "Inc/tc_cleanup.h" \
-                      "Src/g1_ambient_dsp.c" "Src/g1_scene_ml.c" "Src/tc_cleanup.c"; do
-            cmp "Core/$part" "Recovery/Core/$part"
-          done
+          test ! -e Recovery
+          test -f Core/Src/main.c
+          test -f 261104-Digital_Hearing_Aid.ioc
+          test "$(find Core -name main.c | wc -l)" -eq 1
+          test "$(find . -name '*.ioc' | wc -l)" -eq 1
+          test -f Core/Src/tc_idle_squelch.c
+          test -f Core/Inc/tc_idle_squelch.h
