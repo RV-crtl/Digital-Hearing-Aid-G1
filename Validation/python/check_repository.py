@@ -14,11 +14,11 @@ def require(path: str):
         ERRORS.append(f"missing required tracked file: {path}")
 
 REQUIRED = (
-    ".project", ".cproject", "261013-Individual_Demonstration_Connectivity.ioc",
+    ".project", ".cproject", "261104-Digital_Hearing_Aid.ioc",
     "PREPARE_PROJECT.bat", "Core/Inc/FreeRTOSConfig.h",
     "Core/Src/group_features.c", "Core/Src/group_guardian.c",
     "Core/Src/group_ui.c", "Core/Inc/group_ui.h",
-    "Core/Src/rtos_stats_timer.c", "Recovery/Core/Src/group_features.c",
+    "Core/Src/rtos_stats_timer.c", "Core/Src/tc_idle_squelch.c",
     "Hardware/Original_KiCad/260510-Digital_hearing_aid.kicad_pro",
     "Hardware/Original_KiCad/260510-Digital_hearing_aid.kicad_pcb",
     "Validation/matlab/verify_audio_filters.m",
@@ -50,14 +50,14 @@ if main.is_file():
         if not re.search(rf"\b{re.escape(symbol)}\s*\(", content):
             ERRORS.append(f"missing actual firmware entry point: {symbol}")
 
-for path in ("group_features.c", "group_guardian.c", "group_ui.c", "demo_app.c"):
-    a = ROOT / "Core/Src" / path
-    b = ROOT / "Recovery/Core/Src" / path
-    if a.is_file() and b.is_file() and a.read_bytes() != b.read_bytes():
-        ERRORS.append(f"recovery mirror mismatch: {path}")
+# There is intentionally one active firmware, no Recovery or reference copies.
+if (ROOT / "Recovery").exists() or (ROOT / "References").exists():
+    ERRORS.append("legacy project trees must not be present")
+if len(list(ROOT.rglob("main.c"))) != 1 or len(list(ROOT.rglob("*.ioc"))) != 1:
+    ERRORS.append("expected one main.c and one CubeMX .ioc")
 
 if ERRORS:
     for e in ERRORS:
         print("FAIL:", e)
     sys.exit(1)
-print("PASS: GitHub documentation navigation, CubeIDE entry points, KiCad files and recovery mirrors")
+print("PASS: GitHub documentation navigation, CubeIDE entry points, KiCad files and canonical firmware")
