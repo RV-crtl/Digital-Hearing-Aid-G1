@@ -1,0 +1,8 @@
+{
+  "files": 76,
+  "object_compile_passed": true,
+  "startup_assembly": true,
+  "relocatable_link": true,
+  "full_cubeide_gcc_link": false,
+  "physical_hardware_test": false
+}

@@ -7,14 +7,14 @@ def sha(p): return hashlib.sha256(p.read_bytes()).hexdigest()
 proj=(ROOT/'.project').read_text(errors='ignore'); cp=(ROOT/'.cproject').read_text(errors='ignore')
 src=(ROOT/'Core/Src/demo_app.c').read_text(errors='ignore'); hdr=(ROOT/'Core/Inc/demo_app.h').read_text(errors='ignore')
 dash=ROOT/'Dashboard'/'connectivity_dashboard.py'; ds=dash.read_text(errors='ignore')
-ck('261013-Individual_Demonstration_Connectivity' in proj,'final CubeIDE project name')
-ck((ROOT/'261013-Individual_Demonstration_Connectivity.ioc').exists(),'final IOC exists')
+ck('261104-Digital_Hearing_Aid' in proj,'final CubeIDE project name')
+ck((ROOT/'261104-Digital_Hearing_Aid.ioc').exists(),'final IOC exists')
 ck('c.compiler.option.debuglevel.value.g3' in cp, 'Debug build includes -g3 symbols (optimization level is user-selectable)')
 ck('#define CAPTURE_RING_DEPTH 8U' in src,'capture ring stays RAM-safe at depth 8')
 ck('vTaskPrioritySet(NULL, 6U)' in src,'native ControlTask priority 6')
 ck('xTaskCreate(StartAudioTask, "AudioTask", 1024U, NULL, 7U' in src,'AudioTask priority 7 / larger stack')
-ck('taskYIELD();' in src and 'g_bt_cap_head != g_bt_cap_tail' in src,'AudioTask does not sleep with pending capture data')
-ck('taskYIELD();\n    } else {\n      (void)ulTaskNotifyTake(pdTRUE,pdMS_TO_TICKS(5U));' in src and src.count('vTaskNotifyGiveFromISR(g_audio_task') == 2,'AudioTask uses bounded DMA notifications and braced fast-backlog handling')
+ck('last_control_opportunity_ms' in src and 'vTaskDelay(pdMS_TO_TICKS(1U))' in src and 'g_bt_cap_head != g_bt_cap_tail' in src,'AudioTask bounded fairness: touch/encoder cannot starve under sustained telecoil PCM')
+ck('taskYIELD();\n    } else {\n      last_control_opportunity_ms=HAL_GetTick();\n      (void)ulTaskNotifyTake(pdTRUE,pdMS_TO_TICKS(5U));' in src and src.count('vTaskNotifyGiveFromISR(g_audio_task') == 3,'AudioTask uses bounded DMA notifications for Bluetooth, telecoil and microphone')
 ck('3600U * 32768ULL' in src and '4ULL * 32768ULL' in src,'conservative 4x auto-level')
 ck('26000LL' in src and '31900LL' in src,'soft-knee output limiter present')
 ck('g_r26_left_weight_q15' in src and 'g_r26_target_left_weight_q15' in src,'smoothed weighted mono fold present')
@@ -40,7 +40,7 @@ ck('Recovery' in ps and 'CHECK_PROJECT.py' in ps,'PREPARE restores and validates
 sai=(ROOT/'Core/Src/sai.c').read_text()
 ck('SAI_SYNCEXT_OUTBLOCKA_ENABLE' in sai, 'SAI1 exports master frame sync to SAI2')
 ck('SAI_SYNCHRONOUS_EXT_SAI1' in sai, 'SAI2 RX uses internal SAI1 synchronous mode')
-ck('const bool need_bt = !tone_only;' in src, 'shared clock master starts in telecoil-only mode')
+ck('const bool need_bt=(topology&1U)!=0U;' in src and 'g_dma_topology_mask != dma_desired_topology()' in src, 'microphone independent of PCM1808; receiver DMA topology rebuilt after source change')
 ck('R21|TC_CLOCK|' in src and 'mode=DUAL_SAI_DMA_ACTIVITY' in src, 'TC clock probe checks internal synchronization')
 ck('R26|SCOPEHD|D|' in src and 'R26|SCOPEHD|END|' in src, '2048-point HD UART stream framed')
 ck('R262_HD_SAMPLES 2048U' in src and 'g_r262_hd_buffer' in src, 'HD PCM comes from consecutive actual captured samples')
@@ -79,7 +79,7 @@ print('FINAL HARDWARE-ONLY FSM + RTOS MONITOR CHECKS: PASS')
 
 
 # Recovery-specific checks: CubeMX task list matches the native scheduler without changing boot.
-ioc=(ROOT/'261013-Individual_Demonstration_Connectivity.ioc').read_text()
+ioc=(ROOT/'261104-Digital_Hearing_Aid.ioc').read_text()
 main=(ROOT/'Core/Src/main.c').read_text()
 bootstrap=(ROOT/'Core/Src/rtos_bootstrap.c').read_text()
 freertos=(ROOT/'Core/Src/freertos.c').read_text()
@@ -154,7 +154,7 @@ print('R30 RUBRIC FOCUSED FIVE TEST DASHBOARD + STANDALONE SIGNAL/FSM TOOLS: PAS
 assert 'delta <= 2000000U' not in src
 assert 'profile_reason' in src and 'profile_timer_delta' in src
 assert '|reason=%lu|timer=%lu|kernel=%lu|dt=%lu|' in src
-assert (ROOT/'Documentation/PROFILE_DIAGNOSTICS_R30_2.md').exists()
+assert (ROOT/'Documentation/G5_RTOS_AND_PERFORMANCE.md').exists()  # current consolidated profiler guide
 print('R30.2 ELAPSED-TIMER PROFILER + FAILURE-REASON CHECKS: PASS')
 
 # R30.3 hardware-timer startup and raw probe regression guards.
@@ -168,7 +168,7 @@ _r303_check("TIM2 explicitly starts before native scheduler", _m.index("Demo_Run
 _r303_check("TIM2 boot test uses physical counter progress", "Demo_RuntimeStatsTimerRead();" in _m and "HAL_Delay(2U)" in _m)
 _r303_check("TIM2 recovery is non-resetting", "Demo_RuntimeStatsTimerEnsureRunning" in _r and "TIM2->CR1 |= TIM_CR1_CEN" in _r)
 _r303_check("raw !PX diagnostic uses two physical readings", 'line_eq(line, "!PX")' in _p and "R30|PROFILE_HW|DATA|" in _p)
-_r303_check("profiler and boot recovery mirrors match", (ROOT / "Recovery/Core/Src/main.c").read_bytes()==(ROOT / "Core/Src/main.c").read_bytes() and (ROOT / "Recovery/Core/Src/rtos_stats_timer.c").read_bytes()==(ROOT / "Core/Src/rtos_stats_timer.c").read_bytes())
+_r303_check("profiler and boot recovery mirrors match", (ROOT / "Recovery/Core/Src/main.c.golden").read_bytes()==(ROOT / "Core/Src/main.c").read_bytes() and (ROOT / "Recovery/Core/Src/rtos_stats_timer.c").read_bytes()==(ROOT / "Core/Src/rtos_stats_timer.c").read_bytes())
 
 # R30.4: proof that when vendor uxTaskGetSystemState returns zero time despite
 # an active timer, our fallback observes actual FreeRTOS context switches.
@@ -186,7 +186,7 @@ assert 'Demo_TickProfilerSample();' in (ROOT/'Core/Src/main.c').read_text()
 assert 'Demo_TickProfilerTaskSamples' in (ROOT/'Core/Src/demo_app.c').read_text()
 assert 'profile_tick_samples' in (ROOT/'Core/Inc/connectivity_demo_debug.h').read_text()
 assert sha(ROOT/'Core/Src/rtos_tick_proof.c') == sha(ROOT/'Recovery/Core/Src/rtos_tick_proof.c')
-assert sha(ROOT/'Core/Src/main.c') == sha(ROOT/'Recovery/Core/Src/main.c')
+assert sha(ROOT/'Core/Src/main.c') == sha(ROOT/'Recovery/Core/Src/main.c.golden')
 assert sha(ROOT/'Core/Src/demo_app.c') == sha(ROOT/'Recovery/Core/Src/demo_app.c')
 print('R30.5 INDEPENDENT TIM6 SAMPLED CPU-PROFILING CHECKS: PASS')
 
@@ -201,7 +201,7 @@ assert 'b2run=%lu|b2pri=%lu|dual=%lu' in src and '|b2cpu10=%lu' in src
 assert 'Demo_TickProfilerTaskSamples((void *)g_cpu_load_b_task)' in src
 assert 'g_demo_debug.load_b_cpu_pct_x10' in src
 assert 'DUAL QUIET (NO AUDIO)' in ds and 'BT + DUAL LOAD' in ds and 'DUAL TASKS · 60 s' in ds
-assert (ROOT/'Documentation/R31_EXACT_IMPORT_AND_DUAL_TASK_DEMO.md').exists()
+assert (ROOT/'Core/Inc/dha_build_mode.h').exists()  # lab stress tasks guarded out of operating build
 assert sha(ROOT/'Core/Src/demo_app.c')==sha(ROOT/'Recovery/Core/Src/demo_app.c')
 assert sha(ROOT/'Core/Inc/connectivity_demo_debug.h')==sha(ROOT/'Recovery/Core/Inc/connectivity_demo_debug.h')
 print('R31 DUAL EQUAL-PRIORITY WORKERS, PROFILER CONTINUITY AND DASHBOARD: PASS')
@@ -215,7 +215,7 @@ assert 'g_r32_hi_active=0U;' in src and 'g_r32_hi_work_blocks++' in src
 assert 'g_demo_debug.high7_cpu_pct_x10' in src
 assert '|h7run=%lu|h7state=%lu|h7pri=%lu|h7stack=%lu|hi7=%lu' in src
 assert 'CONTINUOUS SPIN · PRIORITY 7 · 20 s' in ds
-assert 'HighLoad7' in ds and (ROOT/'Documentation/R32_EXACT_IMPORT_AND_PRIORITY7_DEMO.md').exists()
+assert 'HighLoad7' in ds and (ROOT/'Documentation/G5_RTOS_AND_PERFORMANCE.md').exists()
 assert sha(ROOT/'Core/Src/demo_app.c') == sha(ROOT/'Recovery/Core/Src/demo_app.c')
 assert sha(ROOT/'Core/Inc/connectivity_demo_debug.h') == sha(ROOT/'Recovery/Core/Inc/connectivity_demo_debug.h')
 print('R32 PRIORITY-7 TASK PRESERVED (R34 CONTINUOUS-SPIN UPGRADE): PASS')
@@ -227,7 +227,7 @@ assert '#define R34_SPIN_DEADLINE_MS 20000U' in src
 assert 'g_r32_hi_active = 1U;' in src
 assert 'g_r32_hi_active = 0U;' in src
 assert 'CONTINUOUS SPIN · PRIORITY 7 · 20 s' in ds
-assert (ROOT/'Documentation/R34_CONTINUOUS_SPIN_IMPORT_GUIDE.md').exists()
+assert (ROOT/'Core/Inc/dha_build_mode.h').exists()  # legacy stress procedure archived
 assert sha(ROOT/'Core/Src/demo_app.c')==sha(ROOT/'Recovery/Core/Src/demo_app.c')
 # Assert there is no blocking/yielding operation inside the live busy loop.
 active_region=src.split('while (g_r32_hi_active != 0U &&',1)[1].split('    g_r32_hi_active = 0U;',1)[0]

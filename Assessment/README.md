@@ -1,37 +1,56 @@
-# G1 custom PCB — demonstration evidence and reproducible PDFs
+# ZEIT4232 system demonstration + viva — HD evidence pack
 
-**Current source of truth: nine whole-system requirements, seven black-box tests, 20 minutes.**
+> **STATUS: DRAFT, NOT A PASS CERTIFICATE.** The rubric rewards *observed system behaviour*. Host CI, simulations and inspected source do not replace end-to-end system testing. Group approval is needed before submitting revised requirements.
 
-This folder now matches [current G1 requirements](../Documentation/G1_CURRENT_SYSTEM_REQUIREMENTS.md), the [black-box plan](../Documentation/BLACK_BOX_TEST_PLAN.md), and [printable architecture](../Documentation/PRINTABLE_SYSTEM_DIAGRAM.md). The old G11 24-requirement, 13-test plans are archived under `legacy/` for traceability; they are **not** the present custom-PCB assessment.
+## Start here (the five things to take to exam week)
 
-## What is generated
+| Item | Source / output | Required action |
+|---|---|---|
+| **1. Revised requirements + black-box test plan** | [`requirements.csv`](requirements.csv) + [`test_cases.json`](test_cases.json) → `generated/SYSTEM_REQUIREMENTS_AND_BLACK_BOX_TEST_PLAN_DRAFT.pdf` | Review, make requirements realistic, obtain group approval, and upload **one combined PDF** to Moodle |
+| **2. System architecture poster** | `generated/PRINT_A3_SYSTEM_SOFTWARE_HARDWARE_INTERFACES.pdf` | Print **two copies**; bring **A3 or larger** for individual viva |
+| **3. Definitive group source** | [STM32CubeIDE project root](../Core/Src/demo_app.c) + GitHub commit SHA | Flash operating firmware before exam; keep the same source revision for all members |
+| **4. Schematic + BOM** | [Original KiCad project](../Hardware/README.md) | Open KiCad with actual dependency libraries resolved, export verified BOM and revision |
+| **5. Raw test evidence** | [`EVIDENCE_REGISTER.csv`](EVIDENCE_REGISTER.csv) | Run physical tests, attach date, MCU board, firmware SHA, threshold, instrument and observed result |
 
-| Output | Source | Evidence status |
-| --- | --- | --- |
-| `generated/SYSTEM_REQUIREMENTS_AND_BLACK_BOX_TEST_PLAN_DRAFT.pdf` | `requirements.csv` + `test_cases.json` | Draft only. Requires group approval and actual black-box observations |
-| `generated/PRINT_A3_SYSTEM_SOFTWARE_HARDWARE_INTERFACES.pdf` | `generate_pack.py` | Current real custom PCB and FreeRTOS topology; print two copies on A3 |
-| `EVIDENCE_REGISTER.csv` | Seven T1–T7 blank results | **All tests NOT RUN** until actual measurements and sign-off |
+## Assessment weight and exact conditions (rubric pp. 1–6)
 
-The assessment requires a standalone operating state: no ST-LINK, Nucleo, debugging console, synthetic load tasks or unit-test harness running on the device during black-box demonstration. A phone is allowed as the real Bluetooth input. Test external sound/control behaviour rather than relying on register or UART readouts.
+- **System Demonstration:** 15% course grade; coherent integrated product, reliable black-box tests, external observable output, no serial/debugger needed. Suggested 10–20 minutes (absolute maximum 30 minutes).
+- **Mechanical prototype:** 5%; secured PCB, accessible connectors, practical sound apertures, clean human-centred enclosure. HD includes fit/finish, routing, labels, ergonomics, light pipes and purposeful mechanical additions.
+- **Individual viva:** 20%; one randomly chosen question in each of four areas: system/interfaces, code, hypothetical troubleshooting, and reflection. Around five minutes per area. Be able to show your own code and demonstrate general knowledge of teammates' interfaces.
+- **Total:** 40% of the course grade. The appointment may reserve 90 minutes for contingencies; this does **not** mean a 90-minute live test.
 
-## How to build a single final assessment pack
+## Exceeds expectations is conditional on the earlier columns
+
+| Must be demonstrated first | Potential HD distinction | How to demonstrate honestly |
+|---|---|---|
+| ALL retained requirements, not only an MVP | Highly optimized product | Measure latency, output response, stable CPU headroom and ergonomic usability; don't label unmeasured thresholds as PASS |
+| Reliable operation without reset or reflashing | Robustness and rapid recovery | Disconnect permitted source, change control order, vary sound distance; show external output continues or recovers |
+| Appropriate safety behaviour | Self-protection | Test bounded output with calibrated fixture; potentially damaging tests **last** and only with lecturer permission |
+| Working user system | Classification/adaptive operation/noise rejection | Existing G5 loudness observer is a 3-bin **heuristic**, not trained TinyML; demonstrate actual automatic gain changes, not fictitious classifier labels |
+
+## Current blockers you must resolve before claiming HD
+
+1. **Physical target mismatch:** Nucleo PC13/PA5 control/LED != custom PCB. Confirm printed-board pin mapping, clocks, headers, connectors and user controls.
+2. **Microphone:** G5 does not integrate DFSDM ambient microphone or synchronous dual-channel capture; FUN-07 and PER-03 are unverified.
+3. **Battery/wear:** no demonstrated two-cell charging, >=24 h discharge, power/current measurement, or actual MCU low-power transition. Source FSM M3 idle != STOP mode.
+4. **Audio:** <50 ms acoustic latency, THD <3%, SNR/feedback performance, 20 Hz–20 kHz output, calibrated maximum SPL need measured external evidence.
+5. **Mechanics and safety:** assembled headband/enclosure/BOM, fit/finish, protection, environmental evidence and applicability of IEC 60118-13 still require review.
+6. **Build:** no ARM compilation or actual unit soak test has been recorded here; host CI only covers its listed checks.
+
+## Regenerate PDFs, run checks
 
 ```bash
 python3 Assessment/validate_pack.py
-python3 Assessment/test_validate_pack.py
-python3 Assessment/test_evidence_audit.py
-python3 Assessment/evidence_audit.py
-python3 Assessment/generate_pack.py --output Assessment/generated
+python3 -m pip install 'reportlab>=4,<5'
+python3 Assessment/generate_pack.py
 ```
 
-Alternatively, run the [Build HD demonstration evidence pack GitHub Action](https://github.com/RV-crtl/Digital-Hearing-Aid-G1/actions/workflows/assessment-pack.yml) and download its generated PDF artifact. **A passing generator is not a PASS on physical requirements.**
+GitHub Actions builds downloadable PDF artifacts from these sources. The generated PDFs are *draft outputs*, not an automated assertion that the device satisfies the requirements.
 
-## Current hardware and software evidence
+For oral preparation read [Viva navigation and sample answer structures](VIVA_PREPARATION.md) and [Mechanical acceptance guide](MECHANICAL_ACCEPTANCE.md).
 
-R24 was reported to operate on USB-C without Nucleo after resolving an external wiring problem. The operator reported microphone, Bluetooth, MPR121 touch, rotary encoder, speaker and telecoil signed LOW16 playback with its filter enabled. R26 introduces adaptive ambient and telecoil processing, bounded feedback gain and three *unlabelled* scene clusters; its on-board acoustic performance and CPU headroom still require tests. Do not describe R26 clustering as pretrained vehicle or pedestrian recognition. Do not claim battery endurance, safe ear-level SPL or certified hearing correction without measurements.
+## One-command G7 preparation
 
-The correct custom-PCB firmware package must be flashed as one matched CubeIDE project. The repository root is still a historical Nucleo-oriented source baseline with portable DSP integrated, not the complete R26 custom-PCB image. Keep the known-working R24 binary as a rollback.
+From the G1 repository root, run **powershell -ExecutionPolicy Bypass -File .\G1_RUN_ALL.ps1** to create a timestamped evidence ZIP. The [G7 quality gate guide](../Documentation/G7_ONE_COMMAND_QUALITY_GATE.md) explains exact dependencies and remaining ARM and hardware gates. Two-way test-case traceability and its mutation tests are automated. The strict physical evidence audit intentionally stays blocked until all 13 external tests have documented, signed passing observations.
 
-## Before the assessment
-
-Confirm the supply actually used in the demonstration, firmware commit/build provenance, output safety fixture, 0.5 m and 2–3 m acoustic distances, 2 kHz loop stimulus, and measurable criteria. Fill the evidence register with **real observed** results and retain any failures as failures. Obtain group approval for changes to system-level requirements. Print two A3 diagrams.
+The G7 evidence audit has [host mutation tests](test_evidence_audit.py): blank/false PASS entries, invalid results, corrupted SHA identifiers and missing test rows cannot satisfy its integrity gate. The [Windows ZIP smoke job](../.github/workflows/verify-g3.yml) is source-only and explicitly skips C compilation and PDF creation; it is not an ARM or hardware demonstration.

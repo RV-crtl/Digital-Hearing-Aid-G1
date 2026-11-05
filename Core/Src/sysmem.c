@@ -23,6 +23,7 @@
 /* Includes */
 #include <errno.h>
 #include <stdint.h>
+#include <stddef.h>  /* NULL and ptrdiff_t used by _sbrk */
 
 /**
  * Pointer to the current high watermark of the heap usage

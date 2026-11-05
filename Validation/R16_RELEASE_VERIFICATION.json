@@ -1,0 +1,31 @@
+{
+  "date": "2026-10-29",
+  "software_checks": {
+    "R16 control": {
+      "pass": true,
+      "last_output": "el L/R RMS\nPASS BT UART pairing still present\nPASS Microphone DMA code retained\nPASS Microphone untouched by touch I2C recovery\nPASS No doubled HAL I2C definitions\nPASS Recovery active board matches\nPASS Recovery active UI matches\nPASS Recovery active app matches\nPASS Recovery build config matches\nPASS CubeIDE 1.19 IOC\nR16_CHECKS=24 PASS=24 FAIL=0\n"
+    },
+    "CubeIDE project": {
+      "pass": true,
+      "last_output": "d boot recovery mirrors match\nR30.4 REAL CONTEXT-SWITCH TIM2 ACCOUNTING + RECOVERY: PASS\nR30.5 INDEPENDENT TIM6 SAMPLED CPU-PROFILING CHECKS: PASS\nR31 DUAL EQUAL-PRIORITY WORKERS, PROFILER CONTINUITY AND DASHBOARD: PASS\nR32 PRIORITY-7 TASK PRESERVED (R34 CONTINUOUS-SPIN UPGRADE): PASS\nR34 CONTINUOUS PRIORITY-7 SPIN + 20S SELF-STOP + DEBUGGER: PASS\n"
+    },
+    "Group tests": {
+      "pass": true,
+      "last_output": "PASS G5 UI source recovery mirror\nPASS G5 UI header recovery mirror\nPASS G5 firmware recovery mirror\nPASS physical UI state machine enqueues real source requests\nPASS DMA-to-AudioTask event-driven RTOS handoff\nPASS standalone UI deterministic tests\nPASS only required audio/BT tasks determine core startup success\nGROUP G1 VALIDATION PASS: 27 checks\n"
+    },
+    "No duplicate HAL": {
+      "pass": true,
+      "last_output": "{\n  \"passed\": 40,\n  \"checks\": 40,\n  \"errors\": []\n}\nR15 duplicate-I2C-linker-errors regression PASS (source ownership)\n"
+    },
+    "Legacy source tests": {
+      "pass": true,
+      "last_output": "llback\nPASS MPR121 probes four addresses\nPASS Mic DFSDM callback and queue\nPASS Vendor I2C DFSDM linked once\nPASS Bundled FreeRTOS sources\nPASS Compiled and executed C UI tests\nPASS Regression CHECK_PROJECT.py\nPASS Regression CHECK_GROUP.py\nPASS Regression Tools/g1_preflight.py\n\nR10 SOURCE VALIDATION: 24 PASS 0 FAIL; FULL ARM LINK & PCB UNVERIFIED\n"
+    }
+  },
+  "arm_target_compiled_sources": 76,
+  "arm_relocatable_link_pass": true,
+  "native_stereo_downmix_test_pass": true,
+  "full_stm32cubeide_gcc_link_verified": false,
+  "mpr121_acks_on_real_pcb_verified": false,
+  "bluetooth_right_pcm_on_real_pcb_verified": false
+}

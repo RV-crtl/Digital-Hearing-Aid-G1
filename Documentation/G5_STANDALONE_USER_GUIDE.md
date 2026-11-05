@@ -1,5 +1,3 @@
-> **LEGACY NUCLEO-ONLY CONTROL GUIDE.** Current hardware uses E8 BT, E9 TC, E10 mute, E11 MIC and rotary PA0/PA1. See [current system plan](BLACK_BOX_TEST_PLAN.md); the PC13 B1/PA5 LD2 controls below should not be demonstrated on the custom PCB.
-
 # G5 — Standalone user guide (NUCLEO-L476RG)
 
 > **Target warning:** These controls use Nucleo PC13 (USER B1) and PA5 (LD2). The supplied custom hearing-aid PCB does not route PC13 to a user switch. This is an engineering prototype; audio safety and custom-board electrical operation have not been verified.

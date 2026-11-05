@@ -1,0 +1,1 @@
+PASS: host GNU GCC -O2 -Wall -Wextra -Warray-bounds=2 -Werror accepts unbounded linker-region array declaration for raw and listen PCM capture. This is NOT the STM32 ARM native GCC build.

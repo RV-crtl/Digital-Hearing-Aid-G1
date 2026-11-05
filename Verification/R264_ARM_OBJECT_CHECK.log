@@ -1,0 +1,2 @@
+PASS ARM Cortex-M4F Clang compilation 79/79 + relocatable object link
+LIMITATION: no native GCC/newlib executable ELF or physical acoustic/latency verification

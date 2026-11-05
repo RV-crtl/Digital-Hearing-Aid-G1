@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Audit the *current G1 custom-PCB* black-box test plan; never infer a physical PASS.
+"""Audit the *draft* black-box test plan; never infer a physical hardware PASS.
 
 Uses cross-directional requirement/test traceability rather than trusting the
 CSV's Test Cases column. All checks remain active under python -O.
@@ -37,16 +37,15 @@ def validate(root: Path) -> dict:
         rows = list(reader)
     tests = json.loads((root / "test_cases.json").read_text(encoding="utf-8"))
     require(isinstance(tests, list), "test_cases.json must contain an array")
-    require(len(rows) == 9,
-            "Current G1 requires exactly nine system requirements")
+    require(len(rows) >= 22 and len(tests) >= 10,
+            "Unexpected missing system requirements or test procedures")
 
     ids = [r["Requirement Number"].strip() for r in rows]
     tids = [t.get("id") for t in tests if isinstance(t, dict)]
     require(all(ids) and len(ids) == len(set(ids)), "Empty or duplicate requirement ID")
     require(len(tids) == len(tests) and all(isinstance(x, str) and x for x in tids)
             and len(tids) == len(set(tids)), "Malformed or duplicate test ID")
-    require(all(re.fullmatch(r"T[1-7]", t) for t in tids), "Test ID must match T1..T7")
-    require(len(tests) == 7, "Current G1 requires exactly seven demonstrations")
+    require(all(re.fullmatch(r"TC\d{2}", t) for t in tids), "Test ID must match TCnn")
     by_test = {t["id"]: t for t in tests}
     by_req = set(ids)
 
@@ -101,12 +100,9 @@ def validate(root: Path) -> dict:
                 f"procedures={sorted(observed[rid])}")
     require(10 <= total_minutes <= 20,
             f"rubric recommends 10-20 min; current plan is {total_minutes:g} min")
-    require(tids == [f"T{i}" for i in range(1, 8)],
-            "Tests must follow T1..T7 chronological black-box order")
-    require(ids == [f"G1-{i:02d}" for i in range(1, 10)],
-            "System requirement IDs must follow G1-01..G1-09")
-    require("power" in tests[-1]["name"].lower() or "robust" in tests[-1]["name"].lower(),
-            "Source/power robustness test must finish the demonstration")
+    require(tests[-1]["id"] == "TC13"
+            and "self-protection" in tests[-1]["name"].lower(),
+            "The potentially damaging self-protection test must run last")
     return {
         "requirements": len(rows),
         "tests": len(tests),

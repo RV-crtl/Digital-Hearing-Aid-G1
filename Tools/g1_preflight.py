@@ -11,7 +11,7 @@ def sha(path):
 
 def check():
     bad=[]; notes=[]
-    for rel in (".project",".cproject","261013-Individual_Demonstration_Connectivity.ioc",
+    for rel in (".project",".cproject","261104-Digital_Hearing_Aid.ioc",
                 "Core/Src/demo_app.c","Core/Inc/dha_build_mode.h","Core/Src/group_ui.c",
                 "Core/Inc/group_ui.h","Core/Src/sai.c","Core/Inc/FreeRTOSConfig.h",
                 "Drivers/CMSIS/Device/ST/STM32L4xx/Include/stm32l476xx.h"):
@@ -33,6 +33,23 @@ def check():
     if cp.exists() and re.search(r"(?:-D)?DHA_ENABLE_RTOS_STRESS\s*=\s*1",cp.read_text()):
         bad.append("CubeIDE build enables RTOS stress in normal configuration")
     app=ROOT/"Core/Src/demo_app.c"
+    # Regression 2026-10-28: queue.h includes task.h/list.h and REQUIRES
+    # FreeRTOS.h first. One reversed include caused 829 cascade errors.
+    # Check both live and golden recovery copies: PREPARE overwrites live source.
+    for rel in ("Core/Src/demo_app.c", "Recovery/Core/Src/demo_app.c"):
+        candidate = ROOT / rel
+        if not candidate.is_file():
+            continue
+        includes = re.findall(r'^\s*#\s*include\s*[<"]([^>"]+)[>"]',
+                              candidate.read_text(), flags=re.MULTILINE)
+        if "FreeRTOS.h" not in includes:
+            bad.append(f"{rel}: FreeRTOS.h missing")
+            continue
+        first = includes.index("FreeRTOS.h")
+        for kernel_api in ("queue.h", "task.h", "semphr.h", "timers.h",
+                           "event_groups.h", "stream_buffer.h"):
+            if kernel_api in includes and includes.index(kernel_api) < first:
+                bad.append(f"{rel}: FreeRTOS.h must precede {kernel_api}")
     if app.exists():
         source=app.read_text()
         for token in ('xTaskCreate(StartAudioTask, "AudioTask"',
@@ -43,6 +60,12 @@ def check():
             if token not in source: bad.append("Missing firmware invariant: "+token)
         if "#if DHA_ENABLE_RTOS_STRESS" not in source:
             bad.append("Stress task compilation no longer gated")
+    # Regression: CubeMX replaced Drivers and removed DFSDM .h and .c.
+    for rel in ("Drivers/STM32L4xx_HAL_Driver/Inc/stm32l4xx_hal_dfsdm.h",
+                "Core/Inc/g1_embedded_hal_dfsdm.inc",
+                "Recovery/Drivers/STM32L4xx_HAL_Driver/Inc/stm32l4xx_hal_dfsdm.h",
+                "Recovery/Core/Inc/g1_embedded_hal_dfsdm.inc", "Core/Inc/stm32l4xx_hal_dfsdm.h", "Recovery/Core/Inc/stm32l4xx_hal_dfsdm.h"):
+        if not (ROOT/rel).is_file(): bad.append("Missing required DFSDM build component: "+rel)
     source=ROOT/"Middlewares/Third_Party/FreeRTOS/Source"
     needed=("tasks.c","queue.c","include/FreeRTOS.h","portable/GCC/ARM_CM4F/port.c")
     missing=[str((source/f).relative_to(ROOT)) for f in needed if not (source/f).is_file()]

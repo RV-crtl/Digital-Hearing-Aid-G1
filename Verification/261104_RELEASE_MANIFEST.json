@@ -1,0 +1,25 @@
+{
+  "project": "261104-Digital_Hearing_Aid",
+  "release": "R26.8 Group-demo release candidate",
+  "date": "2026-11-04",
+  "toolchain_target": "STM32CubeIDE 1.19.0 / STM32L476RG",
+  "validation": "77 ARM Clang/LLD C/ASM TUs compiled and layout linked with unresolved library symbols ignored; source/host regressions pass; Native GNU ELF and physical PCB unverified",
+  "memory": {
+    "SRAM1": "0x20000000 / 96 KiB",
+    "SRAM2_FreeRTOS": "0x10000000 / 24 KiB",
+    "SRAM2_capture": "0x10006000 / 8 KiB"
+  },
+  "files": {
+    ".project": "748bd80631cf609fd8344d2cc177b8065ee2b75593bfedf813f112c2527814b3",
+    ".cproject": "8795f7ce0ac1807b5e40b72838743de5869f5aec608a7f581fc14d61f47e8c8c",
+    "261104-Digital_Hearing_Aid.ioc": "a2968f3e68a752aa02b5364069157de3918a3284a373837cf475a6225ad7b666",
+    "Core/Src/demo_app.c": "772164bfe63e7d51180a2dd1c494f54300ab043d1396559bebcceb8a5c38c2c9",
+    "Core/Src/dha_feedback.c": "8d2a197c902a16be6a8148a285a6a9288daec23b8bb78e8cbb430a61db6ac910",
+    "Core/Src/dha_effects.c": "facce5fcdb6b60b58b38704ba489f98faba533eae6e0401f29bb4de64297590f",
+    "Core/Src/g1_user_controls.c": "cd096bfb45a4119d20cfde8c43ac33a3b1a0edb52467bda057026d409777adf7",
+    "STM32L476RGTX_FLASH.ld": "d0e0a568b7441323d873fba27ab1ff5f9f6539bb16b25388285d8cd2eada37c8",
+    "Core/Inc/FreeRTOSConfig.h": "adb9d99423c41edb5e62ca329656e65d4f14722491d982f75c079d63325a84e6",
+    "Core/Startup/startup_stm32l476rgtx.s": "cb9dcea1820230de637d30f622f68b867a190e13952fb7d8a85903eb3421b2c4",
+    "Tools/verify_261104_release.py": "08e134025da5115949eb469f3c8d90c4d9c869b3745197e7b07db49f818d5926"
+  }
+}

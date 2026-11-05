@@ -1,5 +1,3 @@
-> **HISTORICAL REHEARSAL MATERIAL.** Use [the canonical 03 Nov 2026 custom-PCB black-box plan](BLACK_BOX_TEST_PLAN.md) for the demonstration, not this earlier G5/G11 showcase. The later R24 operator-tested microphone/BT/LOW16 TC path and R26 candidate are summarized in [current requirements](G1_CURRENT_SYSTEM_REQUIREMENTS.md).
-
 # Standalone group showcase — no laptop connected to the hearing aid
 
 This is a rehearsal guide, **not a record that physical experiments already passed**. The target is one assembled, protected, battery/externally powered prototype, not a dangling Nucleo/ST-LINK plus PC. Only include segments that have been rehearsed with the exact board, firmware SHA and power source.

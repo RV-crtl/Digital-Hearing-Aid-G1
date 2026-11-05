@@ -1,0 +1,6 @@
+Project: 261104-Digital_Hearing_Aid
+Product: Digital Hearing Aid - Quiet Riot
+Source firmware version: 0x26110402
+Release: QR261104.2-demo-candidate
+Basis: user supplied Quiet_Riot_261104_CubeIDE_Final_Link_Fix.zip
+Status: source-verified; full native GNU ELF and PCB validation required

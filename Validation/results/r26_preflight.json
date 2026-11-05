@@ -1,0 +1,16 @@
+{
+  "status": "SOURCE_PREFLIGHT_PASS",
+  "source_failures": [],
+  "environment_notices": [
+    "arm-none-eabi-gcc not on PATH (may be bundled inside CubeIDE)"
+  ],
+  "proof": {
+    "recovery_pairs_expected": 7,
+    "middleware_ready": true,
+    "middleware_missing": [],
+    "arm_gcc_on_path": false,
+    "git_sha": null,
+    "arm_binary_built": false,
+    "physical_hardware_verified": false
+  }
+}

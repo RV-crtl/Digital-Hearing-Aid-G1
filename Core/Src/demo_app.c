@@ -5,10 +5,13 @@
 #include "connectivity_service.h"
 #include "control_protocol.h"
 #include "pcm_transport.h"
+#include "tc_s24_recovery.h"
 #include "audio_processing.h"
 #include "audio_dynamics.h"
 #include "bt_profile.h"
 #include "tc_cleanup.h"
+#include "tc_hum_cal.h"
+#include "g1_boot_diag.h"
 #include "connectivity_demo_debug.h"
 #include "rtos_trace_proof.h"
 #include "rtos_tick_proof.h"
@@ -17,15 +20,65 @@
 #include "group_guardian.h"
 #include "group_ui.h"
 #include "dha_build_mode.h"
-#include "queue.h"
+#include "g1_product_board.h"
+#include "adaptive_preferences.h"
+#include "g1_user_controls.h"
+#include "dha_feedback.h"
+#include "dha_effects.h"
+#include "qr_demo_test.h"
+#include "qr_bt_volume.h"
+#include "qr_sleep_policy.h"
+#include "g1_operating_config.h"
+#include "g1_ambient_dsp.h"
+#include "g1_scene_ml.h"
+/* FreeRTOS.h defines kernel types and port macros consumed by queue.h/task.h.
+ * Include it first: reversing this order causes a cascade of parser errors. */
 #include "FreeRTOS.h"
 #include "task.h"
+#include "queue.h"
 
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
+
+
+/* R20: Boot diagnostics are owned by this translation unit: the BOOT STATUS
+ * command and the reporting function are always compiled and linked together.
+ * main.c passes its reset/clock snapshot to this module during cold startup. */
+static struct {
+  uint32_t reset_csr, debug_at_reset, fallback, hse_attempt, sysclk_hz;
+} s_g1_boot_snapshot;
+void G1_BootCapture(uint32_t reset_csr, uint32_t debug_at_reset,
+                    uint32_t fallback, uint32_t hse_attempt, uint32_t sysclk_hz)
+{
+  s_g1_boot_snapshot.reset_csr=reset_csr;
+  s_g1_boot_snapshot.debug_at_reset=debug_at_reset;
+  s_g1_boot_snapshot.fallback=fallback;
+  s_g1_boot_snapshot.hse_attempt=hse_attempt;
+  s_g1_boot_snapshot.sysclk_hz=sysclk_hz;
+}
+
+void G1_BootReport(void)
+{
+  char message[296];
+  (void)snprintf(message,sizeof(message),
+    "G1|BOOT|reset_csr=0x%08lX|bor=%lu|pin=%lu|lpwr=%lu|soft=%lu|iwdg=%lu|wwdg=%lu|debug_at_reset=%lu|clock=%s|hse_attempt=%lu|sysclk=%lu|nrst=%s\r\n",
+    (unsigned long)s_g1_boot_snapshot.reset_csr,
+    (unsigned long)((s_g1_boot_snapshot.reset_csr & RCC_CSR_BORRSTF)!=0U),
+    (unsigned long)((s_g1_boot_snapshot.reset_csr & RCC_CSR_PINRSTF)!=0U),
+    (unsigned long)((s_g1_boot_snapshot.reset_csr & RCC_CSR_LPWRRSTF)!=0U),
+    (unsigned long)((s_g1_boot_snapshot.reset_csr & RCC_CSR_SFTRSTF)!=0U),
+    (unsigned long)((s_g1_boot_snapshot.reset_csr & RCC_CSR_IWDGRSTF)!=0U),
+    (unsigned long)((s_g1_boot_snapshot.reset_csr & RCC_CSR_WWDGRSTF)!=0U),
+    (unsigned long)s_g1_boot_snapshot.debug_at_reset,
+    s_g1_boot_snapshot.fallback?"HSI16_FALLBACK":"HSE16",
+    (unsigned long)s_g1_boot_snapshot.hse_attempt,
+    (unsigned long)s_g1_boot_snapshot.sysclk_hz,
+    "measure_3V3_NRESET_BOOTO");
+  Demo_ConsoleEarly(message);
+}
 
 volatile DemoControl_t g_demo_control;
 volatile DemoDiagnostics_t g_demo_diag;
@@ -56,8 +109,68 @@ typedef struct {
 } GroupTelemetry;
 __attribute__((used)) volatile GroupTelemetry g_group_telemetry;
 static uint32_t g_group_events_seen;
-static uint32_t g_group_button_seen;
+static uint32_t g_group_button_seen __attribute__((unused));
 static GroupUiButton g_group_ui;
+/* Explicit-feedback adaptive gain; context is updated by AudioTask.
+ * State declarations precede DSP functions that read the context. */
+static G1AdaptivePreferences s_product_preferences;
+static G1UiState s_product_ui;
+/* ControlTask owns logical sleep and touch gestures. AudioTask owns all DMA.
+ * Bluetooth UART TX remains exclusively in BtTask. */
+static QrSleepPolicy s_qr_sleep;
+static volatile uint8_t s_audio_sleep_active; /* ISR-visible sleep fence */
+static volatile uint8_t s_bt_sleep_transition; /* 1=sleep, 2=wake */
+static uint8_t s_test_saved_muted;
+static uint8_t s_test_saved_source;
+static uint8_t s_test_saved_valid;
+static QrDemoTest s_test_generator;
+/* BT401: request discoverability from the BT task (the sole UART1 transmitter). */
+static volatile uint8_t s_bt_pair_request;
+static volatile uint8_t s_bt_recover_request;
+static volatile uint8_t s_mic_reinit_request;
+static uint32_t s_bt_pair_tx_ms;
+static uint32_t s_bt_last_rx_ms;
+static volatile uint32_t s_bt_status_code;  /* 0=unknown, 1=waiting, 2=connected, 3=playing */
+static uint32_t s_bt_pair_check_due;
+static uint32_t s_mic_next_start_ms;
+
+static uint8_t s_r10_watch_enabled = 0U; /* R24: no unsolicited serial traffic */
+static uint32_t s_r10_watch_last_ms;
+static volatile uint8_t s_r10_bt_at_pending;
+static char s_r10_bt_at_line[88];
+static volatile uint8_t s_pref_amp, s_pref_spectrum;
+static uint8_t s_pref_enabled;
+static uint32_t s_user_gain_q15=G1_UI_MAX_GAIN_Q15;
+static uint32_t s_last_observed_ms;
+/* R26 ambient DSP: high sensitivity without hard-gating distant activity.
+ * AudioTask owns all DSP state; neither the encoder task nor an IRQ mutates it.
+ * SceneML learns unlabeled acoustic clusters online. The separately bounded
+ * preference learner updates only following explicit user volume feedback. */
+static G1AmbientDsp s_ambient;
+static uint32_t s_mic_agc_q12=4096U;
+static uint32_t s_mic_noise_rms=16U;
+static uint32_t s_mic_signal_rms;
+static uint32_t s_mic_agc_limited;
+static uint32_t s_mic_noise_attenuated;
+static uint32_t s_mic_speech_likely;
+static void product_mic_condition(int16_t *p)
+{
+  G1Ambient_Process(&s_ambient,p,p,DEMO_FRAMES_PER_HALF);
+  s_mic_agc_q12=s_ambient.gain_q12;
+  s_mic_noise_rms=s_ambient.ambient_floor_rms;
+  s_mic_signal_rms=s_ambient.input_rms;
+  s_mic_agc_limited=s_ambient.limited_samples;
+  s_mic_noise_attenuated=0U; /* R26 ambient mode: NEVER gate traffic or distant speech */
+  /* Heuristic only; no trained speech recognition data are available. */
+  s_mic_speech_likely=(s_ambient.zero_crossings>=2U &&
+      s_ambient.zero_crossings<=48U &&
+      s_ambient.input_rms>s_ambient.ambient_floor_rms*2U)?1U:0U;
+  /* Context uses PRE-amplification acoustic features, so the preference model
+   * does not confuse an AGC-boosted quiet environment with a loud scene. */
+  s_pref_amp=s_ambient.amplitude_bin;
+  s_pref_spectrum=s_ambient.spectrum_bin;
+}
+
 static uint32_t g_group_ui_source_events;
 static uint8_t g_group_dsp_saved;
 static uint8_t g_group_old_dsp_on, g_group_old_comp, g_group_old_eq;
@@ -70,7 +183,13 @@ static int16_t g_routed[DEMO_FRAMES_PER_HALF];
 static int16_t g_r27_tc_clean[DEMO_FRAMES_PER_HALF];
 static int16_t g_r27_pre_source[DEMO_FRAMES_PER_HALF];
 static TcCleanup g_r27_tc_filter;
-static volatile uint8_t g_r27_tc_clean_enabled=1U;
+/* R26.3: the working R34 demonstration uses LOW24 SAI word decoding.
+ * Start with TC cleanup/notch disabled so any periodic artifact can be
+ * diagnosed before imposing frequency-dependent processing. The previous
+ * LOW16 interpretation and optional cleanup remain available for A/B tests. */
+static volatile uint8_t g_r27_tc_clean_enabled=1U; /* R26.6 gentle, deterministic HP/LP */
+static volatile uint8_t s_tc_notch_auto_enabled=0U; /* no auto tracking; learned narrow notch only */
+static volatile uint8_t s_tc_filter_reset_requested; /* AudioTask-owned reset */
 
 
 /* R9 transport-integrity architecture.
@@ -168,11 +287,22 @@ static uint32_t g_r262_hd_source;
 
 /* R6 raw-input recorder. This buffer stores the exact 32-bit SAI words that
  * reached the application before PCM alignment, mono folding, routing or DSP.
- * 4096 stereo frames = 32768 bytes, giving 11.7-Hz FFT bin spacing at 48 kHz. */
+ * 1024 stereo frames = 8192 bytes. The 8 KiB SRAM2 scratch is not used by RTOS. */
+/* SRAM2 is partitioned in the linker: 24 KiB RTOS + 8 KiB exclusive
+ * diagnostic scratch. A raw recorder MUST NEVER alias the live RTOS heap. */
+/* Linker-defined start of the 8 KiB SRAM2 diagnostic scratch.
+ * In C this MUST be an array of unknown bound, not a uint8_t object:
+ * the latter is one byte in the compiler's object-size analysis and causes
+ * GCC 13 -O2 -Warray-bounds/-Wstringop-overflow false positives. Capacity
+ * and lifetime are enforced by the linker region and the mutually-exclusive
+ * raw/listen capture state machine. */
+extern uint8_t _capture_ram2_start[];
+_Static_assert(DEMO_RAW_CAPTURE_WORDS * sizeof(uint32_t) <= 8192U, "raw recorder exceeds SRAM2 scratch");
+_Static_assert(DEMO_LISTEN_CAPTURE_SAMPLES * sizeof(int16_t) <= 8192U, "listen recorder exceeds SRAM2 scratch");
 #define RAW_CAPTURE_SOURCE_NONE 0U
 #define RAW_CAPTURE_SOURCE_BT   1U
 #define RAW_CAPTURE_SOURCE_TC   2U
-static uint32_t *const g_raw_capture_words = (uint32_t *)SRAM2_BASE;
+static uint32_t *const g_raw_capture_words = (uint32_t *)(void *)_capture_ram2_start;
 static volatile uint32_t g_raw_capture_source;
 static volatile uint32_t g_raw_capture_frames;
 static volatile uint8_t g_raw_capture_armed;
@@ -180,10 +310,10 @@ static volatile uint8_t g_raw_capture_ready;
 static uint8_t g_raw_capture_announced;
 
 /* R9 listen recorder. Uses the same SRAM2 bank as raw capture, but stores
- * decoded PRE-DSP mono int16 PCM. 16384 samples = 341.3 ms at 48 kHz: long
+ * decoded PRE-DSP mono int16 PCM. 4096 samples = 85.3 ms at 48 kHz: long
  * enough to hear tone quality and short speech syllables on the PC. Raw and
  * listen capture are mutually exclusive by construction. */
-static int16_t *const g_listen_capture_pcm = (int16_t *)SRAM2_BASE;
+static int16_t *const g_listen_capture_pcm = (int16_t *)(void *)_capture_ram2_start;
 static volatile uint32_t g_listen_capture_source;
 static volatile uint32_t g_listen_capture_channel;
 static volatile uint32_t g_listen_capture_samples;
@@ -213,6 +343,15 @@ static volatile uint32_t g_r28_cal_blocks, g_r28_cal_max_rms, g_r28_cal_max_pp;
 
 
 static TaskHandle_t g_audio_task;
+void Demo_NotifyMicReadyFromISR(void)
+{
+  if (g_audio_task != NULL) {
+    BaseType_t higher = pdFALSE;
+    vTaskNotifyGiveFromISR(g_audio_task, &higher);
+    portYIELD_FROM_ISR(higher);
+  }
+}
+
 static TaskHandle_t g_bt_task;
 static TaskHandle_t g_background_task;
 static TaskHandle_t g_cpu_load_b_task;
@@ -221,6 +360,55 @@ static uint8_t g_children_started;
 static uint8_t g_dma_started;
 static uint8_t g_bt_dma_started;
 static uint8_t g_tc_dma_started;
+/* Requested DMA input topology. Rebuild only on genuine topology change;
+ * the previous g_dma_started guard kept MIC-only speaker DMA alive but never
+ * started SAI2A when the user subsequently selected telecoil. */
+static uint32_t g_dma_topology_mask;
+static volatile uint8_t s_tc_restart_requested;
+static volatile uint32_t s_tc_last_left_rms;
+static volatile uint32_t s_tc_last_right_rms;
+static volatile uint32_t s_tc_last_start_status;
+/* R22: independent telecoil raw PCM diagnostics.  These values come ONLY from
+ * completed SAI2A DMA snapshots; no fake input, detection threshold, or gain.
+ * A silent ADC can therefore be distinguished from controller muting.
+ * Probe analysis is decimated to every 32 completed 128-frame blocks. */
+/* R23: hardware-confirmed on 03 Nov 2026: TC SAI2A returns right-justified
+ * signed 16-bit samples in bits [15:0] of 32-bit DMA containers. R22's
+ * LOW24 default reduced a real ~850-count signal to RMS ~3; LOW16 outputs
+ * the user's verified 2-kHz waveform. This is TC-ONLY; BT retains LOW24. */
+static volatile uint32_t s_tc_pcm_decode_mode = PCM_DECODE_LOW24; /* R34 default on SAI2A */
+/* R26.4: full-precision LOW24 with explicit output-level recovery.  Only
+ * AudioTask owns this state; ControlTask publishes simple requests. */
+static TcS24Recovery s_tc24_level;
+static volatile uint8_t s_tc24_level_enabled = 1U;
+static volatile uint8_t s_tc24_level_reset_requested;
+static volatile uint32_t s_tc24_level_cap_q16 = 4U * 65536U;
+
+/* R26.6 deliberate noise-only calibration: no movement of the notch during
+ * ordinary TC playback. The RTC/ControlTask analyser never reads live DMA. */
+static TcHumCal s_tc_hum_cal;
+static volatile uint32_t s_tc_hum_apply_hz=UINT32_MAX;
+static volatile uint32_t s_tc_hum_last_hz=0U;
+static volatile uint32_t s_tc_channel_mode; /* 0=auto,1=left,2=right,3=mix */
+/* Avoid block-to-block channel hunting on noisy left/right telecoil PCM. */
+static volatile uint8_t s_tc_use_elastic_output=0U; /* bench comparison; default exact */
+static uint32_t s_tc_auto_channel=3U;
+static uint32_t s_tc_candidate_channel=3U;
+static uint16_t s_tc_candidate_blocks;
+static volatile uint32_t s_tc_probe_blocks;
+static volatile uint32_t s_tc_probe_nonzero;
+static volatile uint32_t s_tc_probe_varying;
+static volatile uint32_t s_tc_probe_or;
+static volatile uint32_t s_tc_probe_and;
+static volatile uint32_t s_tc_probe_first[4];
+static volatile uint32_t s_tc_probe_rms[4][2];
+static volatile uint32_t s_tc_probe_last_ms;
+static volatile uint32_t s_tc_probe_hi_nonzero;
+static volatile uint32_t s_tc_probe_hi_ones;
+static volatile uint32_t s_tc_probe_low16_big_jumps;
+static volatile uint32_t s_tc_manual_pcm_blocks;
+
+static volatile uint32_t s_bt_last_start_status;
 static uint8_t g_speaker_dma_started;
 static uint8_t g_bt_present_streak;
 static uint8_t g_bt_absent_streak;
@@ -278,11 +466,12 @@ static void r28_rtos_snapshot(void);
 static void r29_refresh_debug_snapshot(uint32_t ms);
 static void StartAudioTask(void *argument);
 static void StartBtTask(void *argument);
-static void StartBackgroundTask(void *argument);
-static void StartCpuLoadB(void *argument);
-static void StartHighPriorityLoad(void *argument);
+static void __attribute__((unused)) StartBackgroundTask(void *argument);
+static void __attribute__((unused)) StartCpuLoadB(void *argument);
+static void __attribute__((unused)) StartHighPriorityLoad(void *argument);
 static const char *source_name(uint32_t s);
 static void metrics_s16(const int16_t *x, size_t n, uint32_t *rms, uint32_t *pp, uint32_t *peak);
+static uint32_t isqrt_u64(uint64_t x);
 static void console_write(const char *s);
 static HAL_StatusTypeDef uart2_send_binary_chunked(const uint8_t *data, uint32_t len);
 static void console_u32(uint32_t v);
@@ -613,9 +802,21 @@ static void start_uart_rx_interrupts(void)
   g_console_rx_head = g_console_rx_tail = 0U;
   g_bt_rx_head = g_bt_rx_tail = 0U;
 
-  a = HAL_UART_Receive_IT(&huart2, &g_console_rx_irq_byte, 1U);
-  if (a == HAL_OK) g_demo_diag.console_rx_irq_armed = 1U;
-  else { g_demo_diag.console_rx_irq_armed = 0U; Demo_SetError(0xC220U | ((uint32_t)a & 0xFU)); }
+  /* USART2 is a development-only diagnostic port. The finished PCB must
+   * capture/play audio with no ST-LINK, PC, serial monitor or UART cable.
+   * An unavailable/broken console is not a fatal product boot failure. */
+#if G1_DIAGNOSTICS_UART_ENABLE
+  if (huart2.Instance == USART2 && (USART2->CR1 & USART_CR1_UE) != 0U) {
+    a = HAL_UART_Receive_IT(&huart2, &g_console_rx_irq_byte, 1U);
+    g_demo_diag.console_rx_irq_armed = (uint32_t)(a == HAL_OK);
+    if (a != HAL_OK) g_demo_diag.console_uart_errors++;
+  } else {
+    g_demo_diag.console_rx_irq_armed = 0U;
+  }
+#else
+  (void)a;
+  g_demo_diag.console_rx_irq_armed = 0U;
+#endif
 
   b = HAL_UART_Receive_IT(&huart1, &g_bt_rx_irq_byte, 1U);
   if (b == HAL_OK) g_demo_diag.bt_rx_irq_armed = 1U;
@@ -630,6 +831,10 @@ static uint32_t uabs32(int32_t v)
 
 static void console_write(const char *s)
 {
+#if !G1_DIAGNOSTICS_UART_ENABLE
+  (void)s; /* no blocking USART2 TX or monitor dependency in product image */
+  return;
+#else
   /* R25: console TX is deliberately independent of HAL_UART_Transmit()'s
    * wall-clock timeout.  Under active SAI DMA the higher-priority AudioTask
    * can pre-empt ControlTask for long enough that a perfectly healthy USART2
@@ -652,6 +857,7 @@ static void console_write(const char *s)
     USART2->TDR = (uint8_t)(*s++);
     g_demo_diag.console_tx_bytes++;
   }
+#endif
 }
 
 /* Robust binary UART sender for capture downloads.  One giant 32-KiB
@@ -660,6 +866,10 @@ static void console_write(const char *s)
  * Windows VCP transfer deterministic at 115200 baud. */
 static HAL_StatusTypeDef uart2_send_binary_chunked(const uint8_t *data, uint32_t len)
 {
+#if !G1_DIAGNOSTICS_UART_ENABLE
+  (void)data; (void)len;
+  return HAL_ERROR; /* disabled diagnostics, not a failed product peripheral */
+#else
   uint32_t sent = 0U;
   if (data == NULL && len != 0U) return HAL_ERROR;
   while (sent < len) {
@@ -676,6 +886,7 @@ static HAL_StatusTypeDef uart2_send_binary_chunked(const uint8_t *data, uint32_t
     if ((sent & 0x7FFU) == 0U) taskYIELD();
   }
   return HAL_OK;
+#endif
 }
 
 static void console_u32(uint32_t v)
@@ -762,15 +973,21 @@ static void output_queue_reset(void)
   g_demo_diag.speaker_queue_depth = 0U;
 }
 
-/* Bluetooth/SAI1A RX and SAI2B TX are both derived from the same PLLSAI1
- * kernel in this board configuration.  Resampling that path only adds
- * artificial FM/beat-note modulation.  Telecoil/SAI2A is synchronized internally to SAI1A and
- * can be independently clocked, so only that path uses the slow elastic PLL. */
+/* All three audio SAI blocks share the same PLLSAI1 clock. SAI2A is
+ * externally synchronized to the SAI1A master. Thus the NORMAL TC path is
+ * synchronous with speaker DMA and must not run an elastic-rate controller:
+ * that controller periodically re-primed the output and caused clicks.
+ * Keep the elastic renderer compiled as a diagnostic fallback only. */
 static bool output_clock_locked_path(void)
 {
-  if (g_demo_control.direct_source == DEMO_DIRECT_BT) return true;
-  if (g_demo_control.direct_source == DEMO_DIRECT_TC) return false;
-  return g_demo_diag.active_source == 2U; /* normal routed Bluetooth */
+  /* Microphone DFSDM has a separate conversion clock and still benefits
+   * from the elastic FIFO clock-drift fallback. */
+  if (g_demo_control.requested_source_mode == DEMO_MODE_MIC_ONLY &&
+      g_demo_control.direct_source == DEMO_DIRECT_OFF) return false;
+  if (s_tc_use_elastic_output &&
+      (g_demo_control.direct_source == DEMO_DIRECT_TC ||
+       g_demo_diag.active_source == 1U)) return false;
+  return true; /* SAI1A / SAI2A / SAI2B: 48 kHz from one PLLSAI1 */
 }
 
 static int16_t apply_output_fade(int16_t sample)
@@ -957,14 +1174,9 @@ static bool output_queue_pop_isr(int16_t *stereo_dst)
 
 static void speaker_fill_tone_isr(int16_t *dst)
 {
-  const uint8_t step = (uint8_t)g_demo_control.test_tone_step;
-  if (dst == NULL || step == 0U) return;
-  for (uint32_t i = 0U; i < DEMO_FRAMES_PER_HALF; ++i) {
-    int16_t y = scale_output_sample(k_sine_48[g_tone_phase]);
-    dst[2U * i] = y;
-    dst[(2U * i) + 1U] = y;
-    g_tone_phase = (uint8_t)((g_tone_phase + step) % 48U);
-  }
+  /* Bench test ceiling, independent of normal gain; no HAL in IRQ. */
+  QrDemoTest_Render(&s_test_generator,(uint8_t)g_demo_control.test_tone_step,
+                    dst,DEMO_FRAMES_PER_HALF);
 }
 
 /* Called directly from the SAI2B DMA callback.  The half that just completed
@@ -975,13 +1187,21 @@ static void speaker_fill_region_isr(uint32_t start_sample)
   int16_t *dst = &g_speaker_tx_dma[start_sample];
   bool have = false;
 
+  if (s_audio_sleep_active) {
+    memset(dst,0,DEMO_OUTPUT_HALF_SAMPLES*sizeof(int16_t));
+    return; /* no cue or audio can escape while soft-asleep */
+  }
   if (!g_demo_control.output_enabled) {
     memset(dst, 0, DEMO_OUTPUT_HALF_SAMPLES * sizeof(int16_t));
+    /* A short mute acknowledgement is allowed; it is NOT sustained audio. */
+    DhaFeedback_Render(dst, DEMO_FRAMES_PER_HALF);
     return;
   }
 
-  if (g_demo_control.test_tone_step != 0U) {
+  if (g_demo_control.test_tone_step != 0U || QrDemoTest_IsActive(&s_test_generator)) {
     speaker_fill_tone_isr(dst);
+    /* Calibration audio is standalone; queued user cues must not exceed the
+     * bounded signal level or contaminate the 1 kHz/chirp test. */
     memcpy(g_r21_last_good_output, dst, sizeof(g_r21_last_good_output));
     g_r21_have_last_good_output = 1U;
     g_r21_conceal_streak = 0U;
@@ -1017,6 +1237,7 @@ static void speaker_fill_region_isr(uint32_t start_sample)
       g_r21_conceal_streak++;
       g_r21_conceal_total++;
       g_demo_diag.speaker_underruns++;
+      DhaFeedback_Render(dst, DEMO_FRAMES_PER_HALF);
       g_demo_diag.speaker_blocks_output++;
       return;
     }
@@ -1034,6 +1255,7 @@ static void speaker_fill_region_isr(uint32_t start_sample)
     g_r21_conceal_streak = 0U;
     g_demo_diag.speaker_blocks_output++;
   }
+  DhaFeedback_Render(dst, DEMO_FRAMES_PER_HALF);
 }
 
 static void plot_accumulate(const int16_t *pre, const int16_t *post)
@@ -1137,6 +1359,13 @@ static void direct_process_block(uint32_t source, const int16_t *left, const int
   metrics_s16(g_mono, DEMO_FRAMES_PER_HALF, &in_rms, NULL, &in_peak);
   memcpy(g_demo_processed_mono, g_mono, sizeof(g_demo_processed_mono));
   if (source == DEMO_DIRECT_TC && g_r27_tc_clean_enabled) {
+    if (s_tc_filter_reset_requested) {
+      s_tc_filter_reset_requested=0U;
+      TcCleanup_Reset(&g_r27_tc_filter);
+      if(s_tc_notch_auto_enabled && s_tc_hum_last_hz)
+        TcCleanup_SetNotchFrequency(&g_r27_tc_filter,s_tc_hum_last_hz);
+    }
+    TcCleanup_SetNotchAuto(&g_r27_tc_filter,s_tc_notch_auto_enabled!=0U);
     TcCleanup_Block(&g_r27_tc_filter,g_mono,g_demo_processed_mono,DEMO_FRAMES_PER_HALF);
   }
 
@@ -1190,6 +1419,15 @@ static void process_selected_audio(const int16_t *pre, uint32_t source)
   uint32_t in_rms = 0U, in_peak = 0U, out_rms = 0U, out_peak = 0U;
   uint32_t start_cycles, elapsed_us;
   if (pre == NULL) return;
+  /* Context is from actual latest PCM, not an assumed environment.
+   * Approximate spectral bucket via 128-sample zero-crossing rate. */
+  if (source != 3U) { /* mic supplied its raw pre-AGC features */
+    unsigned crossings=0U;
+    for (size_t i=1U;i<DEMO_FRAMES_PER_HALF;++i)
+      if ((pre[i]>=0)!=(pre[i-1U]>=0))++crossings;
+    s_pref_spectrum=(uint8_t)(crossings<8U?G1_PREF_LOW:
+                            crossings<32U?G1_PREF_MID:G1_PREF_HIGH);
+  }
 
   if (source != g_last_output_source) {
     output_queue_reset();
@@ -1199,6 +1437,10 @@ static void process_selected_audio(const int16_t *pre, uint32_t source)
   }
 
   metrics_s16(pre, DEMO_FRAMES_PER_HALF, &in_rms, NULL, &in_peak);
+  if (source != 3U) { /* preserve raw mic amplitude context */
+    s_pref_amp=(uint8_t)(in_rms<350U?G1_PREF_QUIET:
+                   in_rms<2500U?G1_PREF_MODERATE:G1_PREF_LOUD);
+  }
   start_cycles = dwt_cycles();
   if (g_demo_control.dsp_enabled) {
     (void)AudioDynamics_ProcessBlock(&g_dynamics, pre, g_demo_processed_mono,
@@ -1228,6 +1470,7 @@ static void process_selected_audio(const int16_t *pre, uint32_t source)
     g_demo_diag.dsp_limited_samples += g_dynamics.last_limiter_samples;
   }
 
+  DhaEffects_Process(g_demo_processed_mono, DEMO_FRAMES_PER_HALF,(uint8_t)source);
   output_queue_push(g_demo_processed_mono);
   plot_accumulate(g_r27_pre_source, g_demo_processed_mono);
 }
@@ -1405,6 +1648,7 @@ static const char *source_name(uint32_t s)
 {
   if (s == 1U) return "TC";
   if (s == 2U) return "BT";
+  if (s == 3U) return "MIC";
   return "NONE";
 }
 
@@ -1415,11 +1659,15 @@ void Demo_ConsoleEarly(const char *message) { console_write(message); }
 
 static void panic_putc(char c)
 {
+#if !G1_DIAGNOSTICS_UART_ENABLE
+  (void)c;return;
+#else
   uint32_t guard = 2000000U;
   if ((RCC->APB1ENR1 & RCC_APB1ENR1_USART2EN) == 0U) return;
   if ((USART2->CR1 & USART_CR1_UE) == 0U) return;
   while (((USART2->ISR & USART_ISR_TXE) == 0U) && guard-- > 0U) { }
   if ((USART2->ISR & USART_ISR_TXE) != 0U) USART2->TDR = (uint8_t)c;
+#endif
 }
 
 static void panic_puts(const char *s)
@@ -1533,11 +1781,21 @@ static void print_help(void)
   console_write(
     "Commands:\r\n"
     "  PING | STATUS | CLOCK | HELP\r\n"
-    "  TEST ALL | TEST CLOCK | TEST RTOS | TEST DSP | TEST AUDIO | TEST BT\r\n"
-    "  MODE AUTO | MODE BT | MODE TC | MODE OFF\r\n"
+    "  Lab TEST ALL/CLOCK/RTOS/DSP/AUDIO/BT unavailable in operating image\r\n"
+    "  UI STATUS | UI MAP | BOARD STATUS | SYSTEM CHECK (actual live hardware)\r\n"
+    "  SOURCE AUTO|MIC|BT|TC|OFF (or MODE AUTO|MIC|BT|TC|OFF)\r\n"
+    "  MUTE ON | MUTE OFF | MUTE TOGGLE | UNMUTE\r\n"
+    "  VOL + | VOL - | VOLUME 0..100 (percent of safe digital cap)\r\n"
+    "  ADAPT ON | ADAPT OFF | DSP ON | DSP OFF | ML STATUS | ML SCENE\r\n"
     "  BT ON | BT OFF | TC ON | TC OFF | ALL ON | ALL OFF\r\n"
     "  BTLINK AUTO | BTLINK ON | BTLINK OFF\r\n"
     "  AUDIO START | AUDIO STOP | AUDIO STATUS\r\n"
+    "  TC STATUS | TC RESTART | TC PROBE | BOOT STATUS (real PCM/DMA/clock observations)\r\n"
+    "  TC MODE | TC PCM LOW24(default)|LOW16|UPPER16|MIDDLE16 | TC FILTER ON|OFF | TC NOTCH AUTO|OFF | TC CLEAN\r\n"
+    "  TC CHANNEL AUTO|LEFT|RIGHT|MIX | TC BASELINE R264|R34|R23 (decoder A/B)\r\n"
+    "  TC 24 STATUS | TC 24 LEVEL ON|OFF | TC 24 CAP 1|2|4 | TC 24 RESTORE\r\n"
+    "  TC HUM LEARN (induction TRANSMITTER OFF, TC selected) | TC HUM STATUS | TC HUM ON|OFF|<75..4500>\r\n"
+    "  TC FILTER OFF|ON (manual TC bypass of cleanup; does not synthesize data)\r\n"
     "  OUTPUT ON | OUTPUT OFF | OUTPUT LEVEL SAFE|LOW|MED|HIGH|UNITY | TEST OUTPUT\r\n"
     "  DIRECT BT|TC LEFT|RIGHT|MIX | DIRECT OFF | DIRECT STATUS\r\n"
     "  INTEGRITY STATUS | INTEGRITY RESET\r\n"
@@ -1551,8 +1809,9 @@ static void print_help(void)
     "  EVIDENCE ON | EVIDENCE OFF | PLOT ON | PLOT OFF\r\n"
     "  !FA real AUTO | !FK real BT-idle calibration | !FV real source evidence | !RM RTOS metrics | !PV debugger proof | !RA light load | !RS single 60s stress | !RD DUAL 60s stress | !RH priority-7 20s CONTINUOUS SPIN (control unresponsive until stop) | !RX load off\r\n"
     "  !GON !GOFF !G0..G3 profiles: neutral/voice/music/wind | !GA auto-level | !GM manual | !GP status\r\n"
-    "  NUCLEO B1 PC13: short=next profile, long=toggle auto-level (Nucleo target only)\r\n"
-    "  BT PROFILE | BT QUERY\r\n"
+    "  Physical panel (Anna): E8 BT, E9 TC, E10 mute, E11 MIC; bit12 proximity\r\n"
+    "  TOUCH STATUS | TOUCH BUS | TOUCH RECOVER | TOUCH RETRY | BT CHANNELS | BT MONO MIX\r\n"
+    "  BT PROFILE | BT INIT | BT PAIR | BT QUERY | BT STATUS\r\n"
     "  LOAD ON | LOAD OFF | !RS CPU STRESS | STREAM ON | STREAM OFF | RESETDIAG\r\n");
 }
 
@@ -1641,6 +1900,14 @@ static void sync_status_from_service(void)
     g_demo_diag.active_source = (uint32_t)o.active_source;
     g_demo_diag.fault = (uint32_t)o.fault;
     g_demo_diag.muted = o.muted ? 1U : 0U;
+    /* R22: a deliberate TC button/command must not be forced silent by the
+     * AUTO-only presence detector.  Preserve physical mute and bounded volume.
+     * Controller validity is still measured and used normally in AUTO mode. */
+    if (g_demo_control.requested_source_mode == DEMO_MODE_TC_ONLY &&
+        g_demo_control.direct_source == DEMO_DIRECT_OFF) {
+      g_demo_diag.active_source = 1U;
+      g_demo_diag.muted = s_product_ui.muted ? 1U : 0U;
+    }
     if (g_demo_diag.active_source != old_source) {
       output_queue_reset();
       g_plot_accum_count = 0U;
@@ -1687,7 +1954,8 @@ static void apply_requested_mode(uint32_t now)
   if (m == g_last_requested_mode) return;
   if (m == DEMO_MODE_BT_ONLY) cmd = CONNECTIVITY_COMMAND_BLUETOOTH_ONLY;
   else if (m == DEMO_MODE_TC_ONLY) cmd = CONNECTIVITY_COMMAND_TELECOIL_ONLY;
-  else if (m == DEMO_MODE_OFF) cmd = CONNECTIVITY_COMMAND_DISABLE_BOTH;
+  else if (m == DEMO_MODE_OFF || m == DEMO_MODE_MIC_ONLY)
+    cmd = CONNECTIVITY_COMMAND_DISABLE_BOTH;
   else { m = DEMO_MODE_AUTO; cmd = CONNECTIVITY_COMMAND_ENABLE_BOTH; }
   (void)ConnectivityService_ApplyCommand(&g_service, cmd, now);
   g_last_requested_mode = m;
@@ -1714,10 +1982,37 @@ static void process_bt_pcm(const int16_t *mono, uint32_t now)
 static void process_tc_pcm(const int16_t *mono, uint32_t now)
 {
   memcpy(g_r27_pre_source,mono,sizeof(g_r27_pre_source));
+  /* ControlTask only publishes settings; never touches AudioTask DSP memory.
+   * This avoids a reset/data race during touch-driven source switching. */
+  if (s_tc_filter_reset_requested) {
+    s_tc_filter_reset_requested=0U;
+    TcCleanup_Reset(&g_r27_tc_filter);
+    if(s_tc_notch_auto_enabled && s_tc_hum_last_hz)
+      TcCleanup_SetNotchFrequency(&g_r27_tc_filter,s_tc_hum_last_hz);
+  }
+  if (s_tc_hum_apply_hz!=UINT32_MAX) {
+    const uint32_t hz=s_tc_hum_apply_hz;
+    s_tc_hum_apply_hz=UINT32_MAX;
+    TcCleanup_SetNotchFrequency(&g_r27_tc_filter,hz);
+    s_tc_notch_auto_enabled=(uint8_t)(hz!=0U);
+  }
+  TcCleanup_SetNotchAuto(&g_r27_tc_filter,s_tc_notch_auto_enabled!=0U);
   (void)ConnectivityService_ProcessTelecoilBlock(&g_service, mono, g_routed,
                                                   DEMO_FRAMES_PER_HALF, now);
   sync_status_from_service();
-  if (g_demo_diag.active_source == 1U) {
+  if (g_demo_control.requested_source_mode == DEMO_MODE_TC_ONLY &&
+      g_demo_control.direct_source == DEMO_DIRECT_OFF) {
+    /* Explicit manual TC selection: play actual SAI2A samples independent
+     * of AUTO signal-qualification. No synthetic audio or enforced level
+     * adjustment. R26.3 uses R34 LOW24 and bypasses TC cleanup by default. */
+    ++s_tc_manual_pcm_blocks;
+    g_demo_diag.active_source = 1U;
+    g_demo_diag.muted = s_product_ui.muted ? 1U : 0U;
+    if (g_r27_tc_clean_enabled) {
+      TcCleanup_Block(&g_r27_tc_filter,mono,g_r27_tc_clean,DEMO_FRAMES_PER_HALF);
+      process_selected_audio(g_r27_tc_clean, 1U);
+    } else process_selected_audio(mono, 1U);
+  } else if (g_demo_diag.active_source == 1U) {
     if (g_r27_tc_clean_enabled) {
       TcCleanup_Block(&g_r27_tc_filter,g_routed,g_r27_tc_clean,DEMO_FRAMES_PER_HALF);
       process_selected_audio(g_r27_tc_clean, 1U);
@@ -1769,12 +2064,65 @@ static void process_bt_words(const uint32_t *words, uint32_t now)
 static void process_tc_words(const uint32_t *words, uint32_t now)
 {
   uint32_t lrms = 0U, rrms = 0U;
+  /* R22: periodically inspect all four container alignments, never only the
+   * selected PCM mode.  An RMS of 1 means near-zero decoded audio, not merely
+   * detector threshold rejection. A 2-kHz test should change the bitstream. */
+  if ((g_demo_diag.tc_blocks_processed & 31U) == 0U && words != NULL) {
+    uint64_t sq[4][2] = {{0U}};
+    uint32_t word_or=0U, word_and=UINT32_MAX, nonzero=0U, varying=0U;
+    uint32_t hi_nonzero=0U, hi_ones=0U, big_jumps=0U;
+    int16_t last_lane[2]={(int16_t)words[0],(int16_t)words[1]};
+    uint32_t previous=words[0];
+    for (uint32_t i=0U;i<DEMO_HALF_WORDS;++i) {
+      const uint32_t w=words[i];
+      word_or|=w;word_and&=w;
+      nonzero+=(w!=0U)?1U:0U;
+      varying+=(w!=previous)?1U:0U;
+      hi_nonzero+=((w>>16U)!=0U)?1U:0U;
+      hi_ones+=((w>>16U)==0xFFFFU)?1U:0U;
+      const uint32_t lane=i&1U;
+      const int16_t low=(int16_t)(uint16_t)w;
+      if (i>=2U && ((int32_t)low-(int32_t)last_lane[lane]>20000 ||
+                       (int32_t)last_lane[lane]-(int32_t)low>20000)) big_jumps++;
+      last_lane[lane]=low;
+      previous=w;
+      for (uint32_t m=0U;m<4U;++m) {
+        const int32_t x=PcmTransport_DecodeWordMode(w,(PcmTransportDecodeMode_t)m);
+        sq[m][i&1U]+=(uint64_t)((int64_t)x*(int64_t)x);
+      }
+    }
+    s_tc_probe_or=word_or; s_tc_probe_and=word_and;
+    s_tc_probe_nonzero=nonzero; s_tc_probe_varying=varying;
+    s_tc_probe_hi_nonzero=hi_nonzero; s_tc_probe_hi_ones=hi_ones;
+    s_tc_probe_low16_big_jumps=big_jumps;
+    for (uint32_t j=0;j<4U;++j) s_tc_probe_first[j]=words[j];
+    for (uint32_t m=0;m<4U;++m)
+      for(uint32_t ch=0;ch<2U;++ch)
+        s_tc_probe_rms[m][ch]=isqrt_u64(sq[m][ch]/DEMO_FRAMES_PER_HALF);
+    s_tc_probe_last_ms=now;
+    ++s_tc_probe_blocks;
+  }
   raw_capture_append(RAW_CAPTURE_SOURCE_TC, words, DEMO_FRAMES_PER_HALF);
-  if (PcmTransport_DecodeStereoWordsMode(words, DEMO_FRAMES_PER_HALF, g_left, g_right,
-                                         (PcmTransportDecodeMode_t)g_demo_control.pcm_decode_mode) != PCM_TRANSPORT_OK) return;
+  /* R26.4: keep all signed 24 bits through gain calculation.  The old
+   * LOW24 >>8 was reducing an observed ~800-code telecoil sample to 3.
+   * The DSP sees continuous S16 with headroom; no sample threshold/gate. */
+  if (s_tc24_level_reset_requested) {
+    s_tc24_level_reset_requested = 0U;
+    TcS24Recovery_Init(&s_tc24_level);
+  }
+  if (s_tc_pcm_decode_mode == PCM_DECODE_LOW24 && s_tc24_level_enabled) {
+    TcS24Recovery_SetCap(&s_tc24_level,s_tc24_level_cap_q16);
+    if (!TcS24Recovery_Process(&s_tc24_level, words, DEMO_FRAMES_PER_HALF,
+                                g_left, g_right)) return;
+  } else {
+    if (PcmTransport_DecodeStereoWordsMode(words, DEMO_FRAMES_PER_HALF, g_left, g_right,
+                             (PcmTransportDecodeMode_t)s_tc_pcm_decode_mode) != PCM_TRANSPORT_OK) return;
+  }
   listen_capture_append(RAW_CAPTURE_SOURCE_TC, g_left, g_right, DEMO_FRAMES_PER_HALF);
   metrics_s16(g_left, DEMO_FRAMES_PER_HALF, &lrms, NULL, NULL);
   metrics_s16(g_right, DEMO_FRAMES_PER_HALF, &rrms, NULL, NULL);
+  s_tc_last_left_rms=lrms;
+  s_tc_last_right_rms=rrms;
 
   if (g_demo_control.direct_source != DEMO_DIRECT_OFF) {
     if (g_demo_control.direct_source == DEMO_DIRECT_TC) {
@@ -1786,19 +2134,53 @@ static void process_tc_words(const uint32_t *words, uint32_t now)
     return;
   }
 
-  for (size_t i = 0U; i < DEMO_FRAMES_PER_HALF; ++i) g_mono[i] = Audio_MixStereoToMono(g_left[i], g_right[i]);
+  /* On a damaged channel, an average can halve signal or cancel inverted
+   * samples. Auto preserves the stronger genuine channel where appropriate. */
+  uint32_t tc_channel=s_tc_channel_mode;
+  if (tc_channel==0U) {
+    uint32_t candidate=3U;
+    int64_t correlation=0;
+    for(size_t i=0U;i<DEMO_FRAMES_PER_HALF;++i)
+      correlation+=(int64_t)g_left[i]*(int64_t)g_right[i];
+    if(correlation<0)candidate=(lrms>=rrms)?1U:2U;
+    else if((uint64_t)lrms>(uint64_t)rrms*2ULL+16ULL)candidate=1U;
+    else if((uint64_t)rrms>(uint64_t)lrms*2ULL+16ULL)candidate=2U;
+    if(candidate!=s_tc_candidate_channel){s_tc_candidate_channel=candidate;s_tc_candidate_blocks=0U;}
+    else if(s_tc_candidate_blocks<96U)s_tc_candidate_blocks++;
+    /* Hold 256 ms before any channel change; silence cannot flip routing. */
+    if(s_tc_candidate_blocks>=96U && (lrms>32U || rrms>32U))s_tc_auto_channel=candidate;
+    tc_channel=s_tc_auto_channel;
+  }
+  for(size_t i=0U;i<DEMO_FRAMES_PER_HALF;++i){
+    g_mono[i]=(tc_channel==1U)?g_left[i]:
+              (tc_channel==2U)?g_right[i]:
+              Audio_MixStereoToMono(g_left[i],g_right[i]);
+  }
+  TcHumCal_Feed(&s_tc_hum_cal,g_mono,DEMO_FRAMES_PER_HALF);
   process_tc_pcm(g_mono, now);
+}
+
+/* Two independent input receivers, even though SAI1A generates both PCM1808
+ * clock sets: bit0=SAI1A master, bit1=SAI2A telecoil. */
+static uint32_t dma_desired_topology(void)
+{
+  if(!g_demo_control.audio_capture_enabled || g_demo_control.test_tone_step!=0U)
+    return 0U;
+  if(g_demo_control.requested_source_mode==DEMO_MODE_MIC_ONLY &&
+     g_demo_control.direct_source==DEMO_DIRECT_OFF) return 0U;
+  if(g_demo_control.requested_source_mode==DEMO_MODE_OFF &&
+     g_demo_control.direct_source==DEMO_DIRECT_OFF) return 0U;
+  if(g_demo_control.requested_source_mode==DEMO_MODE_BT_ONLY ||
+     g_demo_control.direct_source==DEMO_DIRECT_BT) return 1U;
+  return 3U; /* TC / AUTO / direct TC require the SAI1A master AND SAI2A */
 }
 
 static HAL_StatusTypeDef start_dma(void)
 {
   HAL_StatusTypeDef a = HAL_OK, b = HAL_OK, c = HAL_OK;
-  const bool tone_only = (g_demo_control.test_tone_step != 0U);
-  /* SAI1A is the physical master timing source shared by both PCM1808s.
-   * Keep its RX DMA running for telecoil-only capture: otherwise the SAI1
-   * clock generator stops and SAI2A synchronous slave cannot receive. */
-  const bool need_bt = !tone_only;
-  const bool need_tc = (!tone_only && g_demo_control.direct_source != DEMO_DIRECT_BT);
+  const uint32_t topology=dma_desired_topology();
+  const bool need_bt=(topology&1U)!=0U;
+  const bool need_tc=(topology&2U)!=0U;
 
   if (g_dma_started) return HAL_OK;
   memset(g_bt_dma_words, 0, sizeof(g_bt_dma_words));
@@ -1827,15 +2209,22 @@ static HAL_StatusTypeDef start_dma(void)
    * interrupts while judging raw audio quality. */
   if (need_bt) {
     a = HAL_SAI_Receive_DMA(&hsai_BlockA1, (uint8_t *)g_bt_dma_words, DEMO_DMA_WORDS);
+    s_bt_last_start_status=(uint32_t)a;
     if (a == HAL_OK) g_bt_dma_started = 1U;
   }
   if (need_tc) {
     b = HAL_SAI_Receive_DMA(&hsai_BlockA2, (uint8_t *)g_tc_dma_words, DEMO_DMA_WORDS);
+    s_tc_last_start_status=(uint32_t)b;
     if (b == HAL_OK) g_tc_dma_started = 1U;
   }
 
-  if (a == HAL_OK && b == HAL_OK && c == HAL_OK) {
+  /* Partial-input operation: a missing PCM1808 must not silence the speaker
+   * or an independent input. AudioTask reports the counters for diagnosis. */
+  if(a!=HAL_OK && need_bt) ++g_demo_diag.sai1_errors;
+  if(b!=HAL_OK && need_tc) ++g_demo_diag.sai2_errors;
+  if(c==HAL_OK && ((!need_bt && !need_tc) || g_bt_dma_started || g_tc_dma_started)) {
     g_dma_started = 1U;
+    g_dma_topology_mask=topology; /* record requested topology; avoid retry storms if one input fails */
     g_demo_diag.audio_dma_running = (g_bt_dma_started || g_tc_dma_started) ? 1U : 0U;
     return HAL_OK;
   }
@@ -1844,6 +2233,7 @@ static HAL_StatusTypeDef start_dma(void)
   if (g_tc_dma_started) (void)HAL_SAI_DMAStop(&hsai_BlockA2);
   if (g_speaker_dma_started) (void)SpeakerOutput_StopDma();
   g_bt_dma_started = g_tc_dma_started = g_speaker_dma_started = 0U;
+  g_dma_topology_mask=0U;
   g_demo_diag.audio_dma_running = 0U;
   g_demo_diag.speaker_dma_running = 0U;
   return (a != HAL_OK) ? a : ((b != HAL_OK) ? b : c);
@@ -1858,6 +2248,7 @@ static void stop_dma(void)
   memset(g_speaker_tx_dma, 0, sizeof(g_speaker_tx_dma));
   g_bt_dma_started = g_tc_dma_started = g_speaker_dma_started = 0U;
   g_dma_started = 0U;
+  g_dma_topology_mask=0U;
   g_r262_hd_valid = 0U;
   g_demo_diag.audio_dma_running = 0U;
   g_demo_diag.speaker_dma_running = 0U;
@@ -1896,6 +2287,17 @@ static void poll_bt_uart(void)
     if (c == '\r' || c == '\n') {
       if (g_bt_line_len > 0U) {
         g_bt_line[g_bt_line_len] = '\0';
+        s_bt_last_rx_ms=HAL_GetTick();
+        if (g_bt_line_len>=5U && g_bt_line[0]=='T' && g_bt_line[1]=='S' && g_bt_line[2]=='+') {
+          if(g_bt_line[3]=='0' && g_bt_line[4]=='0')s_bt_status_code=1U;
+          else if(g_bt_line[3]=='0' && g_bt_line[4]=='1')s_bt_status_code=2U;
+          else if(g_bt_line[3]=='0' && g_bt_line[4]=='2')s_bt_status_code=3U;
+        }
+        /* Module responses matter for distinguishing UART failure, unpaired
+         * Bluetooth, and working Bluetooth with a silent PCM analogue path. */
+        console_write("G1|BT|RX|");
+        console_write(g_bt_line);
+        console_write("\r\n");
         g_bt_line_len = 0U;
         g_demo_diag.bt_uart_lines++;
       }
@@ -1958,7 +2360,7 @@ static void print_test_result(const char *name, uint32_t r)
   else console_write("FAIL\r\n");
 }
 
-static void test_all(void)
+static void __attribute__((unused)) test_all(void)
 {
   uint32_t c, r, d, a, b, o, mask = 0U;
   g_demo_diag.selftest_runs++;
@@ -2353,7 +2755,7 @@ static void group_print_status(void)
 }
 /* Nucleo-L476RG B1 is PC13, active-low.  NOT valid for arbitrary custom PCB.
  * Poll from low-rate ControlTask; never start a separate scheduler/ISR here. */
-#define GROUP_NUCLEO_B1_ENABLED 1
+#define GROUP_NUCLEO_B1_ENABLED 0
 static void group_button_init(void)
 {
 #if GROUP_NUCLEO_B1_ENABLED
@@ -2413,6 +2815,320 @@ static void group_button_poll(uint32_t now)
   (void)now;
 #endif
 }
+/* Standalone product controls: no USART/PC host needed.
+ * Pad functions are a firmware mapping; user-panel artwork/electrode order
+ * must match the routed copper electrodes before release. */
+/* Small bounded adaptive preference learner: explicit user volume corrections
+ * are labels; amplitude and zero-crossing spectrum define the context.
+ * No autonomous unbounded gain increases, model is RAM-only. */
+static void product_apply_preference(void)
+{
+  int32_t gain=(int32_t)s_user_gain_q15;
+  if (s_pref_enabled) {
+    int32_t db_q8=G1Pref_Get(&s_product_preferences,
+      (G1PrefAmplitude)s_pref_amp,(G1PrefSpectrum)s_pref_spectrum);
+    /* First-order dB-to-gain approximation for only [-6,+3] dB.
+     * Never exceeds the bounded UI gain; actual ear SPL is uncalibrated. */
+    gain+=(gain*db_q8*3)/(256*25);
+  }
+  if (gain<0)gain=0;
+  if (gain>(int32_t)G1_OUTPUT_MAX_Q15)gain=(int32_t)G1_OUTPUT_MAX_Q15;
+  g_demo_control.output_gain_q15=(uint32_t)gain;
+}
+/* One ControlTask-owned state machine. Every physical electrode, rotary detent
+ * and normal UART action uses this same codepath; log actual state changes,
+ * never claim a hardware source is present just because it was selected. */
+static void r10_snapshot(const char *tag)
+{
+  /* REAL counters only. No mock/pass flags: changes over time matter.
+   * Emitted from ControlTask, not inside high-frequency audio DMA ISRs. */
+  (void)snprintf(g_r21_line,sizeof(g_r21_line),
+    "G1|%s|ms=%lu|source=%s|active=%lu|mute=%lu|vol=%lu|out=%lu|mic_run=%lu|micblk=%lu|micpeak=%lu|micerr=%lu|touch=%lu|addr=0x%02lX|raw=0x%03lX|tread=%lu|terr=%lu|encirq=%lu|encpoll=%lu|det=%lu|bt_uart_rx=%lu|bt_pcm=%lu|bt_rms=%lu|tc_pcm=%lu|tc_rms=%lu|spk_dma=%lu|spkblk=%lu|under=%lu|err=0x%lX\r\n",
+    tag,(unsigned long)HAL_GetTick(),G1Ui_SourceName(s_product_ui.source),
+    (unsigned long)g_demo_diag.active_source,(unsigned long)s_product_ui.muted,
+    (unsigned long)G1Ui_Percent(&s_product_ui),(unsigned long)g_demo_control.output_enabled,
+    (unsigned long)g_g1_board.mic_running,(unsigned long)g_g1_board.mic_blocks,
+    (unsigned long)g_g1_board.mic_peak,(unsigned long)g_g1_board.mic_errors,
+    (unsigned long)g_g1_board.touch_present,(unsigned long)g_g1_board.touch_address,
+    (unsigned long)g_g1_board.touch_raw,(unsigned long)g_g1_board.touch_reads,
+    (unsigned long)g_g1_board.touch_errors,(unsigned long)g_g1_board.encoder_irq_edges,
+    (unsigned long)g_g1_board.encoder_poll_edges,(unsigned long)g_g1_board.encoder_detents,
+    (unsigned long)g_demo_diag.bt_uart_rx_bytes,(unsigned long)g_demo_diag.bt_blocks_processed,
+    (unsigned long)g_demo_diag.bt_rms,(unsigned long)g_demo_diag.tc_blocks_processed,
+    (unsigned long)g_demo_diag.tc_rms,(unsigned long)g_demo_diag.speaker_dma_running,
+    (unsigned long)g_demo_diag.speaker_blocks_output,(unsigned long)g_demo_diag.speaker_underruns,
+    (unsigned long)g_demo_diag.error_code);
+  console_write(g_r21_line);
+}
+
+static void r10_hardware_report(void)
+{
+  uint32_t a = (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_0)==GPIO_PIN_SET)?1U:0U;
+  uint32_t b = (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_1)==GPIO_PIN_SET)?1U:0U;
+  uint32_t scl = (HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_6)==GPIO_PIN_SET)?1U:0U;
+  uint32_t sda = (HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_7)==GPIO_PIN_SET)?1U:0U;
+  (void)snprintf(g_r21_line,sizeof(g_r21_line),
+    "G1|PINS|encA=%lu|encB=%lu|scl=%lu|sda=%lu|touch_ack=%lu|addr=0x%02lX|mic_ready=%lu|mic_running=%lu|initerr=0x%lX\r\n",
+    (unsigned long)a,(unsigned long)b,(unsigned long)scl,(unsigned long)sda,
+    (unsigned long)g_g1_board.touch_present,(unsigned long)g_g1_board.touch_address,
+    (unsigned long)g_g1_board.mic_ready,(unsigned long)g_g1_board.mic_running,
+    (unsigned long)g_g1_board.init_error_bits);
+  console_write(g_r21_line);
+}
+
+static void product_ui_status(void)
+{
+  (void)snprintf(g_r21_line,sizeof(g_r21_line),
+    "G1|UI|STATUS|source=%s|mode=%lu|mute=%lu|volume_pct=%lu|gain_q15=%lu|dsp=%lu|adaptive=%lu|active=%lu|touch=%lu|micblocks=%lu|btblocks=%lu|tcblocks=%lu|speaker=%lu|initerr=%lu\r\n",
+    G1Ui_SourceName(s_product_ui.source),
+    (unsigned long)g_demo_control.requested_source_mode,
+    (unsigned long)s_product_ui.muted,
+    (unsigned long)G1Ui_Percent(&s_product_ui),
+    (unsigned long)g_demo_control.output_gain_q15,
+    (unsigned long)s_product_ui.dsp,
+    (unsigned long)s_product_ui.adaptive,
+    (unsigned long)g_demo_diag.active_source,
+    (unsigned long)g_g1_board.touch_present,
+    (unsigned long)g_g1_board.mic_blocks,
+    (unsigned long)g_demo_diag.bt_blocks_processed,
+    (unsigned long)g_demo_diag.tc_blocks_processed,
+    (unsigned long)g_demo_diag.speaker_blocks_output,
+    (unsigned long)g_g1_board.init_error_bits);
+  console_write(g_r21_line);
+}
+static void product_ui_report(const char *via,const char *field,const char *value)
+{
+  (void)snprintf(g_r21_line,sizeof(g_r21_line),
+    "G1|EVENT|via=%s|field=%s|value=%s|source=%s|mute=%lu|volume_pct=%lu|gain_q15=%lu\r\n",
+    via,field,value,G1Ui_SourceName(s_product_ui.source),
+    (unsigned long)s_product_ui.muted,
+    (unsigned long)G1Ui_Percent(&s_product_ui),
+    (unsigned long)g_demo_control.output_gain_q15);
+  console_write(g_r21_line);
+}
+static void product_ui_commit(uint32_t changed,const char *via,int user_gain_direction)
+{
+  if(changed&G1_UI_SOURCE_CHANGED){
+    if(g_demo_control.direct_source!=DEMO_DIRECT_OFF){
+      /* AudioTask alone is allowed to stop/restart DMA and FSM. */
+      g_demo_control.direct_source=DEMO_DIRECT_OFF;
+      g_r28_route_restart_pending=1U;
+    }
+    g_demo_control.requested_source_mode=s_product_ui.source;
+    /* A new TC visit learns the interference from the new physical session.
+     * Reset is consumed later by AudioTask, which owns the DSP state. */
+    s_tc_filter_reset_requested=1U;
+    /* Do not attempt undocumented AVRCP absolute-volume control of phones.
+     * 100% means local bounded digital gain, not acoustic full-power. */
+    /* AudioTask is the only DMA owner; force a fresh capture configuration
+     * whenever the user changes source, including MIC->BT/TC and BT->MIC. */
+    g_r28_route_restart_pending=1U;
+    g_demo_control.audio_capture_enabled=1U;
+    g_demo_control.test_tone_step=0U;
+    s_test_saved_valid=0U; /* source tap cancels any active bench signal */
+  }
+  if(changed&G1_UI_GAIN_CHANGED){
+    s_user_gain_q15=s_product_ui.gain_q15;
+    if(s_pref_enabled && user_gain_direction!=0){
+      (void)G1Pref_Feedback(&s_product_preferences,
+        (G1PrefAmplitude)s_pref_amp,(G1PrefSpectrum)s_pref_spectrum,
+        user_gain_direction>0?G1_PREF_INCREASE:G1_PREF_DECREASE);
+    }
+  }
+  if(changed&G1_UI_DSP_CHANGED)g_demo_control.dsp_enabled=s_product_ui.dsp;
+  if(changed&G1_UI_PREF_CHANGED)s_pref_enabled=s_product_ui.adaptive;
+  if(changed&(G1_UI_GAIN_CHANGED|G1_UI_PREF_CHANGED))product_apply_preference();
+  if(changed&(G1_UI_SOURCE_CHANGED|G1_UI_MUTE_CHANGED)){
+    /* Output OFF is separate from zero volume; SOURCE OFF also gates output. */
+    g_demo_control.output_enabled=(uint32_t)(!s_product_ui.muted && s_product_ui.source!=G1_UI_OFF);
+  }
+  if(changed&G1_UI_SOURCE_CHANGED){
+    switch(s_product_ui.source){
+      case G1_UI_MIC:DhaFeedback_Request(DHA_CUE_MIC);break;
+      case G1_UI_BT:DhaFeedback_Request(DHA_CUE_BT);break;
+      case G1_UI_TC:DhaFeedback_Request(DHA_CUE_TC);break;
+      default:break;
+    }
+    product_ui_report(via,"source",G1Ui_SourceName(s_product_ui.source));
+  }
+  if(changed&G1_UI_MUTE_CHANGED){
+    DhaFeedback_Request(s_product_ui.muted?DHA_CUE_MUTE:DHA_CUE_UNMUTE);
+    product_ui_report(via,"mute",s_product_ui.muted?"ON":"OFF");
+  }
+  if(changed&G1_UI_SPATIAL_CHANGED){
+    DhaEffects_SetRoom(s_product_ui.spatial);
+    DhaFeedback_Request(s_product_ui.spatial?DHA_CUE_SPATIAL_ON:DHA_CUE_SPATIAL_OFF);
+    product_ui_report(via,"room",s_product_ui.spatial?"ON":"OFF");
+  }
+  if(changed&G1_UI_NOISE_CHANGED){
+    DhaEffects_SetNoiseReduction(s_product_ui.noise_reduce);
+    DhaFeedback_Request(s_product_ui.noise_reduce?DHA_CUE_NR_ON:DHA_CUE_NR_OFF);
+    product_ui_report(via,"mic_rumble_filter",s_product_ui.noise_reduce?"ON":"OFF");
+  }
+  if(changed&G1_UI_GAIN_CHANGED){
+    char number[12];
+    (void)snprintf(number,sizeof(number),"%lu",(unsigned long)G1Ui_Percent(&s_product_ui));
+    product_ui_report(via,"volume_pct",number);
+  }
+  if(changed&G1_UI_DSP_CHANGED)product_ui_report(via,"dsp",s_product_ui.dsp?"ON":"OFF");
+  if(changed&G1_UI_PREF_CHANGED)product_ui_report(via,"adaptive",s_product_ui.adaptive?"ON":"OFF");
+}
+/* Four physical pads E8..E11 only: these are long-press functions,
+ * not fictional new electrodes. Never synthesise maximum acoustic power. */
+static void qr_test_select(uint8_t requested)
+{
+  uint8_t previous=(uint8_t)g_demo_control.test_tone_step;
+  if(s_qr_sleep.asleep)return;
+  if(requested==previous)requested=0U; /* press again to stop */
+  if(requested!=0U) DhaFeedback_ClearPending(); /* no stale cues over test stimulus */
+  if(requested!=0U && !s_test_saved_valid){
+    s_test_saved_muted=s_product_ui.muted;
+    s_test_saved_source=s_product_ui.source;
+    s_test_saved_valid=1U;
+  }
+  if(requested!=0U){
+    (void)G1Ui_Command(&s_product_ui,"MUTE OFF");
+    g_demo_control.output_enabled=1U;
+    g_demo_control.audio_capture_enabled=1U; /* speaker-only topology */
+    g_demo_control.direct_source=DEMO_DIRECT_OFF;
+  } else if(s_test_saved_valid){
+    s_product_ui.muted=s_test_saved_muted;
+    s_product_ui.source=s_test_saved_source;
+    g_demo_control.requested_source_mode=s_product_ui.source;
+    g_demo_control.output_enabled=(uint32_t)(!s_product_ui.muted && s_product_ui.source!=G1_UI_OFF);
+    s_test_saved_valid=0U;
+  }
+  g_demo_control.test_tone_step=requested;
+  g_demo_diag.test_tone_hz=requested==1U?1000U:requested==4U?250U:requested*1000U;
+  g_r28_route_restart_pending=1U; /* AudioTask rebuilds correct DMA topology */
+}
+static void qr_sleep_enter(void)
+{
+  if(s_qr_sleep.asleep)return;
+  if(g_demo_control.test_tone_step)qr_test_select(0U);
+  DhaFeedback_ClearPending();
+  QrSleep_Enter(&s_qr_sleep);
+  s_audio_sleep_active=1U; /* immediately silence the ISR independent of AudioTask */
+  g_demo_control.test_tone_step=0U;
+  g_demo_diag.test_tone_hz=0U;
+  g_demo_control.output_enabled=0U;
+  g_demo_control.audio_capture_enabled=0U;
+  g_demo_control.requested_source_mode=DEMO_MODE_OFF;
+  g_demo_control.direct_source=DEMO_DIRECT_OFF;
+  s_bt_sleep_transition=1U; /* BtTask: disconnect + disable Bluetooth audio/EDR */
+}
+static void qr_sleep_wake(void)
+{
+  /* Called only after the MPR121 proximity signal is clear then stable-high. */
+  s_audio_sleep_active=0U;
+  g_demo_control.requested_source_mode=s_product_ui.source;
+  g_demo_control.audio_capture_enabled=1U;
+  g_demo_control.output_enabled=(uint32_t)(!s_product_ui.muted && s_product_ui.source!=G1_UI_OFF);
+  g_r28_route_restart_pending=1U;
+  s_tc_filter_reset_requested=1U;
+  s_bt_sleep_transition=2U; /* BtTask: restore Bluetooth mode and discovery */
+}
+
+static void product_ui_poll(uint32_t now)
+{
+  G1PhysicalInput event;
+  G1_BoardPoll(now,&event); /* must keep I2C1 alive during logical sleep */
+  static uint8_t last_proximity=2U;
+  uint8_t proximity=(uint8_t)(g_g1_board.touch_proximity!=0U);
+  uint8_t present=(uint8_t)(g_g1_board.touch_present!=0U);
+  if(present){
+    if(last_proximity!=proximity){
+      last_proximity=proximity;
+      product_ui_report("MPR121","proximity",proximity?"DETECTED":"CLEAR");
+    }
+  }else last_proximity=2U;
+  static uint8_t last_touch_state=2U;
+  if(present!=last_touch_state){
+    last_touch_state=present;
+    product_ui_report("HARDWARE","touch",present?"READY":"MISSING");
+  }
+  if(s_qr_sleep.asleep){
+    if(QrSleep_Update(&s_qr_sleep,present,proximity,now)){
+      qr_sleep_wake();
+      product_ui_report("MPR121","sleep","WOKE_ON_PROXIMITY");
+    }
+    return; /* encoder and every pad intentionally ignored */
+  }
+  /* Combined E8+E11 long press forces logical sleep; proximity wakes. */
+  static uint32_t sleep_chord_since=0U;
+  static uint8_t sleep_chord_original_source=G1_UI_MIC;
+  uint16_t held=(uint16_t)(g_g1_board.touch_raw&0x0F00U);
+  if((held&((1U<<8)|(1U<<11)))==((1U<<8)|(1U<<11))){
+    if(!sleep_chord_since){
+      sleep_chord_since=now;
+      sleep_chord_original_source=s_product_ui.source;
+    }
+    if((uint32_t)(now-sleep_chord_since)>=1500U){
+      /* Undo incidental source changes from the two-pad sleep gesture. */
+      s_product_ui.source=sleep_chord_original_source;
+      qr_sleep_enter();
+      sleep_chord_since=0U;
+      product_ui_report("TOUCH_HOLD","sleep","ON");
+      return;
+    }
+  }else sleep_chord_since=0U;
+  if((uint32_t)(now-s_last_observed_ms)>=500U){
+    s_last_observed_ms=now;
+    (void)G1Pref_Observe(&s_product_preferences,
+      (G1PrefAmplitude)s_pref_amp,(G1PrefSpectrum)s_pref_spectrum);
+    product_apply_preference();
+  }
+  if(event.encoder_clicks){
+    uint32_t changed=G1Ui_Encoder(&s_product_ui,(int)event.encoder_clicks);
+    product_ui_commit(changed,"ENCODER",(int)event.encoder_clicks);
+  }
+  /* E8 hold: spatial; E11 hold: microphone rumble reduction.
+   * Chord must not fire either single-key long action. */
+  static uint32_t long_since=0U;
+  static uint16_t long_key=0U;
+  static uint8_t long_fired=0U;
+  uint16_t spatial_held=held&((1U<<8)|(1U<<11));
+  if(spatial_held!=long_key){long_key=spatial_held;long_since=now;long_fired=0U;}
+  if((spatial_held==(1U<<8)||spatial_held==(1U<<11)) && !long_fired &&
+      (uint32_t)(now-long_since)>=1000U){
+    long_fired=1U;
+    product_ui_commit(G1Ui_Command(&s_product_ui,
+        spatial_held==(1U<<8)?"SPATIAL TOGGLE":"NOISE TOGGLE"),"TOUCH_HOLD",0);
+  }
+  /* E9: tap TC, hold 1 s toggles 1 kHz bench tone.
+   * E10: tap mute, hold 1 s toggles repeating chirp.
+   * Defer E10's short action until release, preventing a mute transient
+   * immediately before a chirp request. */
+  static uint32_t tc_down=0U,mute_down=0U;
+  static uint8_t tc_long=0U,mute_long=0U;
+  if((held&(1U<<9))){
+    if(!tc_down){tc_down=now;tc_long=0U;}
+    if(!tc_long && (uint32_t)(now-tc_down)>=1000U){
+      tc_long=1U;qr_test_select(1U);
+      product_ui_report("TOUCH_HOLD","test","1KHZ_TOGGLE");
+    }
+  }else tc_down=0U;
+  if(held&(1U<<10)){
+    if(!mute_down){mute_down=now;mute_long=0U;}
+    if(!mute_long && (uint32_t)(now-mute_down)>=1000U){
+      mute_long=1U;qr_test_select(4U);
+      product_ui_report("TOUCH_HOLD","test","CHIRP_TOGGLE");
+    }
+  }else if(mute_down){
+    if(!mute_long){
+      product_ui_commit(G1Ui_Touch(&s_product_ui,(uint16_t)(1U<<10)),"TOUCH",0);
+    }
+    mute_down=0U;
+  }
+  uint16_t e=event.touch_rising & (uint16_t)~(1U<<10);
+  if(!e)return;
+  (void)snprintf(g_r21_line,sizeof(g_r21_line),
+    "G1|INPUT|via=TOUCH|rising=0x%03X\r\n",(unsigned)e);
+  console_write(g_r21_line);
+  uint32_t changed=G1Ui_Touch(&s_product_ui,e);
+  product_ui_commit(changed,"TOUCH",0);
+}
+
 /* AUDIO TASK ONLY — group control-plane handoff and optional DSP governor.
  * This function applies queued requests at the audio task boundary. Do not
  * call it from a UART callback or another RTOS task: GroupFeatures and
@@ -2532,8 +3248,8 @@ static bool r25_process_short_command(const char *line)
   if (line_eq(line, "!SP")) { r21_scope(); return true; }
   if (line_eq(line, "!SH")) { r262_scope_hd(); return true; }
   if (line_eq(line, "!DP")) { r27_scope_dual(); return true; }
-  if (line_eq(line, "!TN")) { g_r27_tc_clean_enabled=1U; TcCleanup_Reset(&g_r27_tc_filter); console_write("R27|TC_CLEAN|PASS|enabled=1\r\n"); return true; }
-  if (line_eq(line, "!TF")) { g_r27_tc_clean_enabled=0U; TcCleanup_Reset(&g_r27_tc_filter); console_write("R27|TC_CLEAN|PASS|enabled=0\r\n"); return true; }
+  if (line_eq(line, "!TN")) { g_r27_tc_clean_enabled=1U; s_tc_filter_reset_requested=1U; console_write("R27|TC_CLEAN|PASS|enabled=1\r\n"); return true; }
+  if (line_eq(line, "!TF")) { g_r27_tc_clean_enabled=0U; s_tc_filter_reset_requested=1U; console_write("R27|TC_CLEAN|PASS|enabled=0\r\n"); return true; }
   if (line_eq(line, "!DG")) { r21_diag(); return true; }
   if (line_eq(line, "!FA")) { r28_real_route_arm(); return true; }
   if (line_eq(line, "!FK")) {
@@ -2711,13 +3427,12 @@ static void r28_real_route_arm(void)
 {
   g_demo_control.test_tone_step = 0U;
   g_demo_control.bt_link_mode = DEMO_BTLINK_AUTO;
-  g_demo_control.requested_source_mode = DEMO_MODE_AUTO;
+  product_ui_commit(G1Ui_Command(&s_product_ui,"SOURCE AUTO"),"SERIAL",0);
   g_demo_control.direct_source = DEMO_DIRECT_OFF;
   g_demo_control.audio_capture_enabled = 1U;
-  g_demo_control.output_enabled = 1U;
+  g_demo_control.output_enabled = (uint32_t)!s_product_ui.muted;
   g_demo_control.plot_enabled = 0U;
-  g_demo_control.dsp_enabled = 0U; /* preserve proven BT; TC cleanup stays active */
-  g_demo_control.output_gain_q15 = 16384U;
+  /* Preserve user DSP and safe volume settings across mode changes. */
   /* Do not reset ConnectivityService from ControlTask while AudioTask is
    * accessing it. This flag requests a clean REAL FSM session owned by the
    * audio task. Both actual ADCs must qualify their real samples anew. */
@@ -3073,6 +3788,444 @@ static bool r21_process_command(const char *line)
 
 static void process_console_line(char *line)
 {
+  /* The production commands and touch/encoder use exactly one state machine.
+   * Legacy diagnostic commands remain below for expert bench use. */
+  if(line_eq(line,"UI STATUS") || line_eq(line,"PRODUCT STATUS")){
+    product_ui_status();++g_demo_diag.console_commands_ok;return;
+  }
+  if(line_eq(line,"WATCH ON")) {s_r10_watch_enabled=1U; console_write("G1|ACK|WATCH|ON|period_ms=1000\r\n");return;}
+  if(line_eq(line,"WATCH OFF")) {s_r10_watch_enabled=0U; console_write("G1|ACK|WATCH|OFF\r\n");return;}
+  if(line_eq(line,"WATCH NOW")||line_eq(line,"DIAG ALL")||line_eq(line,"SYSTEM CHECK")) {
+    r10_snapshot("SNAP");r10_hardware_report();
+    console_write("G1|DIAG|EXPECT|encirq_or_encpoll_increments|touch_ack_and_tread_increment|micblk_increments_in_MIC_mode|bt_uart_rx_only_if_module_responds|bt_pcm_requires_audio|spkblk_requires_output|no_automatic_PASS\r\n");
+    return;
+  }
+  if(line_eq(line,"PINS")) {r10_hardware_report();return;}
+  if(line_eq(line,"BOARD REG") || line_eq(line,"GPIO REG")) {
+    (void)snprintf(g_r21_line,sizeof(g_r21_line),
+      "G1|REG|pa_moder=0x%08lX|pa_pupdr=0x%08lX|pa_idr=0x%08lX|pb_moder=0x%08lX|pb_pupdr=0x%08lX|pb_idr=0x%08lX|pc_moder=0x%08lX|pc_idr=0x%08lX\r\n",
+      (unsigned long)GPIOA->MODER,(unsigned long)GPIOA->PUPDR,
+      (unsigned long)GPIOA->IDR,(unsigned long)GPIOB->MODER,
+      (unsigned long)GPIOB->PUPDR,(unsigned long)GPIOB->IDR,
+      (unsigned long)GPIOC->MODER,(unsigned long)GPIOC->IDR);
+    console_write(g_r21_line);return;
+  }
+  if(line_eq(line,"MIC INIT") || line_eq(line,"MIC RETRY")) {
+    s_mic_reinit_request=1U;
+    console_write("G1|MIC|INIT|QUEUED|check_MIC_STATUS_after_one_second\r\n");return;
+  }
+  if(line_eq(line,"SYSTEM CHECK") || line_eq(line,"DIAG PRODUCT")) {
+    (void)snprintf(g_r21_line,sizeof(g_r21_line),
+      "G1|CHECK|mic_ready=%lu|mic_running=%lu|mic_stage=%lu|mic_blocks=%lu|mic_peak=%lu|touch_ack=%lu|touch_reads=%lu|touch_errors=%lu|enc_edges=%lu|enc_detents=%lu|bt_uart_rx=%lu|bt_audio=%lu|tc_audio=%lu|speaker_blocks=%lu|mute=%lu|source=%lu\r\n",
+      (unsigned long)g_g1_board.mic_ready,(unsigned long)g_g1_board.mic_running,
+      (unsigned long)g_g1_board.mic_init_stage,(unsigned long)g_g1_board.mic_blocks,
+      (unsigned long)g_g1_board.mic_peak,(unsigned long)g_g1_board.touch_present,
+      (unsigned long)g_g1_board.touch_reads,(unsigned long)g_g1_board.touch_errors,
+      (unsigned long)g_g1_board.encoder_irq_edges,(unsigned long)g_g1_board.encoder_detents,
+      (unsigned long)g_demo_diag.bt_uart_rx_bytes,(unsigned long)g_demo_diag.bt_blocks_processed,
+      (unsigned long)g_demo_diag.tc_blocks_processed,(unsigned long)g_demo_diag.speaker_blocks_output,
+      (unsigned long)s_product_ui.muted,(unsigned long)g_demo_control.requested_source_mode);
+    console_write(g_r21_line);return;
+  }
+  if(line_eq(line,"TOUCH RETRY") || line_eq(line,"TOUCH PROBE")) {
+    G1_TouchReprobe();
+    console_write("G1|TOUCH|REPROBE_REQUESTED|check_BOARD_RAW_for_real_ACK\r\n");
+    return;
+  }
+  if(line_eq(line,"MIC ENHANCE") || line_eq(line,"ML STATUS")) {
+    unsigned index=(unsigned)s_pref_amp*G1_PREF_SPECTRAL_BINS+(unsigned)s_pref_spectrum;
+    (void)snprintf(g_r21_line,sizeof(g_r21_line),
+      "G1|MIC|ENHANCE|agc_q12=%lu|rms=%lu|noise_rms=%lu|speech_likely=%lu|peak_limits=%lu|quiet_atten=%lu|online_learning=%lu|bucket=%u|observations=%u|feedback=%u|learned_db_q8=%d\r\n",
+      (unsigned long)s_mic_agc_q12,(unsigned long)s_mic_signal_rms,
+      (unsigned long)s_mic_noise_rms,(unsigned long)s_mic_speech_likely,
+      (unsigned long)s_mic_agc_limited,(unsigned long)s_mic_noise_attenuated,
+      (unsigned long)s_pref_enabled,index,
+      (unsigned)s_product_preferences.observations[index],
+      (unsigned)s_product_preferences.feedback_events[index],
+      (int)s_product_preferences.gain_db_q8[index]);
+    console_write(g_r21_line);return;
+  }
+  if (line_eq(line,"ML SCENE") || line_eq(line,"AMBIENT STATUS")) {
+    (void)snprintf(g_r21_line,sizeof(g_r21_line),
+      "G1|AMBIENT|rms=%lu|peak=%lu|gain_q12=%lu|floor=%lu|out_rms=%lu|limit_samples=%lu|cluster=%u|cluster_margin_pct=%u|trained_blocks=%lu|zcr=%u|preference_feedback_only=1\r\n",
+      (unsigned long)s_ambient.input_rms,(unsigned long)s_ambient.input_peak,
+      (unsigned long)s_ambient.gain_q12,(unsigned long)s_ambient.ambient_floor_rms,
+      (unsigned long)s_ambient.output_rms,(unsigned long)s_ambient.limited_samples,
+      (unsigned)s_ambient.scene_cluster,
+      (unsigned)s_ambient.learner.confidence_pct,
+      (unsigned long)s_ambient.learner.trained_blocks,
+      (unsigned)s_ambient.zero_crossings);
+    console_write(g_r21_line);return;
+  }
+  if (line_eq(line,"TC CLEAN") || line_eq(line,"TC NOISE")) {
+    (void)snprintf(g_r21_line,sizeof(g_r21_line),
+      "G1|TC|CLEAN|decode=%lu|filter=%lu|in_rms=%lu|out_rms=%lu|floor=%lu|corr_q15=%lu|gate_q12=%lu|recover_gain_q12=%lu|hold_blocks=%lu|active_blocks=%lu|idle_blocks=%lu|limited=%lu|high_rms=%lu|high_floor=%lu|low_tone_blocks=%lu|zc_hz_est=%lu|notch_hz=%lu|notch_mix_q12=%lu|notch_auto=%lu|notch_locks=%lu\r\n",
+      (unsigned long)s_tc_pcm_decode_mode,(unsigned long)g_r27_tc_clean_enabled,
+      (unsigned long)g_r27_tc_filter.last_input_rms,
+      (unsigned long)g_r27_tc_filter.last_output_rms,
+      (unsigned long)g_r27_tc_filter.noise_floor_rms,
+      (unsigned long)g_r27_tc_filter.last_corr_q15,
+      (unsigned long)(g_r27_tc_filter.gate_gain*4096.0f),
+      (unsigned long)(g_r27_tc_filter.signal_gain*4096.0f),
+      (unsigned long)g_r27_tc_filter.hold_blocks,
+      (unsigned long)g_r27_tc_filter.active_blocks,
+      (unsigned long)g_r27_tc_filter.quiet_blocks,
+      (unsigned long)g_r27_tc_filter.limiter_samples,
+      (unsigned long)g_r27_tc_filter.last_high_rms,
+      (unsigned long)g_r27_tc_filter.noise_high_rms,
+      (unsigned long)g_r27_tc_filter.low_tone_blocks,
+      (unsigned long)g_r27_tc_filter.tone_zc_hz,
+      (unsigned long)g_r27_tc_filter.notch_hz,
+      (unsigned long)(g_r27_tc_filter.notch_mix*4096.0f),
+      (unsigned long)s_tc_notch_auto_enabled,
+      (unsigned long)g_r27_tc_filter.notch_locks);
+    console_write(g_r21_line);return;
+  }
+  if(line_eq(line,"MIC STATUS")) {
+    (void)snprintf(g_r21_line,sizeof(g_r21_line),
+      "G1|MIC|STATUS|ready=%lu|running=%lu|stage=%lu|init_try=%lu|start_try=%lu|hal=%lu|initerr=0x%lX|blocks=%lu|peak=%lu|dma_error=%lu\r\n",
+      (unsigned long)g_g1_board.mic_ready,(unsigned long)g_g1_board.mic_running,
+      (unsigned long)g_g1_board.mic_init_stage,(unsigned long)g_g1_board.mic_init_attempts,
+      (unsigned long)g_g1_board.mic_start_attempts,(unsigned long)g_g1_board.mic_last_hal_status,
+      (unsigned long)g_g1_board.init_error_bits,(unsigned long)g_g1_board.mic_blocks,
+      (unsigned long)g_g1_board.mic_peak,(unsigned long)g_g1_board.mic_errors);
+    console_write(g_r21_line);return;
+  }
+  if (line_eq(line,"TC MODE") || line_eq(line,"TC CONFIG")) {
+    (void)snprintf(g_r21_line,sizeof(g_r21_line),
+      "G1|TC|CONFIG|decode=%lu|level24=%lu|cap_q16=%lu|channel=%lu|filter=%lu|rms=%lu|valid=%lu|manual_blocks=%lu\r\n",
+      (unsigned long)s_tc_pcm_decode_mode,(unsigned long)s_tc24_level_enabled,
+      (unsigned long)s_tc24_level_cap_q16,(unsigned long)s_tc_channel_mode,
+      (unsigned long)g_r27_tc_clean_enabled,(unsigned long)g_demo_diag.tc_rms,
+      (unsigned long)g_demo_diag.tc_valid,(unsigned long)s_tc_manual_pcm_blocks);
+    console_write(g_r21_line);++g_demo_diag.console_commands_ok;return;
+  }
+  /* R26.3: one-command matched decoder/conditioning trials. The task owning
+   * TcCleanup performs the reset; ControlTask only publishes desired states.
+   * SAI framing and DMA word widths are unchanged from the working R34 demo. */
+  if (line_eq(line,"TC BASELINE R34")) {
+    s_tc_pcm_decode_mode=PCM_DECODE_LOW24;
+    s_tc24_level_enabled=0U; /* literal R34 >>8 reference for comparison */
+    s_tc24_level_reset_requested=1U;
+    s_tc_channel_mode=0U;
+    g_r27_tc_clean_enabled=0U;
+    s_tc_notch_auto_enabled=0U;
+    s_tc_filter_reset_requested=1U;
+    console_write("G1|TC|BASELINE|R34|decode=LOW24|filter=OFF|notch=OFF|channel=AUTO\r\n");
+    ++g_demo_diag.console_commands_ok;return;
+  }
+  if (line_eq(line,"TC BASELINE R23")) {
+    s_tc_pcm_decode_mode=PCM_DECODE_LOW16;
+    s_tc24_level_enabled=0U;
+    s_tc24_level_reset_requested=1U;
+    s_tc_channel_mode=0U;
+    g_r27_tc_clean_enabled=0U;
+    s_tc_notch_auto_enabled=0U;
+    s_tc_filter_reset_requested=1U;
+    console_write("G1|TC|BASELINE|R23|decode=LOW16|filter=OFF|notch=OFF|channel=AUTO\r\n");
+    ++g_demo_diag.console_commands_ok;return;
+  }
+  if (line_eq(line,"TC BASELINE R264") || line_eq(line,"TC 24 RESTORE")) {
+    s_tc_pcm_decode_mode=PCM_DECODE_LOW24;
+    s_tc24_level_enabled=1U;
+    s_tc24_level_cap_q16=4U*65536U;
+    s_tc24_level_reset_requested=1U;
+    s_tc_channel_mode=0U;
+    g_r27_tc_clean_enabled=0U;
+    s_tc_notch_auto_enabled=0U;
+    s_tc_filter_reset_requested=1U;
+    console_write("G1|TC|BASELINE|R264|LOW24_RECOVER|cap=4x|gate=OFF|notch=OFF\r\n");return;
+  }
+  if (line_eq(line,"TC 24 LEVEL ON")) {s_tc_pcm_decode_mode=PCM_DECODE_LOW24;s_tc24_level_enabled=1U;s_tc24_level_reset_requested=1U;console_write("G1|TC|24|LEVEL|ON|full_precision\r\n");return;}
+  if (line_eq(line,"TC 24 LEVEL OFF")) {s_tc_pcm_decode_mode=PCM_DECODE_LOW24;s_tc24_level_enabled=0U;s_tc24_level_reset_requested=1U;console_write("G1|TC|24|LEVEL|OFF|R34_shift8\r\n");return;}
+  if (line_eq(line,"TC 24 CAP 1")) {s_tc24_level_cap_q16=65536U;console_write("G1|TC|24|CAP|1x\r\n");return;}
+  if (line_eq(line,"TC 24 CAP 2")) {s_tc24_level_cap_q16=2U*65536U;console_write("G1|TC|24|CAP|2x\r\n");return;}
+  if (line_eq(line,"TC 24 CAP 4")) {s_tc24_level_cap_q16=4U*65536U;console_write("G1|TC|24|CAP|4x\r\n");return;}
+  /* R26.6 source-OFF calibration. DO NOT expose automated programme-dependent
+   * notching: a genuine 1 kHz signal and a 1 kHz interferer are indistinguishable
+   * without a noise-only reference. */
+  if (line_eq(line,"TC HUM LEARN") || line_eq(line,"TC CAL START")) {
+    if (s_tc_hum_cal.state==TC_HUM_CAPTURE_REQUESTED ||
+        s_tc_hum_cal.state==TC_HUM_CAPTURING ||
+        s_tc_hum_cal.state==TC_HUM_ANALYSING) {
+      console_write("G1|TC|HUM|BUSY|wait_for_result\r\n");return;
+    }
+    if (g_demo_control.requested_source_mode!=DEMO_MODE_TC_ONLY &&
+        g_demo_control.requested_source_mode!=DEMO_MODE_AUTO) {
+      console_write("G1|TC|HUM|ERR|select_telecoil_first\r\n");return;
+    }
+    TcHumCal_Request(&s_tc_hum_cal);
+    console_write("G1|TC|HUM|CAPTURING|switch_induction_source_OFF_for_1second\r\n");return;
+  }
+  if (line_eq(line,"TC HUM STATUS")) {
+    (void)snprintf(g_r21_line,sizeof(g_r21_line),
+      "G1|TC|HUM|state=%lu|captured=%lu/%u|bins=%lu|hz=%lu|fraction_permille=%lu|notch=%lu|filter=%lu\r\n",
+      (unsigned long)s_tc_hum_cal.state,(unsigned long)s_tc_hum_cal.count,
+      (unsigned)TC_HUM_CAL_SAMPLES,(unsigned long)s_tc_hum_cal.bins_measured,
+      (unsigned long)s_tc_hum_cal.best_hz,(unsigned long)s_tc_hum_cal.peak_fraction_permille,
+      (unsigned long)s_tc_hum_last_hz,(unsigned long)g_r27_tc_clean_enabled);
+    console_write(g_r21_line);return;
+  }
+  if (line_eq(line,"TC HUM OFF")) {
+    s_tc_hum_apply_hz=0U;s_tc_notch_auto_enabled=0U;
+    console_write("G1|TC|HUM|OFF|fixed_notch_bypassed\r\n");return;
+  }
+  if (line_eq(line,"TC HUM ON")) {
+    if(s_tc_hum_last_hz==0U){console_write("G1|TC|HUM|ERR|calibrate_first\r\n");return;}
+    s_tc_hum_apply_hz=s_tc_hum_last_hz;
+    console_write("G1|TC|HUM|ON|stored_frequency_reapplied\r\n");return;
+  }
+  if(line[0]=='T' && line[1]=='C' && line[2]==' ' &&
+     line[3]=='H' && line[4]=='U' && line[5]=='M' && line[6]==' ' &&
+     line[7]>='0' && line[7]<='9'){
+    uint32_t hz=0U;unsigned i=7U;
+    for(;line[i]>='0' && line[i]<='9' && i<12U;++i){
+      hz=hz*10U+(uint32_t)(line[i]-'0');
+    }
+    if(line[i]!='\0' || hz<75U || hz>4500U){
+      console_write("G1|TC|HUM|ERR|use_75_to_4500_Hz\r\n");return;
+    }
+    s_tc_hum_last_hz=hz;s_tc_hum_apply_hz=hz;
+    console_write("G1|TC|HUM|MANUAL|notch_frequency_set\r\n");return;
+  }
+  if (line_eq(line,"TC 24 STATUS")) {
+    (void)snprintf(g_r21_line,sizeof(g_r21_line),"G1|TC|24|enabled=%lu|decoder=%lu|raw_lrms=%lu|raw_rrms=%lu|raw_peak=%lu|gain_q16=%lu|cap_q16=%lu|out_rms=%lu|clips=%lu|blocks=%lu\r\n",
+        (unsigned long)s_tc24_level_enabled,(unsigned long)s_tc_pcm_decode_mode,
+        (unsigned long)s_tc24_level.left_rms24,(unsigned long)s_tc24_level.right_rms24,
+        (unsigned long)s_tc24_level.max_peak24,(unsigned long)s_tc24_level.gain_q16,
+        (unsigned long)s_tc24_level.cap_q16,(unsigned long)s_tc24_level.out_rms16,
+        (unsigned long)s_tc24_level.clipped_samples,(unsigned long)s_tc24_level.processed_blocks);
+    console_write(g_r21_line);return;
+  }
+  if (line_eq(line,"TC PCM LOW24")) {s_tc_pcm_decode_mode=PCM_DECODE_LOW24;s_tc24_level_enabled=1U;s_tc24_level_reset_requested=1U;s_tc_filter_reset_requested=1U;console_write("G1|TC|PCM|LOW24_RECOVER\r\n");return;}
+  if (line_eq(line,"TC PCM UPPER16")) {s_tc_pcm_decode_mode=PCM_DECODE_UPPER16;s_tc_filter_reset_requested=1U;console_write("G1|TC|PCM|UPPER16\r\n");return;}
+  if (line_eq(line,"TC PCM MIDDLE16")) {s_tc_pcm_decode_mode=PCM_DECODE_MIDDLE16;s_tc_filter_reset_requested=1U;console_write("G1|TC|PCM|MIDDLE16\r\n");return;}
+  if (line_eq(line,"TC PCM LOW16")) {s_tc_pcm_decode_mode=PCM_DECODE_LOW16;s_tc24_level_enabled=0U;s_tc24_level_reset_requested=1U;s_tc_filter_reset_requested=1U;console_write("G1|TC|PCM|LOW16\r\n");return;}
+  if (line_eq(line,"TC FILTER OFF")) {g_r27_tc_clean_enabled=0U;s_tc_filter_reset_requested=1U;console_write("G1|TC|FILTER|OFF|raw_pcm_listen\r\n");return;}
+  if (line_eq(line,"TC FILTER ON")) {g_r27_tc_clean_enabled=1U;s_tc_filter_reset_requested=1U;console_write("G1|TC|FILTER|ON|continuous_no_gate\r\n");return;}
+  if (line_eq(line,"TC NOTCH OFF")) {s_tc_notch_auto_enabled=0U;s_tc_hum_apply_hz=0U;console_write("G1|TC|NOTCH|OFF|speech_filter_only\r\n");return;}
+  if (line_eq(line,"TC NOTCH AUTO")) {console_write("G1|TC|NOTCH|DISABLED|use_TC_HUM_LEARN_with_source_off\r\n");return;}
+  if (line_eq(line,"TC CHANNEL AUTO")) {s_tc_channel_mode=0U;console_write("G1|TC|CHANNEL|AUTO\r\n");return;}
+  if (line_eq(line,"TC CHANNEL LEFT")) {s_tc_channel_mode=1U;console_write("G1|TC|CHANNEL|LEFT\r\n");return;}
+  if (line_eq(line,"TC CHANNEL RIGHT")) {s_tc_channel_mode=2U;console_write("G1|TC|CHANNEL|RIGHT\r\n");return;}
+  if (line_eq(line,"TC CHANNEL MIX")) {s_tc_channel_mode=3U;console_write("G1|TC|CHANNEL|MIX\r\n");return;}
+  if (line_eq(line,"TC PROBE") || line_eq(line,"TC RAW") || line_eq(line,"TC DIAG")) {
+    const uint32_t cb=g_demo_diag.tc_half_callbacks+g_demo_diag.tc_full_callbacks;
+    const uint32_t mastercb=g_demo_diag.bt_half_callbacks+g_demo_diag.bt_full_callbacks;
+    const uint32_t cndtr=(hsai_BlockA2.hdmarx && hsai_BlockA2.hdmarx->Instance)?
+        hsai_BlockA2.hdmarx->Instance->CNDTR:0U;
+    const uint32_t dmaccr=(hsai_BlockA2.hdmarx && hsai_BlockA2.hdmarx->Instance)?
+        hsai_BlockA2.hdmarx->Instance->CCR:0U;
+    (void)snprintf(g_r21_line,sizeof(g_r21_line),
+      "G1|TC|BUS|cb=%lu|master_cb=%lu|raw_updates=%lu|last_ms=%lu|dma_left=%lu|dma_ccr=0x%08lX|sai2_cr1=0x%08lX|sai2_sr=0x%08lX|sai1_cr1=0x%08lX|sai1_sync=0x%08lX|sai2_sync=0x%08lX|halerr=0x%08lX|dmaerr=0x%08lX\r\n",
+      (unsigned long)cb,(unsigned long)mastercb,(unsigned long)s_tc_probe_blocks,
+      (unsigned long)s_tc_probe_last_ms,(unsigned long)cndtr,(unsigned long)dmaccr,
+      (unsigned long)SAI2_Block_A->CR1,(unsigned long)SAI2_Block_A->SR,
+      (unsigned long)SAI1_Block_A->CR1,(unsigned long)SAI1->GCR,(unsigned long)SAI2->GCR,
+      (unsigned long)HAL_SAI_GetError(&hsai_BlockA2),
+      (unsigned long)(hsai_BlockA2.hdmarx ? hsai_BlockA2.hdmarx->ErrorCode:0U));
+    console_write(g_r21_line);
+    (void)snprintf(g_r21_line,sizeof(g_r21_line),
+      "G1|TC|WORDS|nonzero=%lu/%u|varying=%lu/%u|or=0x%08lX|and=0x%08lX|w0=0x%08lX|w1=0x%08lX|w2=0x%08lX|w3=0x%08lX|actual_rms=%lu|manual_blocks=%lu\r\n",
+      (unsigned long)s_tc_probe_nonzero,(unsigned)DEMO_HALF_WORDS,
+      (unsigned long)s_tc_probe_varying,(unsigned)DEMO_HALF_WORDS,
+      (unsigned long)s_tc_probe_or,(unsigned long)s_tc_probe_and,
+      (unsigned long)s_tc_probe_first[0],(unsigned long)s_tc_probe_first[1],
+      (unsigned long)s_tc_probe_first[2],(unsigned long)s_tc_probe_first[3],
+      (unsigned long)g_demo_diag.tc_rms,(unsigned long)s_tc_manual_pcm_blocks);
+    console_write(g_r21_line);
+    (void)snprintf(g_r21_line,sizeof(g_r21_line),
+      "G1|TC|ALIGN|LOW24_L=%lu|LOW24_R=%lu|UPPER16_L=%lu|UPPER16_R=%lu|MIDDLE16_L=%lu|MIDDLE16_R=%lu|LOW16_L=%lu|LOW16_R=%lu|selected=%lu|channel=%lu|filter=%lu|valid=%lu|muted=%lu|high16_nonzero=%lu|high16_ffff=%lu|low16_jumps=%lu\r\n",
+      (unsigned long)s_tc_probe_rms[0][0],(unsigned long)s_tc_probe_rms[0][1],
+      (unsigned long)s_tc_probe_rms[1][0],(unsigned long)s_tc_probe_rms[1][1],
+      (unsigned long)s_tc_probe_rms[2][0],(unsigned long)s_tc_probe_rms[2][1],
+      (unsigned long)s_tc_probe_rms[3][0],(unsigned long)s_tc_probe_rms[3][1],
+      (unsigned long)s_tc_pcm_decode_mode,(unsigned long)s_tc_channel_mode,
+      (unsigned long)g_r27_tc_clean_enabled,(unsigned long)g_demo_diag.tc_valid,(unsigned long)s_product_ui.muted,
+      (unsigned long)s_tc_probe_hi_nonzero,(unsigned long)s_tc_probe_hi_ones,
+      (unsigned long)s_tc_probe_low16_big_jumps);
+    console_write(g_r21_line);
+    ++g_demo_diag.console_commands_ok; return;
+  }
+  if(line_eq(line,"TC RESTART")) {
+    s_tc_restart_requested=1U;
+    console_write("G1|TC|RESTART|QUEUED|master_SAI1A_then_slave_SAI2A|inspect_TC_STATUS\r\n");
+    ++g_demo_diag.console_commands_ok;return;
+  }
+  if(line_eq(line,"TC STATUS") || line_eq(line,"TC CHECK")) {
+    uint32_t mastercb=g_demo_diag.bt_half_callbacks+g_demo_diag.bt_full_callbacks;
+    uint32_t slavecb=g_demo_diag.tc_half_callbacks+g_demo_diag.tc_full_callbacks;
+    (void)snprintf(g_r21_line,sizeof(g_r21_line),
+      "G1|TC|STATUS|requested=%lu|topology=%lu|master_run=%lu|tc_run=%lu|master_cb=%lu|tc_cb=%lu|tc_blocks=%lu|left_rms=%lu|right_rms=%lu|signal_rms=%lu|pp=%lu|valid=%lu|sai1_err=%lu|sai2_err=%lu|start_bt=%lu|start_tc=%lu|sai2_hal=0x%08lX|dma_err=0x%08lX|speaker=%lu|out_blocks=%lu|decode=%lu|filter=%lu\r\n",
+      (unsigned long)g_demo_control.requested_source_mode,
+      (unsigned long)g_dma_topology_mask,
+      (unsigned long)g_bt_dma_started,(unsigned long)g_tc_dma_started,
+      (unsigned long)mastercb,(unsigned long)slavecb,
+      (unsigned long)g_demo_diag.tc_blocks_processed,
+      (unsigned long)s_tc_last_left_rms,(unsigned long)s_tc_last_right_rms,
+      (unsigned long)g_demo_diag.tc_rms,(unsigned long)g_demo_diag.tc_peak_to_peak,
+      (unsigned long)g_demo_diag.tc_valid,
+      (unsigned long)g_demo_diag.sai1_errors,(unsigned long)g_demo_diag.sai2_errors,
+      (unsigned long)s_bt_last_start_status,(unsigned long)s_tc_last_start_status,
+      (unsigned long)HAL_SAI_GetError(&hsai_BlockA2),
+      (unsigned long)((hsai_BlockA2.hdmarx != NULL) ? hsai_BlockA2.hdmarx->ErrorCode : 0UL),
+      (unsigned long)g_demo_diag.speaker_dma_running,
+      (unsigned long)g_demo_diag.speaker_blocks_output,
+      (unsigned long)s_tc_pcm_decode_mode,
+      (unsigned long)g_r27_tc_clean_enabled);
+    console_write(g_r21_line);++g_demo_diag.console_commands_ok;return;
+  }
+  if(line_eq(line,"BOOT STATUS") || line_eq(line,"POWER STATUS")) {
+    G1_BootReport();++g_demo_diag.console_commands_ok;return;
+  }
+  if(line_eq(line,"BT RAW STATUS")) {r10_snapshot("BT");return;}
+  if((line[0]=='B'||line[0]=='b') && (line[1]=='T'||line[1]=='t') && line[2]==' ' &&
+     (line[3]=='A'||line[3]=='a') && (line[4]=='T'||line[4]=='t') && line[5]==' '){
+    const char *cmd=line+6; size_t n=strlen(cmd);
+    if(n<3U || n>76U || (upper_ascii(cmd[0])!='A') ||
+       (upper_ascii(cmd[1])!='T') || s_r10_bt_at_pending) {
+       console_write("G1|ACK|BT_AT|ERR|require_AT_command_and_idle_queue\r\n");return;
+    }
+    memcpy(s_r10_bt_at_line,cmd,n);
+    s_r10_bt_at_line[n++]='\r';s_r10_bt_at_line[n++]='\n';s_r10_bt_at_line[n]='\0';
+    __DMB();s_r10_bt_at_pending=1U;
+    console_write("G1|ACK|BT_AT|QUEUED|see_BT_RX_for_actual_reply\r\n");return;
+  }
+  if(line_eq(line,"BOARD RAW") || line_eq(line,"INPUT STATUS")){
+    (void)snprintf(g_r21_line,sizeof(g_r21_line),
+      "G1|RAW|encoder=%lu|irq=%lu|bad=%lu|detents=%lu|touch=0x%03lX|addr=0x%02lX|present=%lu|reads=%lu|errors=%lu|initerr=%lu\r\n",
+      (unsigned long)g_g1_board.encoder_phase,
+      (unsigned long)g_g1_board.encoder_irq_edges,
+      (unsigned long)g_g1_board.encoder_bad_edges,
+      (unsigned long)g_g1_board.encoder_detents,
+      (unsigned long)g_g1_board.touch_raw,
+      (unsigned long)g_g1_board.touch_address,
+      (unsigned long)g_g1_board.touch_present,
+      (unsigned long)g_g1_board.touch_reads,
+      (unsigned long)g_g1_board.touch_errors,
+      (unsigned long)g_g1_board.init_error_bits);
+    console_write(g_r21_line);++g_demo_diag.console_commands_ok;return;
+  }
+  if(line_eq(line,"AUDIO PATH") || line_eq(line,"PATH STATUS")){
+    (void)snprintf(g_r21_line,sizeof(g_r21_line),
+      "G1|PATH|mode=%lu|active=%lu|mute=%lu|gain=%lu|out=%lu|mic_run=%lu|micblocks=%lu|micpeak=%lu|micerr=%lu|bt=%lu|tc=%lu|speaker_dma=%lu|speaker_blocks=%lu|spk_under=%lu|sai1err=%lu|sai2err=%lu|err=0x%08lX\r\n",
+      (unsigned long)g_demo_control.requested_source_mode,
+      (unsigned long)g_demo_diag.active_source,(unsigned long)s_product_ui.muted,
+      (unsigned long)g_demo_control.output_gain_q15,(unsigned long)g_demo_control.output_enabled,
+      (unsigned long)g_g1_board.mic_running,(unsigned long)g_g1_board.mic_blocks,
+      (unsigned long)g_g1_board.mic_peak,(unsigned long)g_g1_board.mic_errors,
+      (unsigned long)g_demo_diag.bt_blocks_processed,(unsigned long)g_demo_diag.tc_blocks_processed,
+      (unsigned long)g_demo_diag.speaker_dma_running,(unsigned long)g_demo_diag.speaker_blocks_output,
+      (unsigned long)g_demo_diag.speaker_underruns,
+      (unsigned long)g_demo_diag.sai1_errors,(unsigned long)g_demo_diag.sai2_errors,
+      (unsigned long)g_demo_diag.error_code);
+    console_write(g_r21_line);++g_demo_diag.console_commands_ok;return;
+  }
+  if(line_eq(line,"BT INIT") || line_eq(line,"BT CONFIGURE")) {
+    g_demo_control.apply_bt_profile_request=1U;
+    s_bt_pair_request=1U;
+    console_write("G1|BT|INIT|QUEUED|playback_EDR_audio_then_discoverable|check_RX\r\n");
+    return;
+  }
+  if(line_eq(line,"BT PAIR") || line_eq(line,"BT DISCOVERABLE")){
+    s_bt_pair_request=1U;
+    console_write("G1|BT|PAIR|REQUESTED|command=AT+BA06|check_BT_RX_for_ack\r\n");
+    ++g_demo_diag.console_commands_ok;return;
+  }
+  if(line_eq(line,"BT RECOVER")) {
+    s_bt_recover_request=1U;
+    console_write("G1|BT|RECOVER|QUEUED|UART_RX_rearm_and_query\r\n");return;
+  }
+  if(line_eq(line,"BT CHANNELS") || line_eq(line,"BT STEREO")) {
+    (void)snprintf(g_r21_line,sizeof(g_r21_line),
+      "G1|BT|CHANNELS|L_RMS=%lu|R_RMS=%lu|MONO_RMS=%lu|mix=%lu|decode=%lu|blocks=%lu|sai_err=%lu\r\n",
+      (unsigned long)g_demo_diag.bt_left_rms,
+      (unsigned long)g_demo_diag.bt_right_rms,
+      (unsigned long)g_demo_diag.bt_rms,
+      (unsigned long)g_demo_control.bt_mono_mode,
+      (unsigned long)g_demo_control.pcm_decode_mode,
+      (unsigned long)g_demo_diag.bt_blocks_processed,
+      (unsigned long)g_demo_diag.sai1_errors);
+    console_write(g_r21_line);return;
+  }
+  if(line_eq(line,"TOUCH STATUS") || line_eq(line,"TOUCH DIAG")) {
+    (void)snprintf(g_r21_line,sizeof(g_r21_line),
+      "G1|TOUCH|addr=0x%02lX|present=%lu|stage=%lu|ecr=0x%02lX|raw=0x%03lX|prox=%lu|reads=%lu|probes=%lu|acks=%lu|errors=%lu|halerr=0x%lX|halstate=%lu|isr=0x%lX|scl=%lu|sda=%lu\r\n",
+      (unsigned long)g_g1_board.touch_address,
+      (unsigned long)g_g1_board.touch_present,
+      (unsigned long)g_g1_board.touch_stage,
+      (unsigned long)g_g1_board.touch_ecr,
+      (unsigned long)g_g1_board.touch_raw,
+      (unsigned long)g_g1_board.touch_proximity,
+      (unsigned long)g_g1_board.touch_reads,
+      (unsigned long)g_g1_board.touch_probe_attempts,
+      (unsigned long)g_g1_board.touch_acks,
+      (unsigned long)g_g1_board.touch_errors,
+      (unsigned long)g_g1_board.touch_hal_error,
+      (unsigned long)g_g1_board.touch_hal_state,
+      (unsigned long)g_g1_board.touch_isr,
+      (unsigned long)(HAL_GPIO_ReadPin(GPIOB,GPIO_PIN_6)==GPIO_PIN_SET),
+      (unsigned long)(HAL_GPIO_ReadPin(GPIOB,GPIO_PIN_7)==GPIO_PIN_SET));
+    console_write(g_r21_line);return;
+  }
+  if(line_eq(line,"TOUCH BUS") || line_eq(line,"TOUCH BUS STATUS")) {
+    (void)snprintf(g_r21_line,sizeof(g_r21_line),
+      "G1|TOUCH|BUS|hal_probe=%lu|transport=%s|soft_scan=0x%lX|scans=%lu|scl_rises=%lu|scl_fail=%lu|gpio_mode_b6=%lu|gpio_mode_b7=%lu|af_b6=%lu|af_b7=%lu|scl=%lu|sda=%lu\r\n",
+      (unsigned long)g_g1_board.touch_last_probe_status,
+      g_g1_board.touch_transport?"GPIO":"HAL",
+      (unsigned long)g_g1_board.touch_soft_scan_mask,
+      (unsigned long)g_g1_board.touch_soft_scans,
+      (unsigned long)g_g1_board.touch_soft_clock_rises,
+      (unsigned long)g_g1_board.touch_soft_clock_failures,
+      (unsigned long)((GPIOB->MODER>>(6U*2U))&3U),
+      (unsigned long)((GPIOB->MODER>>(7U*2U))&3U),
+      (unsigned long)((GPIOB->AFR[0]>>(6U*4U))&15U),
+      (unsigned long)((GPIOB->AFR[0]>>(7U*4U))&15U),
+      (unsigned long)(HAL_GPIO_ReadPin(GPIOB,GPIO_PIN_6)==GPIO_PIN_SET),
+      (unsigned long)(HAL_GPIO_ReadPin(GPIOB,GPIO_PIN_7)==GPIO_PIN_SET));
+    console_write(g_r21_line);return;
+  }
+  if(line_eq(line,"TOUCH RECOVER")) {
+    G1_TouchReprobe();
+    console_write("G1|TOUCH|RECOVER|DEFERRED|I2C1_reset_and_0x5A_reprobe\r\n");return;
+  }
+  if(line_eq(line,"BT STATUS")){
+    (void)snprintf(g_r21_line,sizeof(g_r21_line),
+      "G1|BT|uart_rx=%lu|uart_tx=%lu|lines=%lu|profile_attempts=%lu|profile_success=%lu|audio_blocks=%lu|rms=%lu|pcm_present=%lu|irq_armed=%lu|uart_errors=%lu|status=%lu|last_rx_ms=%lu|pair_tx_ms=%lu\r\n",
+      (unsigned long)g_demo_diag.bt_uart_rx_bytes,
+      (unsigned long)g_demo_diag.bt_uart_tx_bytes,
+      (unsigned long)g_demo_diag.bt_uart_lines,
+      (unsigned long)g_demo_diag.bt_profile_attempts,
+      (unsigned long)g_demo_diag.bt_profile_successes,
+      (unsigned long)g_demo_diag.bt_blocks_processed,
+      (unsigned long)g_demo_diag.bt_rms,
+      (unsigned long)g_demo_diag.bt_audio_present,
+      (unsigned long)g_demo_diag.bt_rx_irq_armed,(unsigned long)g_demo_diag.bt_uart_errors,
+      (unsigned long)s_bt_status_code,(unsigned long)s_bt_last_rx_ms,
+      (unsigned long)s_bt_pair_tx_ms);
+    console_write(g_r21_line);++g_demo_diag.console_commands_ok;return;
+  }
+  if(line_eq(line,"UI MAP")){
+    console_write("G1|UI|ANNA_MAP|E8=BLUETOOTH|E9=TELECOIL|E10=MUTE_TOGGLE|E11=MICROPHONE|E0-E7=INACTIVE|BIT12=PROXIMITY|ENCODER=VOLUME\r\n");
+    ++g_demo_diag.console_commands_ok;return;
+  }
+  {
+    uint32_t old_gain=s_product_ui.gain_q15;
+    uint32_t result=G1Ui_Command(&s_product_ui,line);
+    if(result!=G1_UI_UNKNOWN){
+      if(result==G1_UI_INVALID){
+        console_write("G1|ACK|ERR|reason=BAD_COMMAND_OR_RANGE|hint=HELP\r\n");
+        ++g_demo_diag.console_commands_error;
+      }else{
+        int direction=(s_product_ui.gain_q15>old_gain)?1:
+                      (s_product_ui.gain_q15<old_gain)?-1:0;
+        product_ui_commit(result,"SERIAL",direction);
+        console_write(result?"G1|ACK|OK|changed=1\r\n":"G1|ACK|OK|changed=0\r\n");
+        ++g_demo_diag.console_commands_ok;
+      }
+      return;
+    }
+  }
   if (r21_process_command(line)) { g_demo_diag.console_commands_ok++; return; }
   g_demo_diag.console_lines++;
   if (line_eq(line, "PING")) { console_write("PONG - RTOS console RX/TX working\r\n"); g_demo_diag.console_commands_ok++; return; }
@@ -3086,13 +4239,6 @@ static void process_console_line(char *line)
   if (line_eq(line, "AUDIO START")) { g_demo_control.audio_capture_enabled = 1U; console_write("OK hardware audio start requested\r\n"); return; }
   if (line_eq(line, "AUDIO STOP")) { g_demo_control.audio_capture_enabled = 0U; console_write("OK hardware audio stop requested\r\n"); return; }
   if (line_eq(line, "AUDIO STATUS")) { print_test_result("AUDIO", test_audio()); print_status(); return; }
-  if (line_eq(line, "OUTPUT ON")) { g_demo_control.output_enabled = 1U; console_write("OK bone-conductor output on\r\n"); return; }
-  if (line_eq(line, "OUTPUT OFF")) { g_demo_control.output_enabled = 0U; output_queue_reset(); console_write("OK bone-conductor output muted\r\n"); return; }
-  if (line_eq(line, "OUTPUT LEVEL SAFE")) { g_demo_control.output_gain_q15 = 4096U; console_write("OK output level SAFE (12.5%)\r\n"); return; }
-  if (line_eq(line, "OUTPUT LEVEL LOW")) { g_demo_control.output_gain_q15 = 8192U; console_write("OK output level LOW (25%)\r\n"); return; }
-  if (line_eq(line, "OUTPUT LEVEL MED")) { g_demo_control.output_gain_q15 = 16384U; console_write("OK output level MED (50%)\r\n"); return; }
-  if (line_eq(line, "OUTPUT LEVEL HIGH")) { g_demo_control.output_gain_q15 = 24576U; console_write("OK output level HIGH (75%)\r\n"); return; }
-  if (line_eq(line, "OUTPUT LEVEL UNITY")) { g_demo_control.output_gain_q15 = 32768U; console_write("OK output level UNITY (100% digital)\r\n"); return; }
   if (line_eq(line, "DIRECT BT LEFT") || line_eq(line, "DIRECT SAI1 LEFT")) { g_demo_control.direct_source = DEMO_DIRECT_BT; g_demo_control.direct_channel = DEMO_CHANNEL_LEFT; g_demo_control.dsp_enabled = 0U; g_demo_control.background_load_enabled = 0U; g_demo_control.stream_enabled = 0U; g_demo_control.evidence_enabled = 0U; g_demo_control.plot_enabled = 0U; g_demo_control.audio_capture_enabled = 1U; g_demo_control.output_enabled = 1U; g_demo_control.test_tone_step = 0U; output_queue_reset(); if (g_dma_started) stop_dma(); console_write("OK DIRECT BT/SAI1 LEFT: decode -> speaker only; DSP/FSM/filter bypassed\r\n"); return; }
   if (line_eq(line, "DIRECT BT RIGHT") || line_eq(line, "DIRECT SAI1 RIGHT")) { g_demo_control.direct_source = DEMO_DIRECT_BT; g_demo_control.direct_channel = DEMO_CHANNEL_RIGHT; g_demo_control.dsp_enabled = 0U; g_demo_control.background_load_enabled = 0U; g_demo_control.stream_enabled = 0U; g_demo_control.evidence_enabled = 0U; g_demo_control.plot_enabled = 0U; g_demo_control.audio_capture_enabled = 1U; g_demo_control.output_enabled = 1U; g_demo_control.test_tone_step = 0U; output_queue_reset(); if (g_dma_started) stop_dma(); console_write("OK DIRECT BT/SAI1 RIGHT: decode -> speaker only; DSP/FSM/filter bypassed\r\n"); return; }
   if (line_eq(line, "DIRECT BT MIX") || line_eq(line, "DIRECT SAI1 MIX")) { g_demo_control.direct_source = DEMO_DIRECT_BT; g_demo_control.direct_channel = DEMO_CHANNEL_MIX; g_demo_control.dsp_enabled = 0U; g_demo_control.background_load_enabled = 0U; g_demo_control.stream_enabled = 0U; g_demo_control.evidence_enabled = 0U; g_demo_control.plot_enabled = 0U; g_demo_control.audio_capture_enabled = 1U; g_demo_control.output_enabled = 1U; g_demo_control.test_tone_step = 0U; output_queue_reset(); if (g_dma_started) stop_dma(); console_write("OK DIRECT BT/SAI1 MIX: decode -> speaker only; DSP/FSM/filter bypassed\r\n"); return; }
@@ -3135,21 +4281,28 @@ static void process_console_line(char *line)
     console_write("OK integrity counters reset\r\n");
     return;
   }
+  if (line_eq(line,"TC OUTPUT EXACT")){s_tc_use_elastic_output=0U;g_r28_route_restart_pending=1U;console_write("TC output: exact-rate synchronous\r\n");return;}
+  if (line_eq(line,"TC OUTPUT ELASTIC")){s_tc_use_elastic_output=1U;g_r28_route_restart_pending=1U;console_write("TC output: elastic fallback for bench comparison\r\n");return;}
+  if (line_eq(line,"SLEEP ON")){qr_sleep_enter();console_write("OK logical sleep requested\r\n");return;}
+  if (line_eq(line,"SLEEP OFF")){s_qr_sleep.asleep=0U;qr_sleep_wake();console_write("OK bench wake requested\r\n");return;}
+  if (line_eq(line,"DEMO 1K")){qr_test_select(1U);console_write("OK 1kHz bench output toggle; digital peak capped at 32200\r\n");return;}
+  if (line_eq(line,"DEMO CHIRP")){qr_test_select(4U);console_write("OK chirp bench output toggle; digital peak capped at 32200\r\n");return;}
+  if (line_eq(line,"DEMO STOP")){if(g_demo_control.test_tone_step)qr_test_select(0U);console_write("OK test output off\r\n");return;}
   if (line_eq(line, "TONE 1K")) { output_queue_reset(); g_demo_control.test_tone_step = 1U; g_demo_diag.test_tone_hz = 1000U; g_tone_phase = 0U; console_write("OK direct output tone 1 kHz\r\n"); return; }
   if (line_eq(line, "TONE 2K")) { output_queue_reset(); g_demo_control.test_tone_step = 2U; g_demo_diag.test_tone_hz = 2000U; g_tone_phase = 0U; console_write("OK direct output tone 2 kHz\r\n"); return; }
   if (line_eq(line, "TONE 3K")) { output_queue_reset(); g_demo_control.test_tone_step = 3U; g_demo_diag.test_tone_hz = 3000U; g_tone_phase = 0U; console_write("OK direct output tone 3 kHz\r\n"); return; }
   if (line_eq(line, "TONE OFF")) { g_demo_control.test_tone_step = 0U; g_demo_diag.test_tone_hz = 0U; g_tone_phase = 0U; output_queue_reset(); console_write("OK direct output tone off\r\n"); return; }
-  if (line_eq(line, "CAPTURE BT")) { g_demo_control.audio_capture_enabled = 1U; raw_capture_arm(RAW_CAPTURE_SOURCE_BT); console_write("OK raw BT capture armed: 4096 stereo frames before DSP\r\n"); return; }
-  if (line_eq(line, "CAPTURE TC")) { g_demo_control.audio_capture_enabled = 1U; raw_capture_arm(RAW_CAPTURE_SOURCE_TC); console_write("OK raw TC capture armed: 4096 stereo frames before DSP\r\n"); return; }
+  if (line_eq(line, "CAPTURE BT")) { g_demo_control.audio_capture_enabled = 1U; raw_capture_arm(RAW_CAPTURE_SOURCE_BT); console_write("OK raw BT capture armed: 1024 stereo frames before DSP\r\n"); return; }
+  if (line_eq(line, "CAPTURE TC")) { g_demo_control.audio_capture_enabled = 1U; raw_capture_arm(RAW_CAPTURE_SOURCE_TC); console_write("OK raw TC capture armed: 1024 stereo frames before DSP\r\n"); return; }
   if (line_eq(line, "CAPTURE CANCEL")) { raw_capture_arm(RAW_CAPTURE_SOURCE_NONE); console_write("OK raw capture cancelled\r\n"); return; }
   if (line_eq(line, "CAPTURE STATUS")) { console_write("CAPTURE source="); console_write(raw_capture_source_name(g_raw_capture_source)); console_write(" frames="); console_u32(g_raw_capture_frames); console_write(" ready="); console_u32(g_raw_capture_ready); console_write(" decode="); console_u32(g_demo_control.pcm_decode_mode); console_write("\r\n"); return; }
   if (line_eq(line, "CAPTURE DUMP")) { raw_capture_send(); return; }
-  if (line_eq(line, "RECORD BT LEFT")) { g_demo_control.audio_capture_enabled = 1U; listen_capture_arm(RAW_CAPTURE_SOURCE_BT, DEMO_CHANNEL_LEFT); console_write("OK pre-DSP BT LEFT record armed: 16384 samples / 341 ms\r\n"); return; }
-  if (line_eq(line, "RECORD BT RIGHT")) { g_demo_control.audio_capture_enabled = 1U; listen_capture_arm(RAW_CAPTURE_SOURCE_BT, DEMO_CHANNEL_RIGHT); console_write("OK pre-DSP BT RIGHT record armed: 16384 samples / 341 ms\r\n"); return; }
-  if (line_eq(line, "RECORD BT MIX") || line_eq(line, "RECORD BT")) { g_demo_control.audio_capture_enabled = 1U; listen_capture_arm(RAW_CAPTURE_SOURCE_BT, DEMO_CHANNEL_MIX); console_write("OK pre-DSP BT MIX record armed: 16384 samples / 341 ms\r\n"); return; }
-  if (line_eq(line, "RECORD TC LEFT")) { g_demo_control.audio_capture_enabled = 1U; listen_capture_arm(RAW_CAPTURE_SOURCE_TC, DEMO_CHANNEL_LEFT); console_write("OK pre-DSP TC LEFT record armed: 16384 samples / 341 ms\r\n"); return; }
-  if (line_eq(line, "RECORD TC RIGHT")) { g_demo_control.audio_capture_enabled = 1U; listen_capture_arm(RAW_CAPTURE_SOURCE_TC, DEMO_CHANNEL_RIGHT); console_write("OK pre-DSP TC RIGHT record armed: 16384 samples / 341 ms\r\n"); return; }
-  if (line_eq(line, "RECORD TC MIX") || line_eq(line, "RECORD TC")) { g_demo_control.audio_capture_enabled = 1U; listen_capture_arm(RAW_CAPTURE_SOURCE_TC, DEMO_CHANNEL_MIX); console_write("OK pre-DSP TC MIX record armed: 16384 samples / 341 ms\r\n"); return; }
+  if (line_eq(line, "RECORD BT LEFT")) { g_demo_control.audio_capture_enabled = 1U; listen_capture_arm(RAW_CAPTURE_SOURCE_BT, DEMO_CHANNEL_LEFT); console_write("OK pre-DSP BT LEFT record armed: 4096 samples / 85 ms\r\n"); return; }
+  if (line_eq(line, "RECORD BT RIGHT")) { g_demo_control.audio_capture_enabled = 1U; listen_capture_arm(RAW_CAPTURE_SOURCE_BT, DEMO_CHANNEL_RIGHT); console_write("OK pre-DSP BT RIGHT record armed: 4096 samples / 85 ms\r\n"); return; }
+  if (line_eq(line, "RECORD BT MIX") || line_eq(line, "RECORD BT")) { g_demo_control.audio_capture_enabled = 1U; listen_capture_arm(RAW_CAPTURE_SOURCE_BT, DEMO_CHANNEL_MIX); console_write("OK pre-DSP BT MIX record armed: 4096 samples / 85 ms\r\n"); return; }
+  if (line_eq(line, "RECORD TC LEFT")) { g_demo_control.audio_capture_enabled = 1U; listen_capture_arm(RAW_CAPTURE_SOURCE_TC, DEMO_CHANNEL_LEFT); console_write("OK pre-DSP TC LEFT record armed: 4096 samples / 85 ms\r\n"); return; }
+  if (line_eq(line, "RECORD TC RIGHT")) { g_demo_control.audio_capture_enabled = 1U; listen_capture_arm(RAW_CAPTURE_SOURCE_TC, DEMO_CHANNEL_RIGHT); console_write("OK pre-DSP TC RIGHT record armed: 4096 samples / 85 ms\r\n"); return; }
+  if (line_eq(line, "RECORD TC MIX") || line_eq(line, "RECORD TC")) { g_demo_control.audio_capture_enabled = 1U; listen_capture_arm(RAW_CAPTURE_SOURCE_TC, DEMO_CHANNEL_MIX); console_write("OK pre-DSP TC MIX record armed: 4096 samples / 85 ms\r\n"); return; }
   if (line_eq(line, "RECORD CANCEL")) { listen_capture_arm(RAW_CAPTURE_SOURCE_NONE, DEMO_CHANNEL_MIX); console_write("OK listen record cancelled\r\n"); return; }
   if (line_eq(line, "RECORD STATUS")) { console_write("RECORD source="); console_write(raw_capture_source_name(g_listen_capture_source)); console_write(" channel="); console_write(listen_channel_name(g_listen_capture_channel)); console_write(" samples="); console_u32(g_listen_capture_samples); console_write(" ready="); console_u32(g_listen_capture_ready); console_write(" decode="); console_u32(g_demo_control.pcm_decode_mode); console_write("\r\n"); return; }
   if (line_eq(line, "RECORD DUMP")) { listen_capture_send(); return; }
@@ -3170,6 +4323,12 @@ static void process_console_line(char *line)
   if (line_eq(line, "DSP COMP ON")) { AudioDynamics_SetCompression(&g_dynamics, true); console_write("OK slow compressor on\r\n"); return; }
   if (line_eq(line, "DSP COMP OFF")) { AudioDynamics_SetCompression(&g_dynamics, false); console_write("OK compressor bypassed; filters+limiter remain\r\n"); return; }
   if (line_eq(line, "DSP STATUS")) { print_evidence(); return; }
+  if (line_eq(line, "FX STATUS")) {
+    console_write("G1|FX|room=");console_u32(s_product_ui.spatial);
+    console_write("|mic_rumble=");console_u32(s_product_ui.noise_reduce);
+    console_write("|cue_pending=");console_u32(DhaFeedback_Pending());
+    console_write("|anc=UNSUPPORTED_MONO_HARDWARE\r\n");return;
+  }
   if (line_eq(line, "EVIDENCE ON")) { g_demo_control.evidence_enabled = 1U; console_write("OK evidence reports on\r\n"); return; }
   if (line_eq(line, "EVIDENCE OFF")) { g_demo_control.evidence_enabled = 0U; console_write("OK evidence reports off\r\n"); return; }
   if (line_eq(line, "PLOT ON")) { g_demo_control.plot_enabled = 0U; console_write("R25: legacy binary plot disabled; use !SP / REAL SCOPE instead\r\n"); return; }
@@ -3193,6 +4352,23 @@ static void process_console_line(char *line)
   if (line_eq(line, "TEST BT")) { print_test_result("BT401", test_bt()); return; }
   if (line_eq(line, "TEST ALL")) { test_all(); return; }
 #endif
+  if (line_eq(line,"BOARD STATUS")) {
+    (void)snprintf(g_r21_line,sizeof(g_r21_line),
+     "G1|BOARD|mic=%lu|micblocks=%lu|micpeak=%lu|micov=%lu|micerr=%lu|touch=%lu|touchreads=%lu|toucherr=%lu|encoder=%lu|source=%lu|volume=%lu|initerr=%lu|mute=%lu|volume_pct=%lu|active=%lu|speaker=%lu\r\n",
+     (unsigned long)g_g1_board.mic_running,(unsigned long)g_g1_board.mic_blocks,
+     (unsigned long)g_g1_board.mic_peak,(unsigned long)g_g1_board.mic_overflow,
+     (unsigned long)g_g1_board.mic_errors,(unsigned long)g_g1_board.touch_present,
+     (unsigned long)g_g1_board.touch_reads,(unsigned long)g_g1_board.touch_errors,
+     (unsigned long)g_g1_board.encoder_detents,
+     (unsigned long)g_demo_control.requested_source_mode,
+     (unsigned long)g_demo_control.output_gain_q15,
+     (unsigned long)g_g1_board.init_error_bits,
+     (unsigned long)s_product_ui.muted,
+     (unsigned long)G1Ui_Percent(&s_product_ui),
+     (unsigned long)g_demo_diag.active_source,
+     (unsigned long)g_demo_diag.speaker_blocks_output);
+    console_write(g_r21_line);return;
+  }
   if (line_eq(line, "RESETDIAG")) { g_demo_control.reset_diagnostics_request = 1U; console_write("OK diagnostics reset requested\r\n"); return; }
   queue_protocol_command(line);
 }
@@ -3233,13 +4409,15 @@ void Demo_EarlyInit(void)
   g_demo_control.interfaces_ready = 1U;
   g_demo_control.background_load_enabled = 0U;
   g_demo_control.stream_enabled = 0U;
-  g_demo_control.audio_capture_enabled = 0U;
-  g_demo_control.output_enabled = 0U;
-  g_demo_control.output_gain_q15 = 8192U; /* Conservative 25% digital level for first bone-conductor test. */
+  g_demo_control.audio_capture_enabled = 1U;
+  g_demo_control.output_enabled = 1U; /* output muted by analog setup if downstream fails */
+  g_demo_control.output_gain_q15 = G1_OUTPUT_MAX_Q15; /* UI 100%; limiter remains bounded. */
   g_demo_control.dsp_enabled = 0U;
   g_demo_control.evidence_enabled = 0U;
   g_demo_control.plot_enabled = 0U;
-  g_demo_control.bt_mono_mode = DEMO_BT_MONO_LEFT; /* proven clean channel; AUTO can chatter between slots */
+  /* Product's single speaker must hear BOTH input channels. Never default
+   * to LEFT: doing so silenced right-only stereo test content in R15. */
+  g_demo_control.bt_mono_mode = DEMO_BT_MONO_MIX;
   g_demo_control.pcm_decode_mode = PCM_DECODE_LOW24;
   g_demo_control.direct_source = DEMO_DIRECT_OFF;
   g_demo_control.direct_channel = DEMO_CHANNEL_MIX;
@@ -3285,10 +4463,43 @@ void Demo_AppInit(void)
   AudioDynamicsConfig_t cfg = AudioDynamics_DefaultConfig();
   GroupFeatures_Init(&g_group_features);
   GroupGuardian_Init(&g_group_guardian);
+  G1Pref_Init(&s_product_preferences);
+  G1Ambient_Init(&s_ambient);
+  G1Ui_Init(&s_product_ui);
+  QrSleep_Init(&s_qr_sleep);
+  QrDemoTest_Init(&s_test_generator);
+  s_bt_sleep_transition=0U;
+  s_audio_sleep_active=0U;
+  s_test_saved_valid=0U;
+  DhaEffects_Init();
+  DhaFeedback_Request(DHA_CUE_BOOT);
+  s_pref_amp=G1_PREF_QUIET;s_pref_spectrum=G1_PREF_LOW;
+  /* Actual on-device online preference learning, initially neutral.
+   * Explicit encoder adjustments are training labels, 9 bounded context bins.
+   * Learned state is volatile (RAM) and does not boost above the output cap. */
+  s_pref_enabled=1U;s_user_gain_q15=s_product_ui.gain_q15;
+  g_demo_control.requested_source_mode=s_product_ui.source;
+  g_demo_control.output_enabled=1U;
+  product_apply_preference();
   GroupUi_Init(&g_group_ui);
   g_group_events = xQueueCreate(8U, sizeof(GroupEvent));
   if (g_group_events == NULL) Demo_SetError(0xF231U);
   dwt_enable();
+  /* R26.6: preserve R26.4 LOW24 full-precision recovery, use a mild
+   * continuous filter, and never auto-learn notches from programme audio.
+   * An explicit SOURCE-OFF calibration may lock one static narrow notch. */
+  s_tc_pcm_decode_mode = PCM_DECODE_LOW24;
+  s_tc24_level_enabled = 1U;
+  s_tc24_level_cap_q16 = 4U * 65536U;
+  s_tc24_level_reset_requested = 0U;
+  TcS24Recovery_Init(&s_tc24_level);
+  s_tc_channel_mode = 0U; /* automatic left/right selection */
+  g_r27_tc_clean_enabled = 1U; /* conservative linear filter only */
+  s_tc_notch_auto_enabled = 0U;
+  s_tc_filter_reset_requested = 0U;
+  s_tc_hum_apply_hz=UINT32_MAX;
+  s_tc_hum_last_hz=0U;
+  TcHumCal_Init(&s_tc_hum_cal);
   TcCleanup_Reset(&g_r27_tc_filter);
   tune_audio_gpio_edge_rate();
   if (ConnectivityService_Init(&g_service, DEMO_AUDIO_RATE_HZ, HAL_GetTick()) != CONNECTIVITY_SERVICE_OK) {
@@ -3347,10 +4558,25 @@ void Demo_ControlTask(void *argument)
   start_uart_rx_interrupts();
   if (g_demo_diag.console_rx_irq_armed) console_write("RX: USART2 interrupt receiver ARMED - commands are live\r\n");
   else console_write("RX: USART2 interrupt receiver FAILED - check err code\r\n");
-  console_write("DHA RUBRIC DEMO READY - USART2 via NUCLEO ST-LINK VCP\r\n");
+  console_write("G1 STANDALONE PRODUCT: physical touch and encoder control, optional USART2 diagnostics\r\n");
   console_write("261013 CONNECTIVITY: real DMA/state-machine evidence; use !FA !FV !RM\r\n");
-  console_write("GROUP G5: B1 1x=profile 2x=auto 3x=source hold=on/off hold4s=reset; !GH help; default DSP OFF\r\n");
-  console_write("Type HELP. Start with PING then TEST ALL.\r\n");
+  console_write("QUIET RIOT: E8 BT/hold ROOM, E9 TC/hold 1k TEST, E10 MUTE/hold CHIRP, E11 MIC/hold NR; E8+E11 hold SLEEP, proximity WAKE\r\n");
+  console_write("Standalone firmware active; UART: UI STATUS, SOURCE MIC|BT|TC|AUTO, MUTE ON|OFF, VOLUME 0..100.\r\n");
+  product_ui_status();
+  console_write("G1 R12: SYSTEM CHECK | MIC STATUS | MIC INIT | BOARD RAW | BT STATUS | WATCH ON|OFF\r\n");
+  (void)snprintf(g_r21_line,sizeof(g_r21_line),
+    "G1|MIC|BOOT|ready=%lu|stage=%lu|init_attempts=%lu|initerr=0x%lX\r\n",
+    (unsigned long)g_g1_board.mic_ready,
+    (unsigned long)g_g1_board.mic_init_stage,
+    (unsigned long)g_g1_board.mic_init_attempts,
+    (unsigned long)g_g1_board.init_error_bits);
+  console_write(g_r21_line);
+  if(g_g1_board.init_error_bits!=0U) {
+    (void)snprintf(g_r21_line,sizeof(g_r21_line),
+      "G1|WARN|board_init_error=0x%08lX|hardware_functions_degraded\r\n",
+      (unsigned long)g_g1_board.init_error_bits);
+    console_write(g_r21_line);
+  }
   create_child_tasks();
   group_button_init();
   print_clock();
@@ -3358,9 +4584,29 @@ void Demo_ControlTask(void *argument)
 
   for (;;) {
     uint32_t now = HAL_GetTick();
+#if G1_DIAGNOSTICS_UART_ENABLE
     poll_console();
-    group_button_poll(now);
+#endif
+    if(!s_qr_sleep.asleep) group_button_poll(now);
+    product_ui_poll(now);
+    if(G1_DIAGNOSTICS_UART_ENABLE && s_r10_watch_enabled &&
+       (uint32_t)(now-s_r10_watch_last_ms)>=1000U){
+       s_r10_watch_last_ms=now;r10_snapshot("LIVE");
+    }
     update_task_rates(now);
+    if(s_tc_hum_cal.state==TC_HUM_ANALYSING){
+      if(TcHumCal_Step(&s_tc_hum_cal)) {
+        if(s_tc_hum_cal.state==TC_HUM_DONE){
+          s_tc_hum_last_hz=s_tc_hum_cal.best_hz;
+          s_tc_hum_apply_hz=s_tc_hum_last_hz;
+          (void)snprintf(g_r21_line,sizeof(g_r21_line),
+              "G1|TC|HUM|LOCK|hz=%lu|spectral_fraction_permille=%lu|static_notch_only\r\n",
+              (unsigned long)s_tc_hum_last_hz,
+              (unsigned long)s_tc_hum_cal.peak_fraction_permille);
+          console_write(g_r21_line);
+        } else console_write("G1|TC|HUM|NO_STABLE_TONE|unchanged_audio\r\n");
+      }
+    }
     if (g_raw_capture_ready && !g_raw_capture_announced) {
       g_raw_capture_announced = 1U;
       console_write("CAPTURE READY source="); console_write(raw_capture_source_name(g_raw_capture_source));
@@ -3385,11 +4631,18 @@ void Demo_ControlTask(void *argument)
       g_last_stream_ms = now;
       print_status();
     }
+    /* Human-verifiable BT link cue uses BT401 TS+ status, not PCM presence. */
+    static uint8_t previous_link=0U;
+    uint8_t linked=(uint8_t)(s_bt_status_code>=2U);
+    if(!s_qr_sleep.asleep && linked != previous_link){
+      DhaFeedback_Request(linked ? DHA_CUE_BT_CONNECTED : DHA_CUE_BT_DISCONNECTED);
+    }
+    previous_link=linked;
     g_demo_diag.control_task_loops++;
     g_demo_diag.control_stack_high_water = (uint32_t)uxTaskGetStackHighWaterMark(NULL);
     r29_refresh_debug_snapshot(now);
     g_demo_diag.uptime_ms = now;
-    vTaskDelay(pdMS_TO_TICKS(5U));
+    vTaskDelay(pdMS_TO_TICKS(2U)); /* UI encoder sampling; I2C remains 30ms rate-limited */
   }
 }
 
@@ -3406,6 +4659,7 @@ void Demo_ControlTask(void *argument)
 static void StartAudioTask(void *argument)
 {
   (void)argument;
+  uint32_t last_control_opportunity_ms=HAL_GetTick();
   for (;;) {
     uint32_t now = HAL_GetTick();
     group_audio_update();
@@ -3431,6 +4685,16 @@ static void StartAudioTask(void *argument)
       apply_pending_command(now);
     }
 
+    /* Rebuild SAI master/slave capture after MIC/BT/TC/AUTO switching.
+     * The original R17 g_dma_started flag prevented TC/BT receiver launch
+     * following a successful microphone-only speaker session. */
+    if (s_tc_restart_requested) {
+      s_tc_restart_requested=0U;
+      if(g_dma_started)stop_dma();
+    }
+    if (g_dma_started && g_dma_topology_mask != dma_desired_topology())
+      stop_dma();
+
     if (g_demo_control.audio_capture_enabled && !g_dma_started) {
       refresh_clocks();
       if ((g_demo_diag.clock_warning_flags & 0x0CU) == 0U) {
@@ -3444,26 +4708,63 @@ static void StartAudioTask(void *argument)
     }
 
     if (g_demo_control.direct_source == DEMO_DIRECT_OFF) {
-      if ((uint32_t)(now - g_last_state_step_ms) >= 20U) {
+      if (g_demo_control.requested_source_mode != DEMO_MODE_MIC_ONLY &&
+          (uint32_t)(now - g_last_state_step_ms) >= 20U) {
         step_service(now);
         g_last_state_step_ms = now;
       }
 
     }
 
+    /* Local DFSDM microphone is a third genuine input, not simulated audio.
+     * Drain other DMA snapshots for clock continuity but never render them in
+     * MIC mode. Swap outputs at block boundaries via process_selected_audio. */
+    if(s_mic_reinit_request) {
+      s_mic_reinit_request=0U;
+      if(g_g1_board.mic_running)(void)G1_MicStop();
+      HAL_StatusTypeDef mi=G1_MicReinit();
+      console_write(mi==HAL_OK?"G1|MIC|REINIT|HAL_OK\r\n":"G1|MIC|REINIT|HAL_ERROR|use_MIC_STATUS\r\n");
+      s_mic_next_start_ms=now;
+    }
+    if (g_demo_control.requested_source_mode == DEMO_MODE_MIC_ONLY &&
+        g_demo_control.audio_capture_enabled) {
+      if (!g_g1_board.mic_running &&
+          (int32_t)(now-s_mic_next_start_ms)>=0) {
+        if (!g_g1_board.mic_ready) {
+          if(G1_MicReinit()!=HAL_OK)Demo_SetError(0xA301U);
+        }
+        if(g_g1_board.mic_ready && G1_MicStart()!=HAL_OK)Demo_SetError(0xA302U);
+        s_mic_next_start_ms=now+1000U; /* avoid 5-ms reinit storm */
+      }
+    } else if (g_g1_board.mic_running) {
+      (void)G1_MicStop();
+    }
     /* Drain immutable RX snapshots. The DMA ISR copied these blocks before the
      * circular DMA could reuse the memory, so block identity cannot be lost even
      * if this task is briefly delayed by diagnostics or another RTOS task. */
     {
       uint32_t handled = 0U;
       while (handled < (CAPTURE_RING_DEPTH - 1U) && capture_pop_bt(g_bt_work_words)) {
-        process_bt_words(g_bt_work_words, HAL_GetTick());
+        if (g_demo_control.requested_source_mode != DEMO_MODE_MIC_ONLY)
+          process_bt_words(g_bt_work_words, HAL_GetTick());
         handled++;
       }
       handled = 0U;
       while (handled < (CAPTURE_RING_DEPTH - 1U) && capture_pop_tc(g_tc_work_words)) {
-        process_tc_words(g_tc_work_words, HAL_GetTick());
+        if (g_demo_control.requested_source_mode != DEMO_MODE_MIC_ONLY)
+          process_tc_words(g_tc_work_words, HAL_GetTick());
         handled++;
+      }
+    }
+
+    if (g_demo_control.requested_source_mode == DEMO_MODE_MIC_ONLY) {
+      uint32_t handled=0U;
+      while (handled++<6U && G1_MicTakeBlock(g_mono)) {
+        g_demo_diag.active_source=3U;
+        g_demo_diag.muted=s_product_ui.muted?1U:0U;
+        memcpy(g_r27_pre_source,g_mono,sizeof(g_r27_pre_source));
+        product_mic_condition(g_mono);
+        process_selected_audio(g_mono,3U);
       }
     }
 
@@ -3482,8 +4783,18 @@ static void StartAudioTask(void *argument)
     /* DMA-to-task notifications replace idle tick polling. A bounded 5-ms
      * timeout maintains FSM/control servicing when there is no audio input. */
     if ((g_bt_cap_head != g_bt_cap_tail) || (g_tc_cap_head != g_tc_cap_tail)) {
-      taskYIELD();
+      /* R26.2: taskYIELD() gives CPU only to tasks at the SAME priority.
+       * At continuous 48-kHz TC DMA traffic, AudioTask(7) can therefore
+       * starve the touch/encoder ControlTask(6) indefinitely. Once every
+       * 8 ms, block exactly one RTOS tick to service hardware controls.
+       * Capture queues remain bounded and are drained next iteration. */
+      const uint32_t fairness_now=HAL_GetTick();
+      if ((uint32_t)(fairness_now-last_control_opportunity_ms)>=8U) {
+        last_control_opportunity_ms=fairness_now;
+        vTaskDelay(pdMS_TO_TICKS(1U));
+      } else taskYIELD();
     } else {
+      last_control_opportunity_ms=HAL_GetTick();
       (void)ulTaskNotifyTake(pdTRUE,pdMS_TO_TICKS(5U));
     }
   }
@@ -3492,8 +4803,97 @@ static void StartAudioTask(void *argument)
 static void StartBtTask(void *argument)
 {
   (void)argument;
+  uint32_t bluetooth_boot_ms=HAL_GetTick();
+  uint8_t bluetooth_auto_discoverable_sent=0U;
+  QrBtVolume volume_tracker;
+  QrBtVolume_Init(&volume_tracker);
+  uint32_t last_bt_status_poll_ms=0U;
   for (;;) {
     poll_bt_uart();
+    if(s_bt_sleep_transition){
+      uint8_t command=s_bt_sleep_transition;
+      s_bt_sleep_transition=0U;
+      if(command==1U){
+        /* BT401: disconnect active EDR, stop playback, leave pairing mode.
+         * UART commands are best effort; hardware BT power is not gated. */
+        (void)bt_tx("AT+BA01\r\n",9U,NULL);
+        (void)bt_tx("AT+B300\r\n",9U,NULL);
+        (void)bt_tx("AT+B500\r\n",9U,NULL);
+        (void)bt_tx("AT+CM08\r\n",9U,NULL);
+        QrBtVolume_Init(&volume_tracker);s_bt_status_code=1U;
+      }else if(command==2U){
+        (void)bt_tx("AT+B501\r\n",9U,NULL);
+        (void)bt_tx("AT+B301\r\n",9U,NULL);
+        (void)bt_tx("AT+CM01\r\n",9U,NULL);
+        bluetooth_auto_discoverable_sent=0U;
+        bluetooth_boot_ms=HAL_GetTick();
+        QrBtVolume_Init(&volume_tracker);
+      }
+    }
+    if(s_qr_sleep.asleep){
+      vTaskDelay(pdMS_TO_TICKS(20U));
+      continue; /* no polling/profile/reconnect while sleeping */
+    }
+    {
+      const uint8_t linked=(uint8_t)(s_bt_status_code>=2U);
+      /* Re-arm after EVERY real TS+00 disconnect, then run on each TS+01
+       * or TS+02 connection edge, including reconnections after sleep.
+       * CA100 is user-requested and module-firmware dependent: the BT401
+       * published manual documents only CA00..CA30. Never claim that the
+       * handset's Android/iOS media slider has been modified. */
+      if(QrBtVolume_ConnectedEdge(&volume_tracker,linked)) {
+        if(bt_tx(QR_BT_CONNECT_VOLUME_COMMAND,
+                 sizeof(QR_BT_CONNECT_VOLUME_COMMAND)-1U,NULL)) {
+          (void)bt_tx(QR_BT_VOLUME_QUERY_COMMAND,
+                      sizeof(QR_BT_VOLUME_QUERY_COMMAND)-1U,NULL);
+        }
+      }
+      /* Query the real link periodically so the rising edge can be
+       * rediscovered even if the module omits an unsolicited event. */
+      const uint32_t bt_now=HAL_GetTick();
+      if((uint32_t)(bt_now-last_bt_status_poll_ms)>=3000U) {
+        last_bt_status_poll_ms=bt_now;
+        (void)bt_tx("AT+TS\r\n",sizeof("AT+TS\r\n")-1U,NULL);
+      }
+    }
+    /* On a standalone device the receiver should become discoverable at
+     * power-up without a PC. Never report connected until the module replies. */
+    if (!bluetooth_auto_discoverable_sent &&
+        (uint32_t)(HAL_GetTick()-bluetooth_boot_ms)>=2000U) {
+      bluetooth_auto_discoverable_sent=1U;
+      if(s_bt_status_code<2U){
+        /* DFRobot DFR0781 reference: AT+CM01 enters Bluetooth playback;
+         * AT+B301 enables BT audio and AT+B501 enables EDR discovery.
+         * Only AFTER the profile has been sent do we request BA06. */
+        g_demo_control.apply_bt_profile_request=1U;
+        s_bt_pair_request=1U;
+        console_write("G1|BT|BOOT|PROFILE_THEN_DISCOVERABILITY|not_connected_yet\r\n");
+      }
+    }
+    if(s_bt_recover_request){
+      s_bt_recover_request=0U;
+      (void)HAL_UART_AbortReceive(&huart1);
+      HAL_StatusTypeDef u=HAL_UART_Receive_IT(&huart1,&g_bt_rx_irq_byte,1U);
+      g_demo_diag.bt_rx_irq_armed=(uint32_t)(u==HAL_OK);
+      console_write(u==HAL_OK?"G1|BT|RECOVER|RX_ARMED\r\n":"G1|BT|RECOVER|RX_FAILED\r\n");
+      bt_query();
+    }
+    if (s_bt_pair_check_due!=0U && (int32_t)(HAL_GetTick()-s_bt_pair_check_due)>=0){
+      s_bt_pair_check_due=0U;
+      static const uint8_t query[]="AT+TS\r\n";
+      (void)HAL_UART_Transmit(&huart1,(uint8_t*)query,sizeof(query)-1U,250U);
+      console_write("G1|BT|PAIR|STATUS_QUERY_SENT|look_for_TS_response\r\n");
+    }
+    if (s_r10_bt_at_pending) {
+      char command[sizeof(s_r10_bt_at_line)];
+      uint16_t length=(uint16_t)strlen(s_r10_bt_at_line);
+      memcpy(command,s_r10_bt_at_line,length+1U);
+      s_r10_bt_at_pending=0U;
+      if(HAL_UART_Transmit(&huart1,(uint8_t *)command,length,250U)==HAL_OK){
+        g_demo_diag.bt_uart_tx_bytes+=length;
+        console_write("G1|BT|AT|UART_SENT|not_yet_acknowledged\r\n");
+      }else console_write("G1|BT|AT|UART_FAIL\r\n");
+    }
     if (g_demo_control.apply_bt_profile_request) {
       BtProfileConfig_t cfg = BtProfile_DefaultConfig();
       size_t sent = 0U;
@@ -3501,8 +4901,29 @@ static void StartBtTask(void *argument)
       g_demo_diag.bt_profile_attempts++;
       r = BtProfile_Apply(&cfg, bt_tx, bt_delay, NULL, &sent);
       g_demo_diag.bt_profile_commands_sent = (uint32_t)sent;
-      if (r == BT_PROFILE_OK) g_demo_diag.bt_profile_successes++;
+      if (r == BT_PROFILE_OK) {
+        g_demo_diag.bt_profile_successes++; /* UART sends only, NOT module ACK */
+        console_write("G1|BT|PROFILE|UART_SEQUENCE_SENT|await_RX_ack_and_phone\r\n");
+      } else console_write("G1|BT|PROFILE|UART_TX_FAILED\r\n");
       g_demo_control.apply_bt_profile_request = 0U;
+    }
+    if (s_bt_pair_request) {
+      if(g_demo_diag.bt_rx_irq_armed==0U){
+        (void)HAL_UART_AbortReceive(&huart1);
+        if(HAL_UART_Receive_IT(&huart1,&g_bt_rx_irq_byte,1U)==HAL_OK)
+          g_demo_diag.bt_rx_irq_armed=1U;
+      }
+      /* Documented KT1026A BT401 v1.6 audio discoverability request.
+       * UART success is not proof that a phone paired or audio PCM arrived. */
+      static const uint8_t pair_cmd[]="AT+BA06\r\n";
+      s_bt_pair_request=0U;
+      if (HAL_UART_Transmit(&huart1,(uint8_t*)pair_cmd,
+           (uint16_t)(sizeof(pair_cmd)-1U),250U)==HAL_OK) {
+        g_demo_diag.bt_uart_tx_bytes+=(uint32_t)(sizeof(pair_cmd)-1U);
+        s_bt_pair_tx_ms=HAL_GetTick();
+        s_bt_pair_check_due=s_bt_pair_tx_ms+500U;
+        console_write("G1|BT|PAIR|UART_SENT|NOT_YET_CONFIRMED|await_BT_RX_and_phone\r\n");
+      } else console_write("G1|BT|PAIR|UART_FAIL|check_3V3_and_UART1\r\n");
     }
     if (g_demo_control.bt_query_request) {
       bt_query();
@@ -3521,7 +4942,7 @@ static void StartBtTask(void *argument)
  * Mode 0 = OFF, 1 = light load (!RA), 2 = SATURATION (!RS).
  */
 
-static void StartBackgroundTask(void *argument)
+static void __attribute__((unused)) StartBackgroundTask(void *argument)
 {
   volatile uint32_t x = 0x13579BDFU;
   uint32_t next_idle_slice_ms = 0U;
@@ -3576,7 +4997,7 @@ static void StartBackgroundTask(void *argument)
  * Background.  In !RD mode both remain READY, and FreeRTOS time slicing lets
  * them alternate.  There is only ONE executing task at any instant (single
  * core); progress in both counters + measured runtime proves concurrency. */
-static void StartCpuLoadB(void *argument)
+static void __attribute__((unused)) StartCpuLoadB(void *argument)
 {
   volatile uint32_t x = 0x2468ACE1U;
   uint32_t next_idle_slice_ms = 0U;
@@ -3622,7 +5043,7 @@ static void StartCpuLoadB(void *argument)
  * ControlTask, Bluetooth supervision and the UART dashboard may starve.
  * Do not enable this in a wearable product or the standalone group showcase.
  */
-static void StartHighPriorityLoad(void *argument)
+static void __attribute__((unused)) StartHighPriorityLoad(void *argument)
 {
   uint32_t x = 0xBADC0FFEU;
   (void)argument;

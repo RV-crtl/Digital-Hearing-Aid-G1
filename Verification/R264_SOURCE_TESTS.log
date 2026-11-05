@@ -1,0 +1,153 @@
+CHECK Tools/test_r26_audio.py
+PASS AMBIENT: faint 850 Hz RMS 2902.5, bounded AGC and acoustic ML observed 750 blocks
+PASS TC (non-gating): 2k=471.0 weak=152.8 9k=125.7 idle-hiss=55.8
+PASS ML: prototype adaptation + explicit-only preference updates
+R26.2 audio/learning regression PASS
+CHECK Tools/test_r261_regressions.py
+PASS mic: 3-count 850Hz input 139.7 RMS, silence remains silent, sudden loud bounded
+PASS tc: stationary 240Hz notch: out 59.82 RMS, notch 239Hz
+PASS tc: 1kHz input 400-peak -> output 260.8 RMS, notch disabled
+PASS tc: continuous 500 Hz remains audible 384.9 RMS
+PASS tc: add 1kHz after stationary hum -> output 418.1 RMS
+R26.2 backwards-compatibility acoustic regressions PASS
+CHECK Tools/test_r262_regressions.py
+PASS controls: TC->MIC->BT->TC->MIC, mute retained until user toggle
+PASS PCM: preserve measured LOW16 signed lane, avoid speculative 24-bit shift
+PASS speech: steady 1kHz RMS 267.2, no notch, no gate
+PASS mixed signal: 240 Hz hum locked, 1kHz preserved amplitude 553.8, notch 239 Hz
+PASS bypass: TC NOTCH OFF fades notch without muting voice bandwidth
+R26.2 PORTABLE REGRESSIONS PASS
+CHECK Tools/test_r21_controls.py
+R21: source, 100%% digital UI cap, 5%% encoder, bounce, proximity, online preference tests PASS
+CHECK Tools/test_r24_tc_filter.py
+PASS TC DSP R26.2: 2kHz RMS=766.5, out-of-band 9kHz RMS=204.6 (simulation only)
+CHECK Tools/test_r263_low24.py
+PASS R26.3 LOW24: signed S24 -> S16 tone 1kHz, stereo channels and 24-bit limits
+R26.3 portable PCM PASS (NOT hardware evidence)
+CHECK Tools/verify_r263_low24.py
+PASS R26.3 boot: TC LOW24 + no cleanup/notch, R23 LOW16 fallback, MIC preserved, mode-control fix, recovery parity
+CHECK Tools/verify_r24_operating.py
+PASS R26.3: R24 standalone base, BT unchanged, R34 LOW24 TC baseline (cleanup OFF), MIC AGC, fair control scheduling, recovery
+CHECK Tools/verify_r23_low16.py
+PASS R23 compatibility: LOW16 fallback preserved, R34 direct LOW24 reference, R23 thresholds available
+CHECK Tools/verify_full_system.py
+PASS CubeIDE metadata
+PASS Microphone DFSDM PC2/PB14 pins
+PASS Microphone 48k 1.92MHz clocking
+PASS Dedicated DMA1_CH4
+PASS Microphone wakeup IRQ
+PASS Touch I2C1 MPR121 12 pads
+PASS Rotary decoder PA0/PA1
+PASS Multiple real audio sources
+PASS Speaker FIFO
+PASS Bounded learning
+PASS Hardware-independent boot
+PASS Peripheral HAL configured
+PASS Live/Recovery parity
+PASS Vendor restore script
+PASS No known FreeRTOS include inversion
+FULL-SYSTEM SOURCE INTEGRATION: 15/15 passed (not ARM/hardware tested)
+CHECK CHECK_PROJECT.py
+PASS final CubeIDE project name
+PASS final IOC exists
+PASS Debug build includes -g3 symbols (optimization level is user-selectable)
+PASS capture ring stays RAM-safe at depth 8
+PASS native ControlTask priority 6
+PASS AudioTask priority 7 / larger stack
+PASS AudioTask bounded fairness: touch/encoder cannot starve under sustained telecoil PCM
+PASS AudioTask uses bounded DMA notifications for Bluetooth, telecoil and microphone
+PASS conservative 4x auto-level
+PASS soft-knee output limiter present
+PASS smoothed weighted mono fold present
+PASS concealment limited to two half-buffers
+PASS scope increased to 256 real samples
+PASS single compact R26 scope packet
+PASS R26 scope no longer emits multiline data chunks
+PASS R28 final controller protocol identity
+PASS BT telemetry exposes stable fold weights
+PASS dashboard Python compiles
+PASS R26 result folder
+PASS dashboard parses compact R26 scope
+PASS advanced Signal Lab present
+PASS live/export Signal Lab controls present
+PASS physical quality can be recorded as WARN
+PASS dashboard exposes capture-loss percentage
+PASS Recovery firmware restore exists
+PASS recovery demo_app matches live
+PASS recovery build config matches live
+PASS PREPARE restores and validates R26
+PASS SAI1 exports master frame sync to SAI2
+PASS SAI2 RX uses internal SAI1 synchronous mode
+PASS microphone independent of PCM1808; receiver DMA topology rebuilt after source change
+PASS TC clock probe checks internal synchronization
+PASS 2048-point HD UART stream framed
+PASS HD PCM comes from consecutive actual captured samples
+PASS dashboard HD protocol decoder and selectable fast/HD modes
+PASS PC-file Navy audio STFT studio present
+PASS recovery SAI clock configuration matches live
+
+PROJECT VALIDATION: 37 passed, 0 failed
+PROJECT STATIC VALIDATION PASS
+FINAL HARDWARE-ONLY FSM + RTOS MONITOR CHECKS: PASS
+NATIVE BOOT + CANONICAL CUBEMX IOC TASK TABLE + MEASURED RTOS TELEMETRY: PASS
+TIMED LOW PRIORITY CPU SATURATION + GUI CONTROLS: PASS
+CUBEMX STALE defaultTaskHandle BUILD REGRESSION: PASS
+R29 DEBUG WATCH / REAL FSM / 60 SEC STRESS: PASS
+FREE RTOS RUN TIME (%) DEBUGGER-VISIBILITY FIX: PASS
+R30 SOURCE SYMBOL AND BUILD IDENTIFICATION CHECKS: PASS
+R30 RUBRIC FOCUSED FIVE TEST DASHBOARD + STANDALONE SIGNAL/FSM TOOLS: PASS
+R30.2 ELAPSED-TIMER PROFILER + FAILURE-REASON CHECKS: PASS
+PASS TIM2 explicitly starts before native scheduler
+PASS TIM2 boot test uses physical counter progress
+PASS TIM2 recovery is non-resetting
+PASS raw !PX diagnostic uses two physical readings
+PASS profiler and boot recovery mirrors match
+R30.4 REAL CONTEXT-SWITCH TIM2 ACCOUNTING + RECOVERY: PASS
+R30.5 INDEPENDENT TIM6 SAMPLED CPU-PROFILING CHECKS: PASS
+R31 DUAL EQUAL-PRIORITY WORKERS, PROFILER CONTINUITY AND DASHBOARD: PASS
+R32 PRIORITY-7 TASK PRESERVED (R34 CONTINUOUS-SPIN UPGRADE): PASS
+R34 CONTINUOUS PRIORITY-7 SPIN + 20S SELF-STOP + DEBUGGER: PASS
+CHECK CHECK_GROUP.py
+PASS real FreeRTOS queue created
+PASS cross-task queued commands consumed by AudioTask
+PASS Nucleo button polled in ControlTask
+PASS DSP inserted into direct and routed audio
+PASS known-good R34 marker preserved
+PASS real profile telemetry present
+PASS recovery mirror: Core/Src/demo_app.c
+PASS recovery mirror: Core/Src/group_features.c
+PASS recovery mirror: Core/Src/group_encoder.c
+PASS recovery mirror: Core/Inc/group_features.h
+PASS recovery mirror: Core/Inc/group_encoder.h
+PASS PCB physical pad map included
+PASS import instructions included
+PASS CubeIDE managed project metadata present
+PASS guardian source mirrored for CubeMX recovery
+PASS guardian header mirrored for CubeMX recovery
+PASS G2 optional DSP source mirror
+PASS runtime guardian connected to actual AudioTask pipeline
+PASS CI regression workflow present
+PASS guardian host regression present
+PASS G5 UI source recovery mirror
+PASS G5 UI header recovery mirror
+PASS G5 firmware recovery mirror
+PASS physical UI state machine enqueues real source requests
+PASS DMA-to-AudioTask event-driven RTOS handoff
+PASS standalone UI deterministic tests
+PASS only required audio/BT tasks determine core startup success
+GROUP G1 VALIDATION PASS: 27 checks
+CHECK Tools/r14_build_guard.py
+{
+  "passed": 40,
+  "checks": 40,
+  "errors": []
+}
+CHECK Tools/r15_link_regression.py
+{
+  "passed": 40,
+  "checks": 40,
+  "errors": []
+}
+R15 duplicate-I2C-linker-errors regression PASS (source ownership)
+R26 SOURCE CHECKS PASS; portable C DSP=PASS
+NOT a real CubeIDE GCC executable link, board latency, or acoustic validation

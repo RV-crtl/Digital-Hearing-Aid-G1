@@ -1,0 +1,10 @@
+{
+  "timestamp_utc": "2026-10-29T03:47:45.869066+00:00",
+  "target": "clang arm-none-eabi cortex-m4 hardfp",
+  "libc": "minimal syntax-only declaration stubs (NOT newlib link)",
+  "total": 74,
+  "passed": 74,
+  "errors": [],
+  "full_link_verified": false,
+  "hardware_verified": false
+}

@@ -1,59 +1,75 @@
-# G1 · Standalone adaptive hearing prototype
+> **Firmware QR261104.3:** Start with [`README_QUIET_RIOT_QR261104_3.md`](README_QUIET_RIOT_QR261104_3.md), then [`Documentation/QR261104_3_DELTA_AND_ACCEPTANCE.md`](Documentation/QR261104_3_DELTA_AND_ACCEPTANCE.md). This older page is retained as background documentation.
 
-**STM32L476RG · custom KiCad PCB · FreeRTOS · microphone / Bluetooth / induction-loop audio · physical controls**
+# Quiet Riot — Digital Hearing Aid
 
-![Actual G1 signal architecture](Assets/system-overview.svg)
+**STM32CubeIDE 1.19.0 / STM32L476RG, operating firmware project**
 
-The diagram above represents real interfaces and task ownership, not fictional mechanical CAD or hardware measurements.
+The importable project is `261104-Digital_Hearing_Aid` (keep the project name exact).
+The contents of `Core`, `Drivers`, `Middlewares`, `.project`, `.cproject`, the `.ioc`,
+`STM32L476RGTX_FLASH.ld` and `Recovery` form the buildable firmware. `Tests`, `Tools`,
+`Dashboard`, `Documentation`, `Assessment` and `Hardware` are development assets, not
+additional runtime tasks; the firmware builds only the configured translation units.
 
-[![Engineering CI](https://github.com/RV-crtl/Digital-Hearing-Aid-G1/actions/workflows/verify-g3.yml/badge.svg)](https://github.com/RV-crtl/Digital-Hearing-Aid-G1/actions/workflows/verify-g3.yml) [![R26 DSP tests](https://github.com/RV-crtl/Digital-Hearing-Aid-G1/actions/workflows/r26-dsp.yml/badge.svg)](https://github.com/RV-crtl/Digital-Hearing-Aid-G1/actions)
+## Build and test from a fresh extraction
 
-[**Explore the interactive website**](https://rv-crtl.github.io/Digital-Hearing-Aid-G1/) · [System architecture](Documentation/PRINTABLE_SYSTEM_DIAGRAM.md) · [Black-box demonstration plan](Documentation/BLACK_BOX_TEST_PLAN.md) · [Current evidence and requirements](Documentation/G1_CURRENT_SYSTEM_REQUIREMENTS.md) · [Hardware/KiCad](Hardware/README.md)
+1. Extract the ZIP fully to a short path, e.g. `C:\STM32\QuietRiot\`.
+2. Close CubeIDE and run **`PREPARE_PROJECT.bat`**. This checks and restores
+   source parity after CubeMX regeneration. It does not flash the device.
+3. Run **`VERIFY_FINAL.bat`** (optional portable tests; the ARM cross-check in this
+   package uses Clang/LLD if available, not the installed STM32 GCC toolchain).
+4. Open CubeIDE 1.19.0 → File → Import → Existing Projects into Workspace.
+   Select the extracted folder and import **`261104-Digital_Hearing_Aid`**.
+   Remove/close an older imported copy first to avoid building the wrong source.
+5. Project → Clean → Build Project. Confirm Debug/261104-Digital_Hearing_Aid.elf
+   was **newly created**, with 0 errors and 0 warnings before flashing.
+6. Flash the PCB and follow `Documentation/GROUP_DEMO_15_MINUTE_PLAN.md` using
+   the intended standalone battery supply. Test initially via a bench speaker.
 
-> **Prototype, not a certified hearing aid.** This repository contains original PCB design, software source, testing infrastructure and student-team engineering work. The maximum acoustic output has not been independently calibrated for use on or in the ear. Public access is not a general reuse licence; see [publication and contributor rights](Documentation/PUBLICATION_GATE.md).
+**Do not press CubeMX Generate Code after PREPARE without rerunning PREPARE.**
+The C drivers and HAL ISR owners are recovered deliberately; regenerating the IOC
+can otherwise introduce duplicate DFSDM/I2C drivers or overwrite the boot paths.
 
-## The real prototype
+## Last reported build failure and correction
 
-The physical target is a **standalone custom PCB**, not a Nucleo board. A ST-LINK is needed only for programming and optional engineering diagnosis, not for intended normal operation. The hardware incorporates an STM32L476RG, digital PDM microphone, MPR121 capacitive touch, rotary encoder, Bluetooth audio, a telecoil input with PCM1808 conversion, FreeRTOS and a speaker/audio-output chain. The bench-tested R24 firmware was reported to operate without Nucleo after a wiring issue was resolved.
+- User's Debug log had GCC 13.3 link failure:
+  `FreeRTOS heap must be exactly 24 KiB`.
+- The original GNU ld `SIZEOF(.freertos_heap_ram2)==24576` assertion is replaced
+  by two *hard* SRAM2 MEMORY regions: `RAM2_HEAP` at `0x10000000` (24 KiB) and
+  `RAM2_CAPTURE` at `0x10006000` (8 KiB). Physical overlap is impossible under
+  the linker memory-region constraints.
+- The 8-KiB linker scratch start is now declared in C as
+  `extern uint8_t _capture_ram2_start[];`, not as a one-byte scalar.
+  This corrects the two GCC -O2 array-bounds warnings.
+- Stale project-name check (`G1_Product_R26_...`) now accepts the real 261104 project.
+- The firmware's signal chain, microphone gain and R26.6-style telecoil filtering
+  have NOT been changed by these repairs.
 
-The team subsequently developed **R26** with higher-sensitivity ambient audio, telecoil idle-noise reduction, adaptive gain, and incremental acoustic feature clustering. **R26 firmware is a candidate, not a confirmed on-PCB acceptance result.**
+See `BUILD_FIX_AND_VERIFICATION.md` for what was verified and the outstanding
+hardware/native-ELF checks.
 
-| Function | Evidence currently available | Important qualification |
-| --- | --- | --- |
-| Microphone → speaker | Operator-confirmed in R24; R26 DSP host tests | Distant pickup, distortion, safe SPL and ambient balance need measurement |
-| Bluetooth → speaker | Operator-confirmed in R24 | Bluetooth module and source output remain subject to demonstration checks |
-| Telecoil → speaker | Operator-confirmed with **PCM LOW16** and **FILTER ON** | Residual analogue hiss/weak-signal behaviour needs listening and bench measurements |
-| MPR121 touch / encoder | Operator-confirmed, R21 control regression tests | Repeatability and user-response timing remain black-box criteria |
-| Untethered USB-C power | R24 operator-confirmed after resolving external wiring | Battery source/protection/charging cannot be inferred from this result |
-| Adaptive scene model | R26 portable C tests | **Three unsupervised clusters**, not a pretrained speech/car/pedestrian classifier |
-| FreeRTOS / DMA | Static contracts and host tests | Final CPU load, timing, interrupts, underruns and SRAM headroom need recorded board evidence |
+## Physical user controls
 
-## Important: two firmware baselines
-
-**Do not flash the root CubeIDE project assuming it is R26.** The root files currently include an earlier Nucleo-oriented group source baseline, augmented with portable R20–R26 DSP/control improvements. R26's complete custom-PCB project was distributed separately; a clean, native STM32CubeIDE 1.19.0 GCC build and intentional whole-project promotion are required before declaring it this repository's authoritative firmware. The runtime should not be assembled by casually combining half of one firmware revision with the other.
-
-See [firmware integration and source ownership](Documentation/G1_CURRENT_SYSTEM_REQUIREMENTS.md) and [integration issue #27](https://github.com/RV-crtl/Digital-Hearing-Aid-G1/issues/27).
-
-## Interactive engineering site
-
-The [site](https://rv-crtl.github.io/Digital-Hearing-Aid-G1/) provides an interactive CAD explorer (3MF/GLB with local upload), source-linked **original KiCad schematics**, signal paths and task ownership, code references, and a demonstration checklist. All files under `Hardware/Original_KiCad/` remain unchanged.
-
-The uploaded **November 2026 full multi-body assembly** contains 1,713 3MF mesh objects (460,021 triangles), including PCB, housing and separated structures. The *previous* 3MF stored at `docs/assets/g1-assembly.3mf` is an earlier revision. The newest upload can be opened through the site's **Open your 3D CAD** control without sending it to a server; its full binary is not yet tracked on GitHub. See [CAD provenance and viewing guide](Documentation/CAD_ASSEMBLY_AND_VIEWERS.md).
-
-## Project navigation
-
-| Area | Start here |
+| Input | Action |
 | --- | --- |
-| Software / RTOS | [Core source](Core/Src) · [source ownership map](Documentation/CODE_MAP.md) |
-| DSP and adaptive learning | [Ambient DSP](Core/Src/g1_ambient_dsp.c) · [online clusters](Core/Src/g1_scene_ml.c) · [telecoil cleanup](Core/Src/tc_cleanup.c) |
-| Circuits / layout | [Original KiCad files](Hardware/Original_KiCad) · [hardware notes](Hardware/README.md) |
-| Firmware import | [CubeIDE procedure](Documentation/GROUP_G1_IMPORT_AND_BUILD.md) · [R26 integration gate](https://github.com/RV-crtl/Digital-Hearing-Aid-G1/issues/27) |
-| Demonstration | [System diagram](Documentation/PRINTABLE_SYSTEM_DIAGRAM.md) · [current requirements](Documentation/G1_CURRENT_SYSTEM_REQUIREMENTS.md) · [20-minute black-box test](Documentation/BLACK_BOX_TEST_PLAN.md) |
-| Validation / CI | [Host validation](Validation/README.md) · [Actions](https://github.com/RV-crtl/Digital-Hearing-Aid-G1/actions) |
-| Contributors / release | [CONTRIBUTING](CONTRIBUTING.md) · [SECURITY](SECURITY.md) · [publication gate](Documentation/PUBLICATION_GATE.md) |
+| E8 tap | Bluetooth source |
+| E9 tap | Telecoil source |
+| E10 tap | Mute/unmute |
+| E11 tap | Microphone source |
+| E8 hold | Optional mono room effect (Bluetooth only) |
+| E11 hold | Optional microphone rumble reduction |
+| Rotary encoder | Digital volume with IRQ and polling fallback |
 
-## Working practices
+## Architecture / important caveats
 
-Run `python3 Validation/run_host_validation.py`, `python3 docs/validate_site.py` and the relevant portable C tests before submitting a PR. **Green source-level CI does not mean ARM firmware compiled, a device booted, or acoustic performance was measured.** The correct demonstration image must start from its intended regulated power supply with ST-LINK and diagnostics disconnected; no synthetic stress/demo tasks should be enabled for operating mode.
-
-Earlier G2/G3/G5/G11 and R-series materials remain in `Documentation/` for traceability, but **the current requirements and black-box plan linked above supersede their historical demonstration descriptions.** Avoid presenting historical statements about an unintegrated mic, Nucleo B1, or simulated user controls as the current PCB's features.
+- **AudioTask P7** owns real-time audio processing, routing and output FIFO.
+- **ControlTask P6** owns the physical UI / commands; some changes are shared
+  scalar requests, and `g_group_events` is an eight-entry event queue.
+- **BtTask P5** owns BT401/USART1 pairing and control commands.
+- PCM1808 BT/telecoil: 24-bit stereo receive in 32-bit SAI DMA words;
+  telecoil uses LOW24 full-precision recovery. MP34DT05 PDM mic uses DFSDM.
+- A single mono listening signal is duplicated into 16-bit stereo SAI2B frames.
+- `ConnectivityService` manages BT/telecoil automatic state decisions; MIC is an
+  explicitly selected input rather than a third equal-priority wireless source.
+- ROOM is a mono ambience effect; microphone rumble reduction is not ANC.
+- Source-level tests cannot prove clear telecoil sound, stability under all
+  physical conditions, acoustic output limits or the final native GNU link.

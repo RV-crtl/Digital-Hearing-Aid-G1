@@ -1,14 +1,15 @@
+## 261104 group-demo release candidate
+
+- Fixed incompatible SRAM2 ownership; dedicated 24KiB RTOS heap and 8KiB capture, linker-checked.
+- Renamed CubeIDE project/IOC, validated new import name.
+- Added original percussive state cues + optional mono room ambience and mic rumble filter; both off initially.
+- Preserved LOW24 TC and mic behaviour; no claimed true ANC or stereo surround.
+- Added black-box demo test plan, documentation, and portable verification.
+- Native Windows STM32CubeIDE link and PCB validation still required.
+
+---
+
 # Changelog
-
-## 03 November 2026 — current-system documentation, authentic CAD tools and site refresh
-
-- Established R24 operator evidence vs R26 candidate status and preserved the older root project as historical source until full CubeIDE promotion.
-- Rewrote current system-level requirements, printable A3 architecture and 19–20 min untethered black-box assessment plan.
-- Removed dead fictional CAD geometry from the public viewer; added searchable real mesh names and full multi-body camera fitting.
-- Added original KiCad PCB layer export and pan/zoom browser views, without changing the schematic/PCB.
-- Added a validated latest-3MF import workflow with explicit provenance and public-release permission.
-- Added a reproducible host-only production-C R26 DSP benchmark; real STM32 CPU/SRAM and acoustic headroom remain open.
-- Archived the old G11 test plan, keeping its legacy CI traceability separate from the current product acceptance plan.
 
 ## G11 — standalone custom-PCB system atlas and contextual learning prototype (28 October 2026)
 

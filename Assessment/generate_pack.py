@@ -84,19 +84,19 @@ def make_assessment(out):
     doc=SimpleDocTemplate(str(path),pagesize=A4,rightMargin=16*mm,leftMargin=16*mm,topMargin=16*mm,bottomMargin=19*mm,
                           title='Digital Hearing Aid — Revised System Requirements and Black Box Test Plan (Draft)',author='Group project')
     story=[Paragraph('Digital Hearing Aid',s['DTitle']),Paragraph('Revised system requirements and black-box test plan',s['DH1'])]
-    story.append(Paragraph('DRAFT — Group sign-off and actual hardware evidence required before submission. Prepared from the submitted Prototype Design 2 requirements and the System Demonstration and Viva rubric (pp. 1–2 and 7). Current assessment target is the standalone G1 custom PCB and the physical MIC/BT/LOW16 telecoil controls. R24 was operator-reported working; R26 is a software-tested candidate, not yet an accepted hardware image.',s['DBody']))
+    story.append(Paragraph('DRAFT — Group sign-off and actual hardware evidence required before submission. Prepared from the submitted Prototype Design 2 requirements and the System Demonstration and Viva rubric (pp. 1–2 and 7). The firmware is a NUCLEO-L476RG engineering baseline, NOT a tested custom PCB.',s['DBody']))
     story.append(Paragraph(f'Proposed live test duration: <b>{sum(float(x["minutes"]) for x in tests):.1f} minutes</b> (10–20 minutes recommended by course, absolute maximum 30 minutes). Long-duration battery/environmental qualification is reviewed as existing original evidence and cannot be completed live.',s['DBody']))
     story.append(Paragraph('Approval gates before submitting',s['DH1']))
     for msg in [
       'Obtain agreement that EVERY retained requirement is a realistic system-level requirement with a measurable external acceptance method. Keep unmet items openly marked as blockers. Do not silently remove previously agreed requirements.',
       'Confirm target physical board, exact standalone power source, physical controls, microphone(s), telecoil/loop, Bluetooth profile and acoustic coupling fixture. Rehearse all tests using the same firmware revision.',
       'Replace all unquantified terms (“safe output”, “fast recovery”, “humid”) with approved numerical thresholds and calibrated methods.',
-      'Do not claim standalone battery endurance or medical output safety from USB-C operation or from source-level tests. Record actual power source and electroacoustic levels on a safe fixture.',
+      'Bring independent evidence for >=24 h battery life, environmental testing and standard applicability; no software unit test or simulated plot replaces a black-box hardware result.',
       'Test without ST-Link or UART/debugger. A phone may be used only where naturally part of the Bluetooth system. Perform damaging-condition tests last with appropriate protection.',
     ]:
       story.append(Paragraph('• '+ptxt(msg),s['DBody']))
     story.append(Paragraph('A. System-level requirements and test coverage',s['DH1']))
-    story.append(Paragraph('This document follows nine G1 custom-board system requirements and seven externally observed test cases. The archived G11 assessment source is retained under Assessment/legacy but is not the current operating demonstration.',s['DMuted']))
+    story.append(Paragraph('The source group requirements repeat MEC-02 for two different mechanical statements; this draft uses MEC-02A/MEC-02B to disambiguate them. ADV-01/02 are proposed HD extensions and must be approved.',s['DMuted']))
     header=['ID','System requirement','Test case(s)','Current evidence / blocker']
     values=[header]
     for row in rows:
@@ -141,51 +141,39 @@ def arrow(c,x1,y1,x2,y2,label=None):
         c.setFont(FONT,7);c.setFillColor(GRAY);c.drawCentredString((x1+x2)/2,(y1+y2)/2+6,label)
 
 def make_a3(out):
-    """A3 landscape current custom-PCB RTOS/data/control map; source-backed, not evidence."""
     path=out/'PRINT_A3_SYSTEM_SOFTWARE_HARDWARE_INTERFACES.pdf'
     c=canvas.Canvas(str(path),pagesize=landscape(A3))
     w,h=landscape(A3)
-    c.setFillColor(NAVY);c.rect(0,h-61,w,61,stroke=0,fill=1)
-    c.setFillColor(colors.white);c.setFont(BOLD,18)
-    c.drawString(30,h-30,'G1 | CUSTOM PCB SIGNAL + RTOS SYSTEM ARCHITECTURE')
-    c.setFont(FONT,9)
-    c.drawRightString(w-30,h-30,'A3 landscape | 03 Nov 2026 | operating R24 / candidate R26')
-    top=h-105
-
-    draw_box(c,35,top-95,220,82,'PDM microphone',['PC2 clock / PB14 data','Ambient speech + environmental sound'])
-    draw_box(c,35,top-208,220,82,'Bluetooth audio',['Module via USART1 control','SAI1A PCM input / LOW24 decode'])
-    draw_box(c,35,top-321,220,82,'Telecoil / induction loop',['Analogue pickup + PCM1808','SAI2A input / signed LOW16 decode'])
-    draw_box(c,35,top-442,220,92,'Real product controls',['MPR121 I2C1 PB6/PB7: E8-E11','Rotary PA0/PA1: volume'])
-
-    draw_box(c,313,top-273,298,249,'STM32L476RG / FreeRTOS',['DFSDM1 + SAI DMA half/full callbacks','Bounded PCM snapshot and ISR notification','AudioTask P7: source + DSP + output FIFO','R26 ambient AGC / TC filter + scene clusters','SAI2B TX DMA to amplifier'],theme='focus')
-    draw_box(c,313,top-440,298,104,'ControlTask P6 + BtTask P5',['Touch/encoder debounce and mode control','FreeRTOS bounded control event queue','USART2 diagnostics optional; off in operating build'])
-    draw_box(c,681,top-145,219,99,'Digital output chain',['SAI2B TX DMA -> digital amplifier','Speaker / hearing transducer'])
-    draw_box(c,681,top-318,219,100,'Protected regulated supply',['USB-C standalone in R24 operator tests','2S LiFePO4 intended; verify power hardware'])
-    draw_box(c,941,top-145,213,99,'External observable evidence',['Acoustic output, controls and recovery','No ST-LINK/serial during black-box tests'])
-    draw_box(c,941,top-318,213,100,'Offline engineering diagnostics',['ARM build, CPU margins, UART optional','NOT substitute for physical acceptance'])
-
-    arrow(c,255,top-55,313,top-72,'DFSDM')
-    arrow(c,255,top-168,313,top-150,'DMA')
-    arrow(c,255,top-281,313,top-222,'DMA')
-    arrow(c,255,top-396,313,top-384,'touch')
-    arrow(c,462,top-336,462,top-273,'event')
-    arrow(c,611,top-135,681,top-92,'PCM FIFO')
-    arrow(c,900,top-98,941,top-98,'audible')
-    arrow(c,900,top-267,941,top-267,'measure')
-    arrow(c,792,top-218,792,top-145,'power')
-
-    c.setFillColor(NAVY);c.setFont(BOLD,11);c.drawString(37,141,'Data plane')
-    c.setFont(FONT,10);c.drawString(130,141,'PDM / SAI RX DMA -> notification -> AudioTask -> FIFO -> SAI2B -> output')
-    c.setFont(BOLD,11);c.drawString(37,117,'Control plane')
-    c.setFont(FONT,10);c.drawString(130,117,'E8-E11 / encoder -> ControlTask -> bounded queue -> AudioTask; BT status via BtTask')
-    c.setStrokeColor(BORDER);c.line(34,91,w-34,91)
-    c.setFillColor(RED);c.setFont(BOLD,10)
-    c.drawString(35,73,'VERIFICATION SCOPE - not a hardware PASS certificate')
-    c.setFont(FONT,8.5);c.setFillColor(GRAY)
-    c.drawString(35,55,'R24 standalone USB-C and MIC/BT/TC controls were operator-reported; R26 on-board audio, battery protection and SPL are pending.')
-    c.drawString(35,40,'Original KiCad PCB unchanged. Check real board and exact flashed ELF separately. Print two A3 copies for the viva.')
-    c.save()
-    return path
+    c.setFillColor(NAVY);c.rect(0,h-56,w,56,stroke=0,fill=1)
+    c.setFont(BOLD,18);c.setFillColor(colors.white);c.drawString(23,h-31,'DIGITAL HEARING AID — END-TO-END SYSTEM & RTOS OWNERSHIP')
+    c.setFont(FONT,8);c.drawRightString(w-18,h-31,'A3 landscape  |  NUCLEO-L476RG G5/G6 operating configuration')
+    margin=30
+    top=h-87
+    draw_box(c,45,top-85,185,75,'Bluetooth audio / BT401',['UART1: module commands','SAI1A RX: PCM1808 + DMA'])
+    draw_box(c,45,top-190,185,75,'Telecoil front-end',['Magnetic loop -> ADC PCM1808','SAI2A RX + DMA'])
+    draw_box(c,45,top-295,185,75,'Physical USER button',['NUCLEO PC13 GPIO','ControlTask debounce/gestures'])
+    draw_box(c,280,top-180,235,135,'STM32L476RG / FreeRTOS',['SAI RX DMA ISRs publish snapshots','Direct AudioTask notification from ISR','AudioTask priority 7, sole PCM owner','Source FSM + DSP + guardian','ControlTask priority 6 via GroupEvent queue','BtTask priority 5 UART supervision'],theme='focus')
+    draw_box(c,570,top-125,214,76,'SAI2B output',['DMA -> MAX98357A amplifier','Bone-conduction transducer'])
+    draw_box(c,570,top-250,214,76,'External black-box observable',['Sound / control response','Power / calibrated measurement'])
+    draw_box(c,818,top-125,240,76,'Power source',['Intended battery or AC (verify)','No ST-Link / serial debug in demo'])
+    draw_box(c,818,top-250,240,76,'Engineering evidence (offline)',['Source-level C + MATLAB analysis','Not a live black-box PASS criterion'])
+    arrow(c,230,top-50,280,top-90,'DMA snapshot')
+    arrow(c,230,top-150,280,top-118,'DMA snapshot')
+    arrow(c,230,top-258,280,top-150,'event queue')
+    arrow(c,515,top-95,570,top-83,'SAI2B DMA')
+    arrow(c,677,top-125,677,top-174,'acoustic result')
+    arrow(c,784,top-212,818,top-212,'record')
+    c.setFillColor(NAVY);c.setFont(BOLD,10)
+    c.drawString(45,128,'RTOS data path:')
+    c.setFont(FONT,9);c.drawString(155,128,'DMA IRQ -> fixed capture rings -> task notification -> AudioTask -> speaker DMA')
+    c.setFont(BOLD,10);c.drawString(45,107,'RTOS control path:')
+    c.setFont(FONT,9);c.drawString(173,107,'Physical button -> ControlTask -> FreeRTOS GroupEvent queue -> AudioTask')
+    c.setStrokeColor(BORDER);c.line(42,91,w-42,91)
+    c.setFillColor(RED);c.setFont(BOLD,10);c.drawString(45,72,'HARDWARE LIMITATIONS / DO NOT CLAIM AS VERIFIED')
+    c.setFillColor(GRAY);c.setFont(FONT,8)
+    c.drawString(45,55,'Custom PCB PC13/PA5 not wired as Nucleo USER/LED; microphone DFSDM not yet integrated. MPR121 address pin, wear sensor, charging, SPL, endurance require hardware proof.')
+    c.drawString(45,40,'M3 source idle is not true MCU low-power STOP. Operating build creates NO background load or continuous-spin tasks. Print TWO copies for demonstration; A3 or larger for viva.')
+    c.save();return path
 
 def main():
     ap=argparse.ArgumentParser();ap.add_argument('--output',default=str(ROOT/'generated'));args=ap.parse_args()

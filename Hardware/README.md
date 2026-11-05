@@ -1,4 +1,4 @@
-# Original G1 KiCad electrical hardware — unchanged source
+# KiCad electrical hardware — actual supplied group design
 
 Open [`Original_KiCad/260510-Digital_hearing_aid.kicad_pro`](Original_KiCad/260510-Digital_hearing_aid.kicad_pro) using KiCad's **Project Manager** (rather than separately opening the board and schematics). PCB and hierarchical schematic pages are included. The board is **NOT validated/fabrication-approved** by inclusion in GitHub.
 
@@ -28,6 +28,3 @@ For the risk and peripheral porting checklist see [`CUSTOM_PCB_PORTING_CHECKLIST
 ## G11 intended operating supply and standalone target
 
 The team specifies **two 26650 LiFePO4 3.25 V nominal cells in series** (6.50 V nominal). This value is the **battery pack**, not the MCU supply rail: trace the actual cell balancing/protection, current limiting, low-voltage cutoff, buck/LDO conversion and acoustic output stages before operating. The final demonstrator is the custom PCB alone: it must not depend on a Nucleo, debug dongle, PC or serial console. The team reports physical hardware operational, but a specific firmware SHA/PCB revision/end-to-end black-box test record is not attached here. See [G11 custom-PCB bring-up plan](../Documentation/G11_STANDALONE_CUSTOM_PCB_RELEASE_PLAN.md).
-
-
-> **03 November 2026:** The operator confirmed R24's custom-board microphone, Bluetooth, telecoil LOW16/FILTER ON, local controls, and independent operation after an external wiring correction. R26 adds candidate DSP and unsupervised online learning, but its hardware performance is not yet verified. The original KiCad schematic and PCB in this directory remain unchanged. See [current status](../Documentation/G1_CURRENT_SYSTEM_REQUIREMENTS.md) and the [new CAD guide](../Documentation/CAD_ASSEMBLY_AND_VIEWERS.md).

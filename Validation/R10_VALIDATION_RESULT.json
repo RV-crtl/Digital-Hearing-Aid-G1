@@ -1,0 +1,106 @@
+{
+  "date_utc": "2026-11-03T03:02:17.245592+00:00",
+  "source_checked": true,
+  "full_arm_link_verified": false,
+  "custom_pcb_verified": false,
+  "checks": [
+    [
+      "Unique CubeIDE identity",
+      true
+    ],
+    [
+      "IOC matches project name",
+      true
+    ],
+    [
+      "Valid XML .project",
+      true
+    ],
+    [
+      "Valid XML .cproject",
+      true
+    ],
+    [
+      "Recovery matches Core/Src/demo_app.c",
+      true
+    ],
+    [
+      "Recovery matches Core/Src/g1_product_board.c",
+      true
+    ],
+    [
+      "Recovery matches Core/Inc/g1_product_board.h",
+      true
+    ],
+    [
+      "Recovery matches .cproject",
+      true
+    ],
+    [
+      "MIC independent input DMA",
+      true
+    ],
+    [
+      "BT does not depend on TC",
+      true
+    ],
+    [
+      "Source changes reconfigure capture",
+      true
+    ],
+    [
+      "Audio DMA keeps partial input",
+      true
+    ],
+    [
+      "Actual 1 Hz UART live telemetry",
+      true
+    ],
+    [
+      "BT module AT passthrough",
+      true
+    ],
+    [
+      "Serial probes and controls",
+      true
+    ],
+    [
+      "Encoder interrupt and poll fallback",
+      true
+    ],
+    [
+      "MPR121 probes four addresses",
+      true
+    ],
+    [
+      "Mic DFSDM callback and queue",
+      true
+    ],
+    [
+      "Vendor I2C DFSDM linked once",
+      true
+    ],
+    [
+      "Bundled FreeRTOS sources",
+      true
+    ],
+    [
+      "Compiled and executed C UI tests",
+      true
+    ],
+    [
+      "Regression CHECK_PROJECT.py",
+      true
+    ],
+    [
+      "Regression CHECK_GROUP.py",
+      true
+    ],
+    [
+      "Regression Tools/g1_preflight.py",
+      true
+    ]
+  ],
+  "passed": 24,
+  "failed": 0
+}

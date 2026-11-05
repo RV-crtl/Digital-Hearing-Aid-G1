@@ -1,0 +1,13 @@
+{
+  "device": "STM32L476RGT6",
+  "ide": "STM32CubeIDE 1.19.0 / STM32CubeMX 6.15.0",
+  "source_of_truth": "manual G1_BoardInit, speaker_output, stm32l4xx_it; IOC describes pin mux but does not generate manual DMA",
+  "microphone": {"clock": "PC2", "data": "PB14", "peripheral": "DFSDM1 Channel2 Filter0", "dma": "DMA1 Channel4", "irq_owner": "Core/Src/g1_product_board.c"},
+  "touch": {"scl": "PB6", "sda": "PB7", "peripheral": "I2C1", "driver": "Core/Src/g1_product_board.c"},
+  "encoder": {"A": "PA0", "B": "PA1", "irq_owner": "Core/Src/stm32l4xx_it.c"},
+  "bluetooth_control": {"tx": "PA9", "rx": "PA10", "peripheral": "USART1"},
+  "bluetooth_audio": {"sd": "PC3", "mclk": "PB8", "fs": "PB9", "sck": "PB10", "peripheral": "SAI1A"},
+  "telecoil": {"fs": "PB12", "sck": "PB13", "sd": "PB15", "peripheral": "SAI2A"},
+  "speaker": {"fs": "PA15", "sck": "PC10", "sd": "PC12", "peripheral": "SAI2B", "dma": "DMA1 Channel7", "irq_owner": "Core/Src/speaker_output.c"},
+  "diagnostics": {"tx": "PA2", "rx": "PA3", "peripheral": "USART2", "baud": 115200}
+}

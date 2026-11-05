@@ -1,0 +1,17 @@
+{
+  "release": "R11",
+  "target": "STM32L476RG",
+  "checks": {
+    "r11_source": 17,
+    "arm_c_syntax": 74,
+    "control": "passed",
+    "recovery_parity": "passed"
+  },
+  "board_tested": false,
+  "stm32cubeide_link_tested": false,
+  "noted_faults": [
+    "R10 reported microphone not ready without init stage",
+    "BT discoverability/physical status unverified",
+    "I2C SCL and SDA were both low in measured output"
+  ]
+}

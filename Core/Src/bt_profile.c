@@ -3,6 +3,7 @@
  * @brief Implementation of the deterministic, callback-driven BT401 profile sequence.
  */
 #include "bt_profile.h"
+#include "qr_bt_volume.h"
 
 static const char *const k_bt401_commands[BT_PROFILE_COMMAND_COUNT] = {
     "AT+CM01\r\n",
@@ -11,7 +12,7 @@ static const char *const k_bt401_commands[BT_PROFILE_COMMAND_COUNT] = {
     "AT+B501\r\n",
     "AT+B401\r\n",
     "AT+CN00\r\n",
-    "AT+CA30\r\n",
+    QR_BT_CONNECT_VOLUME_COMMAND,
     "AT+CU00\r\n",
     "AT+CS01\r\n"
 };

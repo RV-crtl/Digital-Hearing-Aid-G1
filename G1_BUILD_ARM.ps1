@@ -9,7 +9,7 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 $Root = Split-Path -Parent $MyInvocation.MyCommand.Path
-$Name = "261013-Individual_Demonstration_Connectivity"
+$Name = "261104-Digital_Hearing_Aid"
 if (-not (Test-Path (Join-Path $Root ".project"))) { throw "Not a G1 project: .project missing" }
 $Actual = (Select-Xml -Path (Join-Path $Root ".project") -XPath "/projectDescription/name").Node.InnerText
 if ($Actual -ne $Name -or -not (Test-Path (Join-Path $Root "Core\Inc\dha_build_mode.h"))) {

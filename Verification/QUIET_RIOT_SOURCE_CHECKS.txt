@@ -1,0 +1,90 @@
+PASS editable named STM32CubeIDE project, metadata and IOC
+PASS project name consistent in Eclipse/CubeIDE
+PASS CubeMX heap matches the linker
+PASS single application-allocated 24 KiB RTOS arena
+PASS 8 KiB recording scratch has correct C array declaration and does not alias heap
+PASS independent heap and capture MEMORY regions enforced at link
+PASS capture capacity bounded by RAM2 scratch
+PASS power and UI cues integrated into real speaker ISR
+PASS optional spatial effect applies only to actual Bluetooth source 2
+PASS recovery parity Core/Inc/FreeRTOSConfig.h
+PASS recovery parity Core/Src/freertos.c
+PASS recovery parity Core/Src/demo_app.c
+PASS recovery parity Core/Src/g1_user_controls.c
+PASS recovery parity Core/Src/dha_feedback.c
+PASS recovery parity Core/Src/dha_effects.c
+PASS recovery parity Core/Startup/startup_stm32l476rgtx.s
+PASS recovery parity STM32L476RGTX_FLASH.ld
+PASS recovery parity .cproject
+FREE RTOS RUN TIME (%) DEBUGGER-VISIBILITY FIX: PASS
+R30 SOURCE SYMBOL AND BUILD IDENTIFICATION CHECKS: PASS
+R30 RUBRIC FOCUSED FIVE TEST DASHBOARD + STANDALONE SIGNAL/FSM TOOLS: PASS
+R30.2 ELAPSED-TIMER PROFILER + FAILURE-REASON CHECKS: PASS
+PASS TIM2 explicitly starts before native scheduler
+PASS TIM2 boot test uses physical counter progress
+PASS TIM2 recovery is non-resetting
+PASS raw !PX diagnostic uses two physical readings
+PASS profiler and boot recovery mirrors match
+R30.4 REAL CONTEXT-SWITCH TIM2 ACCOUNTING + RECOVERY: PASS
+R30.5 INDEPENDENT TIM6 SAMPLED CPU-PROFILING CHECKS: PASS
+R31 DUAL EQUAL-PRIORITY WORKERS, PROFILER CONTINUITY AND DASHBOARD: PASS
+R32 PRIORITY-7 TASK PRESERVED (R34 CONTINUOUS-SPIN UPGRADE): PASS
+R34 CONTINUOUS PRIORITY-7 SPIN + 20S SELF-STOP + DEBUGGER: PASS
+/group_features.h
+PASS recovery mirror: Core/Inc/group_encoder.h
+PASS PCB physical pad map included
+PASS import instructions included
+PASS CubeIDE managed project metadata present
+PASS guardian source mirrored for CubeMX recovery
+PASS guardian header mirrored for CubeMX recovery
+PASS G2 optional DSP source mirror
+PASS runtime guardian connected to actual AudioTask pipeline
+PASS CI regression workflow present
+PASS guardian host regression present
+PASS G5 UI source recovery mirror
+PASS G5 UI header recovery mirror
+PASS G5 firmware recovery mirror
+PASS physical UI state machine enqueues real source requests
+PASS DMA-to-AudioTask event-driven RTOS handoff
+PASS standalone UI deterministic tests
+PASS only required audio/BT tasks determine core startup success
+GROUP G1 VALIDATION PASS: 27 checks
+{
+  "passed": 40,
+  "checks": 40,
+  "errors": []
+}
+PASS coordinated 24 KiB SRAM2 heap; SRAM1 DMA placement retained
+PASS linker and startup zeroing before constructors; recovery parity
+PASS encoder IRQ and 250ms-fallback polling path active in ControlTask
+R26.7 MEMORY/ENCODER VERIFICATION PASSED
+R21: source, 100%% digital UI cap, 5%% encoder, bounce, proximity, online preference tests PASS
+PASS R24 portable UI control regression
+PASS R26.4: signed S24 recovery, 1kHz, low-level continuity, peak safety, phase, gain cap
+LIMITATION: synthetic PCM, not real PCM1808/I2S capture
+cal locked 240 Hz for injected 240 Hz, fraction 0.997
+hum 240: before 2096.3 after 65.0 (-30.2 dB), 1000 Hz audio 508.3 -> 478.1 (94.1%)
+cal locked 919 Hz for injected 920 Hz, fraction 0.905
+hum 920: before 2137.6 after 92.8 (-27.2 dB), 1500 Hz audio 518.3 -> 462.0 (89.1%)
+cal locked 1840 Hz for injected 1840 Hz, fraction 0.997
+hum 1840: before 2167.2 after 42.2 (-34.2 dB), 1000 Hz audio 525.5 -> 493.8 (94.0%)
+PASS R26.6: source-off learned stationary frequencies, no auto chasing, continuous wanted signal and bypass
+LIMITATION: synthetic input only; board noise frequency, PCM alignment, SAI overrun, and acoustic SPL not measured
+
+PASS: product UI, preserved TC, optional ROOM/NR, original cues, non-gating continuity
+PASS coordinated 24 KiB SRAM2 heap; SRAM1 DMA placement retained
+PASS linker and startup zeroing before constructors; recovery parity
+PASS encoder IRQ and 250ms-fallback polling path active in ControlTask
+PASS actual ARM ELF linker layout: 0x10000000..0x10006000 SRAM2; 64 KiB representative SRAM1 bss
+SMOKE LIMITATION: this is Clang/LLD layout verification, NOT the production ARM GCC/newlib link.
+R26.7 MEMORY/ENCODER VERIFICATION PASSED
+[ 9] .data             PROGBITS        20000000 060000 0000bc 00 WAX  0   0  4
+  [10] .bss              NOBITS          200000c0 0600c0 00fab4 00  WA  0   0  8
+  [11] .freertos_heap_ram2 NOBITS          10000000 070000 006000 00  WA  0   0  8
+  [13] ._user_heap_stack PROGBITS        2000fb74 07fb74 001804 00  WA  0   0  1
+compiled 77 / 77 fails 0
+LLD return 0 last-errors
+ 
+PASS: full ARM C/ASM cross-link SRAM1 and partitioned SRAM2; unresolved standard-library symbols intentionally ignored
+NOTE: Cross-target Clang/LLD link is NOT an STM32CubeIDE GCC/Newlib firmware link.
+PASS SOURCE RELEASE VERIFICATION. Native STM32CubeIDE GNU ELF and PCB hardware validation still REQUIRED.

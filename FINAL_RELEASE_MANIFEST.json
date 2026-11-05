@@ -1,0 +1,37 @@
+{
+  "project": "261104-Digital_Hearing_Aid",
+  "release_label": "Quiet Riot 261104 \u2014 November 2026 linker and preflight repair",
+  "target": "STM32L476RG / STM32CubeIDE 1.19.0",
+  "modifications": [
+    "Separate 24 KiB SRAM2 FreeRTOS heap and 8 KiB scratch by GNU MEMORY regions",
+    "Remove brittle GNU ld SIZEOF heap assertion",
+    "Use linker scratch extern uint8_t [] rather than scalar",
+    "Repair obsolete R26 project-name guard",
+    "Repair prep chain to invoke current release tests, not stale R8/R19/R20 tests",
+    "Preserve telecoil/microphone/BT DSP and ISR signal paths"
+  ],
+  "checks": {
+    "portable_regressions": "passed",
+    "ARM_Clang_LLD_77_source_compile_and_partial_link": "passed",
+    "memory_layout_24KiB_8KiB": "passed",
+    "host_GNU_BFD_split_region_and_overflow_rejection": "passed",
+    "host_GCC_O2_capture_symbol_warning_check": "passed",
+    "native_CubeIDE_GNU_ELF_link": "not_performed_requires_Windows_STM32CubeIDE",
+    "physical_PCB": "not_performed"
+  },
+  "critical_sha256": {
+    ".project": "748bd80631cf609fd8344d2cc177b8065ee2b75593bfedf813f112c2527814b3",
+    ".cproject": "8795f7ce0ac1807b5e40b72838743de5869f5aec608a7f581fc14d61f47e8c8c",
+    "261104-Digital_Hearing_Aid.ioc": "a2968f3e68a752aa02b5364069157de3918a3284a373837cf475a6225ad7b666",
+    "Core/Src/demo_app.c": "267a39c5ec56c5a3a857b05762076db6ccfe7d0771f2220d3ef210719ab523ad",
+    "Core/Src/freertos.c": "bd3608272c9db6ca81c2bba276c266234bee3ca75ec3fd92c49a80b97391a05a",
+    "Core/Inc/FreeRTOSConfig.h": "adb9d99423c41edb5e62ca329656e65d4f14722491d982f75c079d63325a84e6",
+    "Core/Startup/startup_stm32l476rgtx.s": "cb9dcea1820230de637d30f622f68b867a190e13952fb7d8a85903eb3421b2c4",
+    "STM32L476RGTX_FLASH.ld": "75c93fb38f87132f4057897388f2ad8f17570ce4b2ca8626d63cdd254d764571",
+    "PREPARE_PROJECT.ps1": "34ab449d926503e95619b2705c664c54dd340e8c4c50d18d4289b16812aa5dfa",
+    "Tools/verify_261104_release.py": "4fdd66f5bdf52f486ce5731da69b736a9dff18a7006dee838875f5da2b3a57f0",
+    "Tools/g1_preflight.py": "48fb4627d7a6240101f352e93f53b80b983f64c2aefa1603c587099954a76598",
+    "Tools/verify_active_project.py": "19826ae9b5c4a345b0c29309b27b350d9b2c2bc40481b64d3fe38fa1dbbfe266",
+    "Tools/verify_r267_memory.py": "996abdfb8a6348f4a90dc49edc3c4a7732be3358f83092c281b653b75aecfdcf"
+  }
+}

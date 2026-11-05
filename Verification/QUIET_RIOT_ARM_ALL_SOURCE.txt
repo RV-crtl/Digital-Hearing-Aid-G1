@@ -1,0 +1,11 @@
+  [ 9] .data             PROGBITS        20000000 060000 0000bc 00 WAX  0   0  4
+  [10] .bss              NOBITS          200000c0 0600c0 00fab4 00  WA  0   0  8
+  [11] .freertos_heap_ram2 NOBITS          10000000 070000 006000 00  WA  0   0  8
+  [13] ._user_heap_stack PROGBITS        2000fb74 07fb74 001804 00  WA  0   0  1
+compiled 77 / 77 fails 0
+LLD return 0 last-errors
+ 
+PASS: full ARM C/ASM cross-link SRAM1 and partitioned SRAM2; unresolved standard-library symbols intentionally ignored
+NOTE: Cross-target Clang/LLD link is NOT an STM32CubeIDE GCC/Newlib firmware link.
+
+

@@ -1,0 +1,6 @@
+PASS coordinated 24 KiB SRAM2 heap; SRAM1 DMA placement retained
+PASS linker and startup zeroing before constructors; recovery parity
+PASS encoder IRQ and 250ms-fallback polling path active in ControlTask
+PASS actual ARM ELF linker layout: 0x10000000..0x10006000 SRAM2; 64 KiB representative SRAM1 bss
+SMOKE LIMITATION: this is Clang/LLD layout verification, NOT the production ARM GCC/newlib link.
+R26.7 MEMORY/ENCODER VERIFICATION PASSED

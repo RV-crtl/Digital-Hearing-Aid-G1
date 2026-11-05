@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Convert a 3MF assembly with 3MF color groups into a low-draw-call GLB.
 
-This is a deterministic release-build utility, run by CI and Pages. It does
-not modify the source 3MF. Requires: pip install trimesh numpy lxml networkx.
+This is an offline developer utility, not run on the browser or CI. It does
+not modify the source 3MF. Requires: pip install trimesh numpy lxml.
 Usage: python Tools/convert_3mf_to_glb.py assembly.3mf docs/assets/g1-assembly.glb
 """
 from __future__ import annotations
@@ -39,15 +39,8 @@ def convert(source: Path, output: Path) -> dict:
             group, color = "Components", (203, 217, 218, 255)
         else:
             group, color = "Electronics", (95, 118, 140, 255)
-        # Use explicit per-vertex constant colors for each display category.
-        # Assigning face_colors and later concatenating parts made Trimesh
-        # convert face-to-vertex colors through scipy.sparse. That hidden,
-        # heavyweight optional dependency previously BROKE the Pages build.
-        # Vertex colors are equivalent for constant-color material groups,
-        # avoid scipy, and are copied exactly with the mesh's original coords.
-        mesh.visual.vertex_colors = np.broadcast_to(
-            np.asarray(color, dtype=np.uint8), (len(mesh.vertices), 4)
-        ).copy()
+        # Groups retain the original 3MF triangle positions and materials.
+        mesh.visual.face_colors = color
         grouped[group].append(mesh)
     result = trimesh.Scene()
     triangles = 0

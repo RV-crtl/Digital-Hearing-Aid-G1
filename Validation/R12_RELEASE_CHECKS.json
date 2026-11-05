@@ -1,0 +1,20 @@
+{
+  "time_utc": "2026-10-29T03:51:15.315365+00:00",
+  "summary": "Source-level engineering tests only; not claim of firmware full link or physical operation",
+  "project_checks": 37,
+  "group_checks": 27,
+  "r12_integration_checks": 17,
+  "Cortex_M4_syntax_checked_files": 74,
+  "Cortex_M4_source_objects_compiled": [
+    "Core/Src/demo_app.c",
+    "Core/Src/main.c",
+    "Core/Src/g1_product_board.c",
+    "Core/Src/group_encoder.c"
+  ],
+  "host_tests": [
+    "G1 user controls PASS",
+    "two-transition rotary quadrature PASS"
+  ],
+  "full_ARM_GCC_link": "not_performed",
+  "physical_PCB_test": "not_performed"
+}

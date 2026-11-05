@@ -1,0 +1,4 @@
+#ifndef G1_SIGNAL_SYNTAX_STUB
+#define G1_SIGNAL_SYNTAX_STUB
+#define SIGINT 2
+#endif

@@ -1,48 +1,45 @@
-# G1 code map · current board architecture versus repository root
+# Code map — where is everything?
 
-**Updated 03 November 2026.** The root `Core/` is the historical Nucleo-oriented CubeIDE project with portable R26 DSP/control modules. It is **not the whole matched custom-PCB R26 image**. The latest custom-board application was delivered separately and requires a clean native GCC build before promoting the root to it. See [current requirements](G1_CURRENT_SYSTEM_REQUIREMENTS.md).
+> **Actual compiled target:** `Core/`, not `References/` or `Recovery/`.  `References/` preserves group submissions; `Recovery/` is a restore mirror used by `PREPARE_PROJECT.bat`. Do not separately compile copies from those directories.
 
-## Live custom-PCB firmware modules (from R26 series)
+## Entry points & ownership
 
-| Module | Purpose / ownership | Verification status |
-| --- | --- | --- |
-| `g1_product_board.c/.h` | Real custom-PCB DFSDM/PDM microphone, MPR121 on PB6/PB7 and rotary PA0/PA1; producer to AudioTask | In separate R26 ZIP; **not** root integrated |
-| `g1_user_controls.c/.h` | Hardware-neutral MIC/BT/TC/mute/volume policy; ControlTask sole writer | Ported into root; portable control tests |
-| `g1_ambient_dsp.c/.h` | DC rejection, 20× bounded AGC and 3-cluster feature extraction; AudioTask sole owner | Ported into root; R26 host DSP tests |
-| `g1_scene_ml.c/.h` | Three incremental unsupervised acoustic centroids; bounded O(3) per block, unlabelled | Ported into root; host tests |
-| `tc_cleanup.c/.h` | Telecoil band/noise cleanup, idle suppression and adaptive level recovery, preserving LOW16 data path | Ported into root; host tests |
-| `adaptive_preferences.c/.h` | Bounded preference offsets from deliberate encoder input; no autonomous high-gain excursions | Portable unit tests; full board integration separate |
-| `demo_app.c` (R26 release package) | Real source switching, DMA callbacks, audio FIFO, RTOS tasks, ML/DSP integration | **Not** root; independent whole-package GCC and target measurements pending |
+| I want to understand/change… | Start here | Critical entry point | Owner / risk |
+| --- | --- | --- | --- |
+| MCU setup and 48 MHz clock | [`Core/Src/main.c`](../Core/Src/main.c) | `main()` / `SystemClock_Config()` | MCU HAL; high risk |
+| FreeRTOS startup | [`Core/Src/rtos_bootstrap.c`](../Core/Src/rtos_bootstrap.c) | `Demo_StartNativeRTOS()` | Do not add CMSIS scheduler |
+| All task registration and priorities | [`Core/Src/demo_app.c`](../Core/Src/demo_app.c) | `create_child_tasks()` | High risk, profile after edits |
+| Real audio capture and routing | [`Core/Src/demo_app.c`](../Core/Src/demo_app.c) | `StartAudioTask()`, `process_bt_words()`, `process_tc_words()` | AudioTask owns buffers |
+| RTOS control and UART commands | [`Core/Src/demo_app.c`](../Core/Src/demo_app.c) | `Demo_ControlTask()`, `process_console_line()` | ControlTask; keep nonblocking |
+| RTOS/CPU metrics | [`Core/Src/rtos_stats_timer.c`](../Core/Src/rtos_stats_timer.c) and [`Core/Src/demo_app.c`](../Core/Src/demo_app.c) | `r29_refresh_debug_snapshot()` | TIM2/TIM6 protected |
+| Optional audio profiles, level observer | [`Core/Src/group_features.c`](../Core/Src/group_features.c) | `GroupFeatures_Process()` | AudioTask owns state; portable C |
+| Overload fallback | [`Core/Src/group_guardian.c`](../Core/Src/group_guardian.c) | `GroupGuardian_Update()` | Only disables optional G1 DSP |
+| **Nucleo B1 user interface** | [`Core/Src/group_ui.c`](../Core/Src/group_ui.c) | `GroupUi_Poll()` | ControlTask owns debounced UI; compileable host test |
+| **DMA event handoff to AudioTask** | [`Core/Src/demo_app.c`](../Core/Src/demo_app.c) | `capture_push_bt_from_isr()`, `capture_push_tc_from_isr()`, `StartAudioTask()` | IRQ 5; direct-to-task notify; worst-case timing unverified |
+| Rotary quadrature decoder | [`Core/Src/group_encoder.c`](../Core/Src/group_encoder.c) | `GroupEncoder_Update()` | Driver standalone; PCB port pending |
+| Bluetooth vs telecoil source logic | [`Core/Src/connectivity_controller.c`](../Core/Src/connectivity_controller.c) | `Connectivity_Update()` | Pure C FSM; separate from power FSM |
+| Source service integration | [`Core/Src/connectivity_service.c`](../Core/Src/connectivity_service.c) | `ConnectivityService_*` | Software adapter |
+| Dynamics HPF/EQ/limiting | [`Core/Src/audio_dynamics.c`](../Core/Src/audio_dynamics.c) | `AudioDynamics_ProcessBlock()` | DSP golden-vector coverage |
+| Output audio transfer | [`Core/Src/speaker_output.c`](../Core/Src/speaker_output.c) | speaker DMA callbacks | High risk; check output underruns |
+| USB-C, power, analogue interfaces | [`Hardware/Original_KiCad`](../Hardware/Original_KiCad/) | KiCad project | Schematic != wired prototype |
+| STM32 physical pad assignments | [`Hardware/STM32_U13_PINMAP.csv`](../Hardware/STM32_U13_PINMAP.csv) | U13 pins | Custom board differs from Nucleo |
 
-## Repository root (legacy but useful)
+## Debug commands and user interface
 
-| Path | Responsibility |
-| --- | --- |
-| `Core/Src/demo_app.c` | Historical source state machine, FreeRTOS AudioTask/ControlTask, DMA snapshots and group DSP; not identical to R26 custom board |
-| `Core/Src/pcm_transport.c` | PCM transport/ring helpers |
-| `Core/Src/speaker_output.c` | SAI audio speaker output |
-| `Core/Src/group_ui.c` / `group_encoder.c` | Earlier standalone Nucleo controls, kept for reference/tests |
-| `Core/Src/group_guardian.c` | Overload/fault-pressure policy |
-| `Core/Src/connectivity_*.c` | Source arbitration and Bluetooth/telecoil state transitions |
-| `Recovery/` | Gold copy restored after CubeMX code generation; change relevant mirrors together |
-| `PREPARE_PROJECT.ps1` | Dependency preparation and recovery-script guards |
-| `Tests/`, `Validation/` | Pure-C tests, independent vector verification, sanitizers and host throughput |
+See [`Documentation/GROUP_FEATURE_MANUAL.md`](GROUP_FEATURE_MANUAL.md) for `!G…` profile controls. `!GP` reports profile/guardian telemetry. The R34 source also contains intentionally disruptive scheduling experiments—**never activate continuous-spin mode in a product showcase**.
 
-## Contracts and invariants
+## Source-navigation shortcuts
 
-- **DMA/ISR:** move or snapshot bounded data and notify AudioTask. No UART printing, floating-point DSP or unbounded waits in ISR.
-- **AudioTask:** sole DSP state writer, consumes audio blocks, processes 128-sample frames at nominal 48 kSa/s (2.667 ms), then publishes FIFO output to SAI2B.
-- **ControlTask:** debounces MPR121/encoder, updates the bounded user policy and sends control events to AudioTask, not samples via a queue.
-- **BtTask:** module status control via USART1. USART2 is an optional *off-by-default* diagnostic UART in the custom-PCB operating build.
-- **Recovery:** if a file is mirrored under `Recovery/Core/`, edit both or it will silently revert after CubeMX Generate Code.
-- **Hardware:** actual custom board uses PC2/PB14 PDM, PB6/PB7 MPR121, PA0/PA1 encoder. Do not derive these pins from Nucleo B1/LD2 demonstrations.
-- **ML:** adaptive clusters are real unsupervised feature prototypes; labelled traffic, human or vehicle classification has not been trained or evaluated.
-- **Safety:** digital clipping limits are not calibrated acoustic SPL protection.
+With VS Code or another editor use **Go to Symbol** and search `StartAudioTask`, `GroupFeatures_Process`, or `Connectivity_Update`. From the repo root:
 
-## Optimisation procedure
+```bash
+rg -n 'GroupFeatures_Process|GroupGuardian_Update|Connectivity_Update' Core
+rg -n 'xTaskCreate|xQueueSend|xQueueReceive|vTaskDelay' Core/Src/demo_app.c
+rg -n '^void HAL_.*Callback' Core/Src/demo_app.c
+```
 
-To optimise the large application safely: (1) capture the R24/R26 working board and binary evidence, (2) extract one single-owner component at a time, (3) run native CubeIDE GCC build and existing portable regression tests, (4) measure STM32 deadlines/stack headroom and listen on the safe fixture, (5) only then remove old implementations. See [quantitative profiling guide](R26_OPTIMISATION_NOTES.md). Avoid merging code modules from different R-series generations without their matching clock, DMA and board dependencies.
+If `rg` isn't installed, use `grep -R -n`. Only one task should mutate a module's state unless it is explicitly synchronized. FreeRTOS queues communicate **messages**, not ownership of arbitrary pointer lifetimes.
 
-## Find the current demo
+## Refactoring boundary
 
-[Architecture](PRINTABLE_SYSTEM_DIAGRAM.md) · [Requirements](G1_CURRENT_SYSTEM_REQUIREMENTS.md) · [Test plan](BLACK_BOX_TEST_PLAN.md) · [Real CAD](CAD_ASSEMBLY_AND_VIEWERS.md) · [KiCad original](../Hardware/Original_KiCad).
+The historical [`demo_app.c`](../Core/Src/demo_app.c) is a large legacy integration module. Its size is recognised technical debt. A wholesale split risks SAI/DMA timing, RTOS tracing and CubeMX regeneration. Extract it incrementally **only with tests and an MCU build**, keeping interrupt ownership and externally visible symbols unchanged. This document intentionally does not claim the whole file has been refactored.

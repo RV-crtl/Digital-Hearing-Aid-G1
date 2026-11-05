@@ -1,0 +1,7 @@
+{
+  "cortex_m4_sources": 76,
+  "startup_compiles": true,
+  "cross_final_elf_link_with_simulated_c_runtime": "PASS",
+  "app_unexpected_undefined_symbols": [],
+  "note": "This test uses inert libc/libgcc linker surrogates; ELF cannot be flashed. STM32CubeIDE GCC 13.3 full executable link is still required, and not available here."
+}

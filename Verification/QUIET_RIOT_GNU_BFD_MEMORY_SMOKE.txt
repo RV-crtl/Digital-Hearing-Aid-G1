@@ -1,0 +1,11 @@
+  [ 2] .freertos_heap_ram2 NOBITS          0000000010000000 001000 006000 00  WA  0   0  8
+  [ 3] .capture_ram2     NOBITS          0000000010006000 001000 002000 00  WA  0   0  1
+     2: 0000000010000000     0 NOTYPE  GLOBAL DEFAULT    2 _sram2_heap_start
+     4: 0000000010008000     0 NOTYPE  GLOBAL DEFAULT    3 _capture_ram2_end
+     6: 0000000010006000     0 NOTYPE  GLOBAL DEFAULT    2 _sram2_heap_end
+     7: 0000000010006000     0 NOTYPE  GLOBAL DEFAULT    3 _capture_ram2_start
+ld: /tmp/tmp.zL5PHy4Vgt/test_bad.elf section `.freertos_heap_ram2' will not fit in region `RAM2_HEAP'
+ld: FreeRTOS SRAM2 heap overflow
+ld: section .capture_ram2 VMA [0000000010006000,0000000010007fff] overlaps section .freertos_heap_ram2 VMA [0000000010000000,0000000010006007]
+ld: region `RAM2_HEAP' overflowed by 8 bytes
+PASS GNU BFD linker accepts 24 KiB and rejects an oversized FreeRTOS heap.

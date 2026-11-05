@@ -1,0 +1,8 @@
+{
+  "Cortex_M4_objects_passed": 76,
+  "source_files": 76,
+  "compile_errors": [],
+  "relocatable_link_passed": true,
+  "actual_newlib_runtime_link_performed": false,
+  "custom_board_tested": false
+}

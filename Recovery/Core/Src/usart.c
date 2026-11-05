@@ -30,7 +30,12 @@ void MX_USART2_UART_Init(void)
   huart2.Init.OverSampling = UART_OVERSAMPLING_16;
   huart2.Init.OneBitSampling = UART_ONE_BIT_SAMPLE_DISABLE;
   huart2.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
-  if (HAL_UART_Init(&huart2) != HAL_OK) Error_Handler();
+  /* No USB/host is needed for battery-only playback. If the optional USART2
+   * diagnostics UART cannot start, do NOT enter Error_Handler; preserve
+   * microphone, capacitive touch, Bluetooth UART1 and audio RTOS startup. */
+  if (HAL_UART_Init(&huart2) != HAL_OK) {
+    (void)HAL_UART_DeInit(&huart2);
+  }
 }
 
 void HAL_UART_MspInit(UART_HandleTypeDef *uartHandle)

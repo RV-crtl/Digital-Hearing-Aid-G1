@@ -1,0 +1,8 @@
+{
+  "total": 76,
+  "passed": 76,
+  "compile_failures": [],
+  "relocatable_link_pass": true,
+  "full_cubeide_link_verified": false,
+  "hardware_verified": false
+}

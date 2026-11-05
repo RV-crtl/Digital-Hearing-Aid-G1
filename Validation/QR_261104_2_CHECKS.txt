@@ -1,0 +1,10 @@
+Quiet Riot 261104.2, firmware source verification
+Build source: Quiet_Riot_261104_CubeIDE_Final_Link_Fix.zip
+Tests: Tools/verify_261104_release.py and Tools/test_qr_demo_release.py
+- 79/79 Cortex-M4 ARM C+ASM translation units compiled via Clang cross-target
+- Clang/LLD ELF SRAM map smoke passed (ignores unresolved standard-library symbols)
+- Portable test tone/chirp PCM bounds and sleep/proximity state regression passed
+- Existing PCM/telecoil calibration, microphone and control regressions passed
+- Recovery source/header parity for new modules, ISR and memory map passed
+- Native STM32CubeIDE ARM GNU/newlib build NOT RUN in this environment
+- Real PCB and audio/acoustic tests NOT RUN

@@ -1,0 +1,10 @@
+{
+  "release": "G1_Full_System_20261028_R8",
+  "controller_host_C_assertions": "PASS",
+  "controller_ARM_target_cross_compile": "PASS",
+  "application_C_syntax_with_development_only_FreeRTOS_shim": "PASS",
+  "source_and_recovery_parity": "PASS",
+  "full_STM32CubeIDE_ARM_link": "NOT_RUN_in_authoring_environment",
+  "live_custom_PCB_hardware_tests": "NOT_RUN",
+  "acceptance_guide": "PRODUCT_ACCEPTANCE_TEST.md"
+}

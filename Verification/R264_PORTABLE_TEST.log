@@ -1,0 +1,2 @@
+PASS R26.4: signed S24 recovery, 1kHz, low-level continuity, peak safety, phase, gain cap
+LIMITATION: synthetic PCM, not real PCM1808/I2S capture

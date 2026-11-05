@@ -39,14 +39,16 @@ ENTRY(Reset_Handler)
 /* Highest address of the user mode stack */
 _estack = ORIGIN(RAM) + LENGTH(RAM); /* end of "RAM" Ram type memory */
 
-_Min_Heap_Size = 0x1000; /* required amount of heap */
+_Min_Heap_Size = 0x800; /* 2KB Newlib heap reservation; FreeRTOS heap_4 has its own 32KB ucHeap */
 _Min_Stack_Size = 0x1000; /* required amount of stack */
 
 /* Memories definition */
 MEMORY
 {
   RAM    (xrw)    : ORIGIN = 0x20000000,   LENGTH = 96K
-  RAM2    (xrw)    : ORIGIN = 0x10000000,   LENGTH = 32K
+  /* Separate hard SRAM2 banks: linker rejects oversubscription of either region. */
+  RAM2_HEAP    (xrw) : ORIGIN = 0x10000000, LENGTH = 24K
+  RAM2_CAPTURE (xrw) : ORIGIN = 0x10006000, LENGTH = 8K
   FLASH    (rx)    : ORIGIN = 0x8000000,   LENGTH = 1024K
 }
 
@@ -166,6 +168,41 @@ SECTIONS
     _ebss = .;         /* define a global symbol at bss end */
     __bss_end__ = _ebss;
   } >RAM
+
+  /* R26.7: a 24 KiB FreeRTOS heap and separate 8 KiB recorder are CPU-owned SRAM2, NOT DMA RAM.
+   * NOLOAD prevents adding 32 KiB of meaningless zero bytes to the flash image.
+   * Reset_Handler explicitly zeros the section; SRAM1 DMA audio buffers remain
+   * in normal .bss and are initialized through the standard startup loop.
+   */
+  .freertos_heap_ram2 (NOLOAD) :
+  {
+    . = ALIGN(8);
+    _sram2_heap_start = .;
+    KEEP(*(.freertos_heap_ram2))
+    . = ALIGN(8);
+    _sram2_heap_end = .;
+  } >RAM2_HEAP
+
+  /* Reserved scratch: raw capture and pre-DSP listening recorder are mutually
+   * exclusive. This section is deliberately separate from the RTOS heap.
+   * Reserve it explicitly, preventing accidental heap/recorder aliasing.
+   */
+  .capture_ram2 (NOLOAD) :
+  {
+    . = ALIGN(8);
+    _capture_ram2_start = .;
+    . = . + 8192;
+    _capture_ram2_end = .;
+  } >RAM2_CAPTURE
+
+  /* ROM/RAM bounds are enforced by dedicated MEMORY regions rather than
+   * a GNU-ld SIZEOF assertion that can be evaluated before garbage collection
+   * and was failing on the user's GNU ARM 13.3 linker. The C object ucHeap has
+   * configTOTAL_HEAP_SIZE bytes, and the entire capture section is reserved.
+   * There is no virtual alias and neither DMA data nor the initial stack
+   * are placed in SRAM2. */
+  ASSERT(_sram2_heap_end <= ORIGIN(RAM2_HEAP) + LENGTH(RAM2_HEAP), "FreeRTOS SRAM2 heap overflow")
+  ASSERT(_capture_ram2_end <= ORIGIN(RAM2_CAPTURE) + LENGTH(RAM2_CAPTURE), "SRAM2 capture overflow")
 
   /* User_heap_stack section, used to check that there is enough "RAM" Ram  type memory left */
   ._user_heap_stack :

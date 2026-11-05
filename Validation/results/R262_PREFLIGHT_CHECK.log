@@ -1,0 +1,2 @@
+NOTICE: arm-none-eabi-gcc not on PATH (may be bundled inside CubeIDE)
+SOURCE_PREFLIGHT_PASS (NOT an ARM build or physical validation)

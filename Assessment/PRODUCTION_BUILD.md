@@ -1,5 +1,3 @@
-> **Current source note:** Root CubeIDE remains the historical Nucleo-oriented firmware; the matched custom-PCB R26 image has not yet been promoted here. These commands cannot be used as proof that the physical G1 PCB was programmed or accepted. See [current requirements](../Documentation/G1_CURRENT_SYSTEM_REQUIREMENTS.md).
-
 # Operating firmware vs laboratory-stress firmware
 
 **Default for the system demonstration:** `DHA_ENABLE_RTOS_STRESS=0` in `Core/Inc/dha_build_mode.h` (and mirrored Recovery copy). The compiled operating image must create **AudioTask** and **BtTask** alongside existing **ControlTask** and FreeRTOS system tasks. It does **not** create Background, CPULoadB or HighLoad7 experimental workers. Even if UART is connected, stress commands `!RA`, `!RS`, `!RD`, `!RH` are rejected. Laboratory self-test command paths are not callable in operating mode.
@@ -10,4 +8,4 @@ This build gate is **source-level**. Before relying on it, check the actual ELF 
 
 **Do not perform unit tests on the MCU during the demonstration.** Source-based unit tests under `Tests/` are host-only. Dynamic runtime health counters are permitted as engineering diagnostics; they do not substitute for the rubric's observed external behaviour.
 
-**Exact acceptance prior to viva:** manually check normal product loop responsiveness to physical E8–E11 MPR121 touch controls and rotary encoder response and Bluetooth/telecoil transitions with ST-Link and UART detached; perform real power and acoustic measurements; note firmware SHA in evidence register. G5 PC13 interactions do not migrate automatically to the custom PCB.
+**Exact acceptance prior to viva:** manually check normal product loop responsiveness to physical B1 gestures and Bluetooth/telecoil transitions with ST-Link and UART detached; perform real power and acoustic measurements; note firmware SHA in evidence register. G5 PC13 interactions do not migrate automatically to the custom PCB.
