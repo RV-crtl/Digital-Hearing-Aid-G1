@@ -1,0 +1,31 @@
+name: Export clean STM32CubeIDE project
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'Core/**'
+      - 'Drivers/**'
+      - 'Middlewares/**'
+      - '*.ioc'
+      - '.project'
+      - '.cproject'
+      - 'Tools/Export-CubeIDE.ps1'
+      - '.github/workflows/cubeide-clean-export.yml'
+
+jobs:
+  export:
+    runs-on: windows-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Package STM32CubeIDE import project
+        shell: pwsh
+        run: ./Tools/Export-CubeIDE.ps1 -OutputPath dist
+      - name: Upload clean CubeIDE project
+        uses: actions/upload-artifact@v4
+        with:
+          name: STM32CubeIDE-clean-project
+          path: dist/*.zip
+          if-no-files-found: error
