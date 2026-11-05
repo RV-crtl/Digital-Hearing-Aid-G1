@@ -1280,7 +1280,7 @@ if (!g_demo_control.output_enabled) {
 
 **Trigger:** E8 + E11 held together for approximately 1.5 s enters logical sleep. A valid MPR121 proximity-cleared/stable-high event later permits wake.
 
-**Where:** `Core/Src/demo_app.c:3022` (`qr_sleep_enter()`), `:3037` (`qr_sleep_wake()`), `:3049` (`product_ui_poll()`); `Core/Src/qr_sleep.c`.
+**Where:** `Core/Src/demo_app.c:3022` (`qr_sleep_enter()`), `:3037` (`qr_sleep_wake()`), `:3049` (`product_ui_poll()`); `Core/Src/qr_sleep_policy.c`.
 
 ```c
 static void qr_sleep_enter(void)
