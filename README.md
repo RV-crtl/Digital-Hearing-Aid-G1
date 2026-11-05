@@ -20,7 +20,7 @@ To download a **firmware-only ZIP from GitHub**, open [Actions → Export clean 
 
 For a source checkout, use **File → Import → Existing Projects into Workspace** and select the repository root containing `.project` and `.cproject`; do not import a historical reference firmware as a second project. The active application entry point is **`Core/Src/main.c`**, and the development configuration is described by the root `.ioc`. Commit history retains deleted recovery/prototype files if historical investigation is needed.
 
-**Release synchronization:** the QR261104.8 clean firmware archive distributed separately contains newer telecoil modules than the current repository revision. This repository should not be represented as the exact QR261104.8 release until its source and `.ioc` are synchronized and a native CubeIDE build passes. The guide describes QR261104.8 and marks differences where relevant.
+**Release synchronization:** to publish the supplied QR261104.8 ZIP into a local Git clone safely, use [`Tools/Sync-FirmwareRelease.ps1`](Tools/Sync-FirmwareRelease.ps1). Run it first with `-ZipPath <path-to-ZIP>` for validation and again with `-Apply` to replace the active firmware, create a Git commit and push to `main`. It requires a clean clone and your existing GitHub Git credentials. The QR261104.8 clean firmware archive distributed separately contains newer telecoil modules than the current repository revision. This repository should not be represented as the exact QR261104.8 release until its source and `.ioc` are synchronized and a native CubeIDE build passes. The guide describes QR261104.8 and marks differences where relevant.
 
 ## The real prototype
 
