@@ -5,7 +5,8 @@
 int main(void)
 {
   G1UiState s; G1Ui_Init(&s);
-  assert(s.source==G1_UI_MIC && !s.muted && s.gain_q15==4096U);
+  /* The current 100% user setting is a deliberately capped Q15 output. */
+  assert(s.source==G1_UI_MIC && !s.muted && s.gain_q15==G1_UI_MAX_GAIN_Q15);
   assert(G1Ui_Touch(&s,1U<<12)==0U); /* proximity is NOT a button */
   assert(G1Ui_Touch(&s,1U<<0)==0U);  /* E0..E7 inactive */
   assert((G1Ui_Touch(&s,1U<<8)&G1_UI_SOURCE_CHANGED) && s.source==G1_UI_BT);
@@ -13,7 +14,9 @@ int main(void)
   assert((G1Ui_Touch(&s,1U<<10)&G1_UI_MUTE_CHANGED) && s.muted);
   assert((G1Ui_Touch(&s,1U<<10)&G1_UI_MUTE_CHANGED) && !s.muted);
   assert((G1Ui_Touch(&s,1U<<11)&G1_UI_SOURCE_CHANGED) && s.source==G1_UI_MIC);
-  assert(G1Ui_Encoder(&s,2)==G1_UI_GAIN_CHANGED && s.gain_q15==5120U);
+  assert(G1Ui_Encoder(&s,2)==0U && s.gain_q15==G1_UI_MAX_GAIN_Q15); /* saturates */
+  assert(G1Ui_Encoder(&s,-2)==G1_UI_GAIN_CHANGED &&
+         s.gain_q15==G1_UI_MAX_GAIN_Q15-2U*G1_UI_STEP_Q15);
   assert((G1Ui_Command(&s,"VOLUME 100\r\n")&G1_UI_GAIN_CHANGED) &&
          s.gain_q15==G1_UI_MAX_GAIN_Q15);
   assert(G1Ui_Command(&s,"VOLUME 101")==G1_UI_INVALID);
