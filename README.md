@@ -12,6 +12,14 @@ The diagram above represents real interfaces and task ownership, not fictional m
 
 > **Prototype, not a certified hearing aid.** This repository contains original PCB design, software source, testing infrastructure and student-team engineering work. The maximum acoustic output has not been independently calibrated for use on or in the ear. Public access is not a general reuse licence; see [publication and contributor rights](Documentation/PUBLICATION_GATE.md).
 
+## Firmware navigation and STM32CubeIDE import
+
+**[Read the R26 boot-to-speaker function walkthrough](Documentation/FIRMWARE_EXECUTION_GUIDE_R26.md)** — chronological annotated code excerpts, physical hardware paths, per-source DSP functions, peripheral drivers, source routing, FreeRTOS tasks, speaker FIFO, diagnostics, and exact `Core/Src/` locations.
+
+For a source checkout, use **File → Import → Existing Projects into Workspace** and select the repository root containing `.project` and `.cproject`; do not import a historical reference firmware as a second project. The active application entry point is **`Core/Src/main.c`**, and the development configuration is described by the root `.ioc`. Commit history retains deleted recovery/prototype files if historical investigation is needed.
+
+**Release synchronization:** the QR261104.8 clean firmware archive distributed separately contains newer telecoil modules than the current repository revision. This repository should not be represented as the exact QR261104.8 release until its source and `.ioc` are synchronized and a native CubeIDE build passes. The guide describes QR261104.8 and marks differences where relevant.
+
 ## The real prototype
 
 The physical target is a **standalone custom PCB**, not a Nucleo board. A ST-LINK is needed only for programming and optional engineering diagnosis, not for intended normal operation. The hardware incorporates an STM32L476RG, digital PDM microphone, MPR121 capacitive touch, rotary encoder, Bluetooth audio, a telecoil input with PCM1808 conversion, FreeRTOS and a speaker/audio-output chain. The bench-tested R24 firmware was reported to operate without Nucleo after a wiring issue was resolved.
