@@ -52,9 +52,13 @@ static bool config_is_valid(const TelecoilDetectorConfig_t *config)
 TelecoilDetectorConfig_t TelecoilDetector_DefaultConfig(void)
 {
     TelecoilDetectorConfig_t config;
-    config.present_rms_threshold = 900U;
-    config.absent_rms_threshold = 600U;
-    config.min_peak_to_peak = 1200U;
+    /* R23 measured TC LOW16: 2-kHz stimulus RMS approx 814..898 counts.
+     * 550/300 RMS and 800 p-p are initial software qualification thresholds,
+     * not analog-voltage or acoustic calibration. AUTO still requires 24
+     * consecutive strong blocks; manual TC always plays genuine PCM. */
+    config.present_rms_threshold = 550U;
+    config.absent_rms_threshold = 300U;
+    config.min_peak_to_peak = 800U;
     config.clip_threshold = 32000U;
     config.max_clipped_per_mille = 100U;
     /* R9 clean-audio hysteresis: the old 2/3-block decision changed state in

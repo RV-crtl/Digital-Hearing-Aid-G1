@@ -12,6 +12,14 @@ The diagram above represents real interfaces and task ownership, not fictional m
 
 > **Prototype, not a certified hearing aid.** This repository contains original PCB design, software source, testing infrastructure and student-team engineering work. The maximum acoustic output has not been independently calibrated for use on or in the ear. Public access is not a general reuse licence; see [publication and contributor rights](Documentation/PUBLICATION_GATE.md).
 
+## Current firmware — QR261104.8 (single canonical CubeIDE project)
+
+**Source of truth:** the repository root now contains the promoted custom-PCB R26 project, with exactly one `Core/Src/main.c`, one `261104-Digital_Hearing_Aid.ioc`, and no `Recovery/` mirror. [Browse active source](Core/Src) · [Step-by-step boot-to-speaker function walkthrough](Documentation/FIRMWARE_EXECUTION_WALKTHROUGH.md) · [Quick code map](Documentation/CODE_MAP.md).
+
+**Import from GitHub:** choose **Code → Download ZIP**; fully extract; in STM32CubeIDE select **File → Import → Existing Projects into Workspace**, browse to the extracted repository root, then import **261104-Digital_Hearing_Aid**. Close/remove any older project with the same workspace name first. Use **Project → Clean**, then **Build Project**. Inspect the newly generated ELF, compiler/linker warnings and physical PCB setup before flashing. No Python/Markdown files are compiled: they are GitHub repository documentation, tests and site infrastructure. For the minimal 246-file CubeIDE-only archive, use the companion QR261104.8 CLEAN project ZIP.
+
+**Configuration warning:** custom DFSDM, DMA, clock and RTOS startup were hand-integrated. CubeMX **Generate Code** can overwrite these modifications; make a commit before regeneration and check the source diff. This branch updates the firmware source, but a fresh native CubeIDE GCC build and board-level telecoil listening/SNR tests are still required.
+
 ## The real prototype
 
 The physical target is a **standalone custom PCB**, not a Nucleo board. A ST-LINK is needed only for programming and optional engineering diagnosis, not for intended normal operation. The hardware incorporates an STM32L476RG, digital PDM microphone, MPR121 capacitive touch, rotary encoder, Bluetooth audio, a telecoil input with PCM1808 conversion, FreeRTOS and a speaker/audio-output chain. The bench-tested R24 firmware was reported to operate without Nucleo after a wiring issue was resolved.
@@ -22,17 +30,15 @@ The team subsequently developed **R26** with higher-sensitivity ambient audio, t
 | --- | --- | --- |
 | Microphone → speaker | Operator-confirmed in R24; R26 DSP host tests | Distant pickup, distortion, safe SPL and ambient balance need measurement |
 | Bluetooth → speaker | Operator-confirmed in R24 | Bluetooth module and source output remain subject to demonstration checks |
-| Telecoil → speaker | Operator-confirmed with **PCM LOW16** and **FILTER ON** | Residual analogue hiss/weak-signal behaviour needs listening and bench measurements |
+| Telecoil → speaker | QR261104.8 LOW24 recovery and filtered idle processing; prior board listening | Residual analogue hiss/weak-signal behaviour needs listening and bench measurements |
 | MPR121 touch / encoder | Operator-confirmed, R21 control regression tests | Repeatability and user-response timing remain black-box criteria |
 | Untethered USB-C power | R24 operator-confirmed after resolving external wiring | Battery source/protection/charging cannot be inferred from this result |
 | Adaptive scene model | R26 portable C tests | **Three unsupervised clusters**, not a pretrained speech/car/pedestrian classifier |
 | FreeRTOS / DMA | Static contracts and host tests | Final CPU load, timing, interrupts, underruns and SRAM headroom need recorded board evidence |
 
-## Important: two firmware baselines
+## Firmware revision and evidence boundary
 
-**Do not flash the root CubeIDE project assuming it is R26.** The root files currently include an earlier Nucleo-oriented group source baseline, augmented with portable R20–R26 DSP/control improvements. R26's complete custom-PCB project was distributed separately; a clean, native STM32CubeIDE 1.19.0 GCC build and intentional whole-project promotion are required before declaring it this repository's authoritative firmware. The runtime should not be assembled by casually combining half of one firmware revision with the other.
-
-See [firmware integration and source ownership](Documentation/G1_CURRENT_SYSTEM_REQUIREMENTS.md) and [integration issue #27](https://github.com/RV-crtl/Digital-Hearing-Aid-G1/issues/27).
+The QR261104.8 project supersedes the prior root-level Nucleo/group demonstration source. Bluetooth/telecoil PCM1808 capture, DFSDM microphone, local controls, FreeRTOS audio tasks and MAX98357 output are in one importable root project. The telecoil now includes fixed 3.4-kHz speech-band conditioning plus weak-signal-aware idle attenuation; **noise during an active weak programme remains a hardware/measurement question**. The older integration issue [#27](https://github.com/RV-crtl/Digital-Hearing-Aid-G1/issues/27) is historical context, not a request to combine different firmware trees manually.
 
 ## Interactive engineering site
 
@@ -44,10 +50,10 @@ The uploaded **November 2026 full multi-body assembly** contains 1,713 3MF mesh 
 
 | Area | Start here |
 | --- | --- |
-| Software / RTOS | [Core source](Core/Src) · [source ownership map](Documentation/CODE_MAP.md) |
+| Software / RTOS | [Active Core source](Core/Src) · [power-on-to-speaker walkthrough](Documentation/FIRMWARE_EXECUTION_WALKTHROUGH.md) · [source map](Documentation/CODE_MAP.md) |
 | DSP and adaptive learning | [Ambient DSP](Core/Src/g1_ambient_dsp.c) · [online clusters](Core/Src/g1_scene_ml.c) · [telecoil cleanup](Core/Src/tc_cleanup.c) |
 | Circuits / layout | [Original KiCad files](Hardware/Original_KiCad) · [hardware notes](Hardware/README.md) |
-| Firmware import | [CubeIDE procedure](Documentation/GROUP_G1_IMPORT_AND_BUILD.md) · [R26 integration gate](https://github.com/RV-crtl/Digital-Hearing-Aid-G1/issues/27) |
+| Firmware import | [Quick import procedure above](#current-firmware--qr2611048-single-canonical-cubeide-project) · [function walkthrough](Documentation/FIRMWARE_EXECUTION_WALKTHROUGH.md) |
 | Demonstration | [System diagram](Documentation/PRINTABLE_SYSTEM_DIAGRAM.md) · [current requirements](Documentation/G1_CURRENT_SYSTEM_REQUIREMENTS.md) · [20-minute black-box test](Documentation/BLACK_BOX_TEST_PLAN.md) |
 | Validation / CI | [Host validation](Validation/README.md) · [Actions](https://github.com/RV-crtl/Digital-Hearing-Aid-G1/actions) |
 | Contributors / release | [CONTRIBUTING](CONTRIBUTING.md) · [SECURITY](SECURITY.md) · [publication gate](Documentation/PUBLICATION_GATE.md) |

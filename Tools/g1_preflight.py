@@ -11,18 +11,15 @@ def sha(path):
 
 def check():
     bad=[]; notes=[]
-    for rel in (".project",".cproject","261013-Individual_Demonstration_Connectivity.ioc",
+    for rel in (".project",".cproject","261104-Digital_Hearing_Aid.ioc",
                 "Core/Src/demo_app.c","Core/Inc/dha_build_mode.h","Core/Src/group_ui.c",
                 "Core/Inc/group_ui.h","Core/Src/sai.c","Core/Inc/FreeRTOSConfig.h",
                 "Drivers/CMSIS/Device/ST/STM32L4xx/Include/stm32l476xx.h"):
         if not (ROOT/rel).is_file(): bad.append("Missing: "+rel)
-    pairs=(".cproject","Core/Src/demo_app.c","Core/Src/group_ui.c",
-           "Core/Inc/group_ui.h","Core/Inc/dha_build_mode.h","Core/Src/sai.c",
-           "Core/Inc/FreeRTOSConfig.h")
-    for rel in pairs:
-        a,b=ROOT/rel,ROOT/"Recovery"/rel
-        if not a.is_file() or not b.is_file() or sha(a)!=sha(b):
-            bad.append("Recovery mismatch: "+rel+"; rerun PREPARE after CubeMX")
+    # One canonical source project; Recovery mirrors must never restore stale code.
+    if (ROOT/"Recovery").exists(): bad.append("Legacy Recovery project must be removed")
+    if len(list(ROOT.rglob("main.c")))>1: bad.append("Duplicate main.c found")
+    if len(list(ROOT.rglob("*.ioc")))>1: bad.append("Duplicate .ioc found")
     for rel in (".project",".cproject"):
         try: ET.parse(ROOT/rel)
         except (OSError,ET.ParseError) as exc: bad.append(f"Invalid {rel}: {exc}")
@@ -56,7 +53,7 @@ def check():
         revision=None
     return {"status":"FAIL" if bad else "SOURCE_PREFLIGHT_PASS",
             "source_failures":bad,"environment_notices":notes,
-            "proof":{"recovery_pairs_expected":len(pairs),
+            "proof":{"canonical_sources_expected":1,
                      "middleware_ready":not missing,"middleware_missing":missing,
                      "arm_gcc_on_path":arm_gcc,"git_sha":revision,
                      "arm_binary_built":False,"physical_hardware_verified":False}}

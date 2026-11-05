@@ -3,7 +3,7 @@ void GroupEncoder_Init(GroupEncoder *e, uint8_t a, uint8_t b)
 {
   if (!e) return;
   *e=(GroupEncoder){0};
-  e->transitions_per_step=4U; /* generic default; physical board may use 2 */
+  e->transitions_per_step=4U; /* default for generic encoder tests */
   e->previous=(uint8_t)(((a&1U)<<1U)|(b&1U));
 }
 int GroupEncoder_Update(GroupEncoder *e, uint8_t a, uint8_t b)
@@ -11,7 +11,7 @@ int GroupEncoder_Update(GroupEncoder *e, uint8_t a, uint8_t b)
   if (!e) return 0;
   uint8_t now=(uint8_t)(((a&1U)<<1U)|(b&1U));
   if (now==e->previous) return 0;
-  /* 00->01->11->10->00 clockwise; reverse sequence is negative. */
+  /* 00->01->11->10->00 clockwise; opposite negative. */
   static const int8_t transitions[16]={0,1,-1,0,-1,0,0,1,1,0,0,-1,0,-1,1,0};
   int step=transitions[(e->previous<<2U)|now];
   if (step==0) {e->quarter_steps=0;e->bad_edges++;}
