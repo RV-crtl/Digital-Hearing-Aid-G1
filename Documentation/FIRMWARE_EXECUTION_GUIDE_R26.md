@@ -1,6 +1,8 @@
 # Quiet Riot R26 — Firmware execution trace
 ### From battery power-on to the exact code that produces each audio sample
 
+> **NEW: start with the [four-subsystem R26.10 guide](SUBSYSTEMS/README.md)** for the easiest navigation: [Anna](SUBSYSTEMS/ANNA_CONTROLS.md) · [Ryan](SUBSYSTEMS/RYAN_CONNECTIVITY.md) · [Mariya](SUBSYSTEMS/MARIYA_AUDIO_DSP.md) · [Naomi](SUBSYSTEMS/NAOMI_OUTPUT.md) · [cross-subsystem interface contracts](SUBSYSTEMS/INTERFACES.md). The pages describe how events trigger source functions, which data/flags are handed over and what calls run next. This long document retains its **QR261104.8** 39-event baseline; the new subsystem pages use **QR261104.10**, including the exposed DFSDM adapter and RTOS contract header. Read the release notes before comparing code from different versions.
+
 **Documented baseline:** QR261104.8, using the *clean CubeIDE project ZIP*, with its active entry point at `Core/Src/main.c`. **Scope:** normal operating firmware, important events, interrupts, states, DSP functions and failure paths, with file/function references and annotated source excerpts.
 
 > **Version integrity notice (important):** The repository's `main` branch has not yet been fully synchronized with the QR261104.8 clean firmware ZIP. In particular, the newer `tc_s24_recovery.c`, `tc_idle_squelch.c` and `qr_bt_volume.c` modules are in the QR261104.8 ZIP but are **not yet on GitHub main**. This guide is grounded in the QR261104.8 ZIP, not a claim that every code excerpt is already in the GitHub source browser. When navigating the current repository, treat missing files or changed line numbers as a release-sync issue, not a reason to search in Recovery folders. Do not deploy a mixed-source build.
