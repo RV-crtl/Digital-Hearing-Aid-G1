@@ -1,5 +1,7 @@
 # G1 contributor and repository guide
 
+> **Firmware learning / viva:** [R26.10 chronological subsystem index](SUBSYSTEMS/README.md), [Anna](SUBSYSTEMS/ANNA_CONTROLS.md), [Ryan](SUBSYSTEMS/RYAN_CONNECTIVITY.md), [Mariya](SUBSYSTEMS/MARIYA_AUDIO_DSP.md), [Naomi](SUBSYSTEMS/NAOMI_OUTPUT.md) and [cross-team interfaces](SUBSYSTEMS/INTERFACES.md). These are repository-level documentation, not additional CubeIDE projects.
+
 **Start with the [README](../README.md)**, not old Nucleo firmware screenshots. This is the 03 November 2026 custom-PCB project, with a separately tested R24 baseline and an R26 DSP/ML candidate.
 
 | Task | Read | Verify |
