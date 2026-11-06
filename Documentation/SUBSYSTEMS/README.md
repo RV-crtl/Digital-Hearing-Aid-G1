@@ -63,7 +63,7 @@ flowchart TD
 
 1. **Power-on/clock:** [`Core/Src/main.c`](../../Core/Src/main.c), [`Core/Src/rtos_bootstrap.c`](../../Core/Src/rtos_bootstrap.c).
 2. **Runtime orchestration and all major callbacks:** [`Core/Src/demo_app.c`](../../Core/Src/demo_app.c). Search a symbol, *not* the entire giant file by eye.
-3. **Anna:** [`Core/Src/g1_user_controls.c`](../../Core/Src/g1_user_controls.c); the MPR121/encoder physical driver is in [`Core/Src/g1_product_board.c`](../../Core/Src/g1_product_board.c).
+3. **Anna:** [`Core/Src/g1_user_controls.c`](../../Core/Src/g1_user_controls.c); the MPR121/encoder physical driver is in `Core/Src/g1_product_board.c` (QR261104.10 ZIP; not yet in GitHub main).
 4. **Ryan:** [`Core/Src/bt_profile.c`](../../Core/Src/bt_profile.c), [`Core/Src/connectivity_service.c`](../../Core/Src/connectivity_service.c), [`Core/Src/pcm_transport.c`](../../Core/Src/pcm_transport.c); R26.10 telecoil modules are in the release ZIP's `Core/Src/`.
 5. **Mariya:** [`Core/Src/g1_ambient_dsp.c`](../../Core/Src/g1_ambient_dsp.c), [`Core/Src/audio_dynamics.c`](../../Core/Src/audio_dynamics.c), R26.10 `Core/Src/dfsdm.c`.
 6. **Naomi:** [`Core/Src/speaker_output.c`](../../Core/Src/speaker_output.c), and the output queue/callbacks in [`Core/Src/demo_app.c`](../../Core/Src/demo_app.c).
