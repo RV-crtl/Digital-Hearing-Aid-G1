@@ -32,7 +32,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Validate CAD source structure without copying or altering it
         run: python3 Tools/import_latest_3mf.py docs/assets/g1-assembly.3mf --inspect
       - name: Validate site links and source files
@@ -62,7 +62,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Install KiCad exporter
         run: |
           sudo apt-get update -qq
@@ -108,13 +108,13 @@ jobs:
           dot -Tsvg Documentation/g1-system-2026.dot -o docs/plots/g1-system-2026.svg
           python3 docs/validate_site.py --built
       - name: Upload complete standalone website preview as an Action artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: g1-complete-site-preview
           path: docs/
           retention-days: 21
       - name: Archive actual native schematic previews
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: g1-kicad-schematic-svg-preview
           path: docs/plots/

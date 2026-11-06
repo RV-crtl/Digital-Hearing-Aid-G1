@@ -22,7 +22,7 @@ jobs:
     env:
       CC: ${{ matrix.compiler }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Record compiler and Python environment
         run: |
           "$CC" --version | head -1
@@ -41,7 +41,7 @@ jobs:
         run: python3 Validation/run_host_validation.py
       - name: Upload host-only vectors, analysis and benchmark
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: host-evidence-${{ matrix.compiler }}-${{ github.sha }}
           path: |
@@ -55,7 +55,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Compile & run portable modules with sanitizers
         run: |
           set -eu
@@ -80,8 +80,8 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
       - name: Parse every top-level PowerShell build script

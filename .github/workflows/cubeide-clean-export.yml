@@ -19,12 +19,12 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Package STM32CubeIDE import project
         shell: pwsh
         run: ./Tools/Export-CubeIDE.ps1 -OutputPath dist
       - name: Upload clean CubeIDE project
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: STM32CubeIDE-clean-project
           path: dist/*.zip
