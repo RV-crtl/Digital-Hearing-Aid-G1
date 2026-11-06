@@ -2,6 +2,14 @@
 
 **STM32L476RG · custom KiCad PCB · FreeRTOS · microphone / Bluetooth / induction-loop audio · physical controls**
 
+## Start with the R26.10 code walkthrough
+
+**[Open the four-subsystem execution guide](Documentation/SUBSYSTEMS/README.md)** — follow the real startup-to-sound runtime flow, then dive into a member's source code:
+
+[**Anna — controls**](Documentation/SUBSYSTEMS/ANNA_CONTROLS.md) · [**Ryan — BT/telecoil**](Documentation/SUBSYSTEMS/RYAN_CONNECTIVITY.md) · [**Mariya — microphone/DSP**](Documentation/SUBSYSTEMS/MARIYA_AUDIO_DSP.md) · [**Naomi — speaker output**](Documentation/SUBSYSTEMS/NAOMI_OUTPUT.md) · [**Interface contracts**](Documentation/SUBSYSTEMS/INTERFACES.md)
+
+Each guide starts at the event that triggers its functions, shows annotated source excerpts and exact file paths, and traces the next task, queue, interrupt, hardware or team subsystem. The [original 39-event system execution guide](Documentation/FIRMWARE_EXECUTION_GUIDE_R26.md) remains available for the full chronological walkthrough. **Documentation baseline:** latest separately delivered QR261104.10 ZIP; repository firmware sources have not yet been synchronized to that release.
+
 ![Actual G1 signal architecture](Assets/system-overview.svg)
 
 The diagram above represents real interfaces and task ownership, not fictional mechanical CAD or hardware measurements.
