@@ -1,5 +1,7 @@
 # G1 code map · current board architecture versus repository root
 
+> **New navigation:** [Four-member subsystem source guide](SUBSYSTEMS/README.md) · [Anna controls](SUBSYSTEMS/ANNA_CONTROLS.md) · [Ryan Bluetooth/telecoil](SUBSYSTEMS/RYAN_CONNECTIVITY.md) · [Mariya DFSDM/DSP](SUBSYSTEMS/MARIYA_AUDIO_DSP.md) · [Naomi output](SUBSYSTEMS/NAOMI_OUTPUT.md) · [interface contracts](SUBSYSTEMS/INTERFACES.md). These follow actual runtime events and QR261104.10 code rather than sorting files alphabetically. This older code-map page describes the repository-root firmware status at its own update date.
+
 **Updated 03 November 2026.** The root `Core/` is the historical Nucleo-oriented CubeIDE project with portable R26 DSP/control modules. It is **not the whole matched custom-PCB R26 image**. The latest custom-board application was delivered separately and requires a clean native GCC build before promoting the root to it. See [current requirements](G1_CURRENT_SYSTEM_REQUIREMENTS.md).
 
 ## Live custom-PCB firmware modules (from R26 series)
